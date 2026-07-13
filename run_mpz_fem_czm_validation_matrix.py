@@ -48,8 +48,8 @@ def build_cmd(py,row,klass,T,case,a):
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--parameters',default='mpz_four_class_initial_guesses.csv')
-    ap.add_argument('--classes',default='ceramic peak weakT DBTT')
+    ap.add_argument('--parameters',default='mpz_three_class_initial_guesses.csv')
+    ap.add_argument('--classes',default='ceramic weakT DBTT')
     ap.add_argument('--temperatures',default='300 700 1100')
     ap.add_argument('--out',default='runs/mpz_v9_fem_czm_validation')
     ap.add_argument('--python',default=sys.executable)
