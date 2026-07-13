@@ -14,7 +14,7 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q tests/test_moving_process_zone.py
 
 "$PYTHON_BIN" - <<'PY'
 import arrhenius_fracture as af
-assert af.__version__ == '0.9.0'
+assert af.__version__ == '0.9.1'
 print('package version:', af.__version__)
 PY
 
@@ -58,4 +58,4 @@ if [[ "$RUN_2D_SMOKE" == "1" ]]; then
     --front-state-model moving_pz --sigma-cap-GPa 0 --save-snapshots 0
 fi
 
-echo "MPZ v9 verification passed. Outputs: $OUTROOT"
+echo "MPZ v9.1 verification passed. Outputs: $OUTROOT"
