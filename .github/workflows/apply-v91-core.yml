@@ -1,0 +1,64 @@
+name: Apply MPZ v9.1 core
+
+on:
+  push:
+    branches:
+      - standalone-v9.1
+    paths:
+      - .github/workflows/apply-v91-core.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out standalone v9.1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: standalone-v9.1
+          fetch-depth: 0
+
+      - name: Recover and verify the archived v9.1 core payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin v91-payload-archive:v91-payload-archive
+          mkdir -p /tmp/mpz-v91
+          for part in 01 02 03 04; do
+            git show "v91-payload-archive:payload/core_delta.part${part}"
+          done | tr -d '\r\n ' > /tmp/mpz-v91/core_delta.b64
+          base64 --decode /tmp/mpz-v91/core_delta.b64 > /tmp/mpz-v91/core_delta.zip
+          sha256sum /tmp/mpz-v91/core_delta.zip
+          unzip -t /tmp/mpz-v91/core_delta.zip
+          unzip -o /tmp/mpz-v91/core_delta.zip -d .
+
+      - name: Verify source syntax and focused tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q arrhenius_fracture fit_mpz_three_classes.py audit_mpz_three_class_convergence.py
+          python -m pip install -q numpy scipy pandas matplotlib pytest
+          PYTHONPATH=. python -m pytest -q tests/test_moving_process_zone.py tests/test_mpz_three_class_fit.py
+
+      - name: Commit exact v9.1 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG_MPZ_V9_1.md IMPLEMENTATION_STATUS_V9_1.md README_MPZ_V9_1_THREE_CLASS_TUNING.md VALIDATION_REPORT_V9_1.md \
+            arrhenius_fracture/__init__.py arrhenius_fracture/mpz_front_engine.py \
+            audit_mpz_three_class_convergence.py fit_mpz_three_classes.py \
+            mpz_three_class_design_targets.csv mpz_three_class_initial_guesses.csv \
+            pyproject.toml pytest.ini run_mpz_dwell.py run_mpz_fatigue_matrix.py \
+            run_mpz_fem_czm_validation_matrix.py run_mpz_three_class_tuning.sh \
+            tests/test_mpz_three_class_fit.py verify_mpz_v9.sh
+          if git diff --cached --quiet; then
+            echo "No v9.1 differences remain to commit."
+          else
+            git commit -m "Apply exact MPZ v9.1 three-class implementation"
+            git push origin HEAD:standalone-v9.1
+          fi
