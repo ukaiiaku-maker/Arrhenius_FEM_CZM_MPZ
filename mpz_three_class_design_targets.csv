@@ -1,0 +1,31 @@
+target_class,T_K,K_init_target,K_init_scale,K_plateau_target,K_plateau_scale,early_rise_per_100um_target,early_rise_scale,plateau_rise_per_100um_target,plateau_rise_scale,delta_KR_min,delta_KR_max,weight,design_intent
+ceramic,300,18.0,2.0,18.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle low-temperature ceramic-like response
+ceramic,400,16.5,2.0,17.0,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle with decreasing toughness
+ceramic,500,15.0,2.0,15.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle with decreasing toughness
+ceramic,600,13.5,2.0,14.0,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle with decreasing toughness
+ceramic,700,12.0,2.0,12.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle with decreasing toughness
+ceramic,800,10.5,2.0,11.0,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle with decreasing toughness
+ceramic,900,9.0,2.0,9.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle despite potentially greater high-temperature plastic activity
+ceramic,1000,8.0,2.0,8.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle despite potentially greater high-temperature plastic activity
+ceramic,1100,7.0,2.0,7.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle despite potentially greater high-temperature plastic activity
+ceramic,1200,6.5,2.0,7.0,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle despite potentially greater high-temperature plastic activity
+weakT,300,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,intermediate FCC-like toughness with moderate rising resistance
+weakT,400,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,500,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,600,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,700,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,800,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,900,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,1000,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,1100,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+weakT,1200,15.0,1.5,20.0,2.0,1.00,0.50,0.00,0.30,3.0,7.0,1.0,temperature-insensitive first passage and plateau
+DBTT,300,15.0,2.0,15.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle low-temperature shelf
+DBTT,400,15.0,2.0,15.5,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle low-temperature shelf
+DBTT,500,15.5,2.0,16.0,2.0,0.10,0.40,0.00,0.25,0.0,1.5,1.0,brittle low-temperature shelf
+DBTT,600,16.5,2.0,17.5,2.5,0.20,0.50,0.00,0.30,0.0,2.5,1.0,transition onset
+DBTT,700,19.0,2.5,22.0,3.0,0.50,0.60,0.00,0.35,1.0,5.0,1.0,transition regime with developing resistance
+DBTT,800,26.0,3.0,33.0,3.5,1.20,0.70,0.00,0.40,5.0,9.0,1.0,rapid transition to tough response
+DBTT,900,33.0,3.0,43.0,4.0,1.50,0.75,0.00,0.40,7.0,13.0,1.0,tough high-temperature branch with rising resistance
+DBTT,1000,37.0,3.0,47.0,4.0,1.50,0.75,0.00,0.40,7.0,13.0,1.0,tough high-temperature branch with rising resistance
+DBTT,1100,39.0,3.0,49.0,4.0,1.50,0.75,0.00,0.40,7.0,13.0,1.0,tough high-temperature branch with rising resistance
+DBTT,1200,40.0,3.0,50.0,4.0,1.50,0.75,0.00,0.40,7.0,13.0,1.0,tough high-temperature branch with rising resistance
