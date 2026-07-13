@@ -14,5 +14,10 @@ dependencies = [
   "pandas>=2.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+]
+
 [tool.setuptools.packages.find]
 include = ["arrhenius_fracture*"]
