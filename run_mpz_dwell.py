@@ -11,14 +11,14 @@ import pandas as pd
 
 from arrhenius_fracture import sharp_front as sf
 from arrhenius_fracture.config import make_emergent_config
-from fit_mpz_four_classes import row_to_args
+from fit_mpz_three_classes import row_to_args
 from mpz_run_utils import check_parameter_status
 
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--parameters',default='mpz_four_class_initial_guesses.csv')
-    ap.add_argument('--classes',default='ceramic peak weakT DBTT')
+    ap.add_argument('--parameters',default='mpz_three_class_initial_guesses.csv')
+    ap.add_argument('--classes',default='ceramic weakT DBTT')
     ap.add_argument('--temperatures',default='300 700 1100')
     ap.add_argument('--K-MPa-sqrt-m',type=float,default=15.0,dest='K_MPa_sqrt_m')
     ap.add_argument('--hold-s',type=float,default=1e5)
@@ -48,7 +48,7 @@ def main():
           print('SKIP existing',cdir)
           summaries.append(json.loads((cdir/'summary.json').read_text()))
           continue
-        args=row_to_args(r,0.1,0.005,a.n_advances,100.0)
+        args=row_to_args(r,dK=0.1,Kdot=0.005,n_advances=a.n_advances,Kmax=100.0,da_um=5.0)
         eng=sf.build_engine(args,make_emergent_config().material)
         t=0.0; dt=a.dt_initial_s; ib=0
         case=[]
