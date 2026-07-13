@@ -15,16 +15,29 @@ INITIAL=${INITIAL:-mpz_three_class_initial_guesses.csv}
 TARGETS=${TARGETS:-mpz_three_class_design_targets.csv}
 PYTHON_BIN=${PYTHON_BIN:-python}
 
+# Ensure Python messages are written promptly when stdout is redirected by nohup.
+export PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+
+stamp() {
+  date '+%Y-%m-%d %H:%M:%S'
+}
+
 run_py() {
+  echo "[$(stamp)] launching: $PYTHON_BIN -u $*"
   if command -v conda >/dev/null 2>&1; then
-    conda run -n "$CONDA_ENV" --no-capture-output "$PYTHON_BIN" "$@"
+    conda run -n "$CONDA_ENV" --no-capture-output "$PYTHON_BIN" -u "$@"
   else
-    "$PYTHON_BIN" "$@"
+    "$PYTHON_BIN" -u "$@"
   fi
 }
 
+echo "[$(stamp)] MPZ v9.1 tuning start"
+echo "[$(stamp)] stage=$STAGE classes=$CLASSES conda_env=$CONDA_ENV root=$ROOT"
+echo "[$(stamp)] initial=$INITIAL targets=$TARGETS"
+
 case "$STAGE" in
   smoke)
+    echo "[$(stamp)] smoke output: $ROOT/00_smoke"
     run_py fit_mpz_three_classes.py \
       --smoke \
       --initial "$INITIAL" \
@@ -45,6 +58,7 @@ case "$STAGE" in
     ;;
 
   first)
+    echo "[$(stamp)] first-passage output: $FIRST_OUT popsize=${POPSIZE:-6} maxiter=${MAXITER:-25}"
     run_py fit_mpz_three_classes.py \
       --initial "$INITIAL" \
       --targets "$TARGETS" \
@@ -70,6 +84,7 @@ case "$STAGE" in
       echo "Missing Stage 1 parameters: $FIRST_OUT/mpz_three_class_parameters.csv" >&2
       exit 2
     }
+    echo "[$(stamp)] R-curve output: $RCURVE_OUT popsize=${POPSIZE:-5} maxiter=${MAXITER:-20}"
     run_py fit_mpz_three_classes.py \
       --initial "$FIRST_OUT/mpz_three_class_parameters.csv" \
       --targets "$TARGETS" \
@@ -97,6 +112,7 @@ case "$STAGE" in
       echo "Missing Stage 2 parameters: $RCURVE_OUT/mpz_three_class_parameters.csv" >&2
       exit 2
     }
+    echo "[$(stamp)] joint output: $JOINT_OUT maxiter=${MAXITER:-20} maxfev=${MAXFEV:-1200}"
     run_py fit_mpz_three_classes.py \
       --initial "$RCURVE_OUT/mpz_three_class_parameters.csv" \
       --targets "$TARGETS" \
@@ -124,6 +140,7 @@ case "$STAGE" in
       echo "Missing Stage 3 parameters: $JOINT_OUT/mpz_three_class_parameters.csv" >&2
       exit 2
     }
+    echo "[$(stamp)] convergence output: $ROOT/04_convergence"
     run_py audit_mpz_three_class_convergence.py \
       --parameters "$JOINT_OUT/mpz_three_class_parameters.csv" \
       --classes "$CLASSES" \
@@ -140,3 +157,5 @@ case "$STAGE" in
     exit 2
     ;;
 esac
+
+echo "[$(stamp)] MPZ v9.1 tuning stage completed: $STAGE"
