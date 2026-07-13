@@ -15,8 +15,8 @@ from mpz_run_utils import moving_pz_cli, fs, check_parameter_status
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--parameters',default='mpz_four_class_initial_guesses.csv')
-    ap.add_argument('--classes',default='ceramic peak weakT DBTT')
+    ap.add_argument('--parameters',default='mpz_three_class_initial_guesses.csv')
+    ap.add_argument('--classes',default='ceramic weakT DBTT')
     ap.add_argument('--temperatures',default='300 700 1100')
     ap.add_argument('--Kmax-values',default='6 10 14')
     ap.add_argument('--R',type=float,default=0.1)
