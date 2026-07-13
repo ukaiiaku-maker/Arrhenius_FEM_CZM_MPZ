@@ -151,6 +151,11 @@ class MovingProcessZoneFrontEngine(FrontEngine):
         Npre = float(self.N_em)
         Ksh_pre = self.K_shield()
         rpre = self.r_eff()
+        mobile_pre = float(self.mpz_state.mobile_count)
+        retained_pre = float(self.mpz_state.retained_count)
+        site_fraction_pre = float(self.mpz_state.available_site_fraction)
+        local_slip_pre = float(self.mpz_state.local_slip_count())
+        emitted_total_pre = float(self.mpz_state.emitted_total)
         self._last_pre_renewal_state = self.mpz_state.copy()
 
         if not np.isfinite(self.B):
@@ -177,6 +182,12 @@ class MovingProcessZoneFrontEngine(FrontEngine):
             "N_em_shed_to_wake": float(wake["wake_retained"]),
             "sigma_back_pre_renewal": float(Ksh_pre / np.sqrt(2.0 * np.pi * max(rpre, 1.0e-30))),
             "r_eff_pre_renewal": float(rpre),
+            "mpz_K_shield_pre_renewal_Pa_sqrt_m": float(Ksh_pre),
+            "mpz_mobile_pre_renewal": mobile_pre,
+            "mpz_retained_pre_renewal": retained_pre,
+            "mpz_available_site_fraction_pre_renewal": site_fraction_pre,
+            "mpz_local_slip_pre_renewal": local_slip_pre,
+            "mpz_emitted_total_pre_renewal": emitted_total_pre,
             "dG_emb_pre_renewal_eV": 0.0,
             "mpz_wake_mobile_block": float(wake["wake_mobile"]),
             "mpz_wake_retained_block": float(wake["wake_retained"]),
