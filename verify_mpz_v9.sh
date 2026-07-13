@@ -9,8 +9,20 @@ RUN_2D_SMOKE="${RUN_2D_SMOKE:-0}"
 rm -rf "$OUTROOT"
 mkdir -p "$OUTROOT"
 
-"$PYTHON_BIN" -m compileall -q arrhenius_fracture audit_legacy_caps_and_ablations.py fit_mpz_four_classes.py mpz_run_utils.py run_mpz_dwell.py run_mpz_fatigue_matrix.py run_mpz_fem_czm_validation_matrix.py
-PYTHONPATH=. "$PYTHON_BIN" -m pytest -q tests/test_moving_process_zone.py
+"$PYTHON_BIN" -m compileall -q \
+  arrhenius_fracture \
+  audit_legacy_caps_and_ablations.py \
+  audit_mpz_three_class_convergence.py \
+  fit_mpz_four_classes.py \
+  fit_mpz_three_classes.py \
+  mpz_run_utils.py \
+  run_mpz_dwell.py \
+  run_mpz_fatigue_matrix.py \
+  run_mpz_fem_czm_validation_matrix.py
+
+PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
+  tests/test_moving_process_zone.py \
+  tests/test_mpz_three_class_fit.py
 
 "$PYTHON_BIN" - <<'PY'
 import arrhenius_fracture as af
@@ -23,17 +35,17 @@ if [[ "$RUN_PROTOCOL_SMOKES" == "1" ]]; then
     --classes ceramic --temperatures 300 --dK-values 0.25 \
     --ablations "baseline no_dN_cap" --Kmax 5 --n-advances 2 \
     --out "$OUTROOT/legacy_audit"
-  
+
   "$PYTHON_BIN" fit_mpz_four_classes.py --smoke \
     --classes ceramic --temperatures 300 \
     --dK 0.5 --Kmax 5 --n-advances 1 \
     --out "$OUTROOT/fit_smoke"
-  
+
   "$PYTHON_BIN" run_mpz_fatigue_matrix.py \
     --classes ceramic --temperatures 300 --Kmax-values 8 \
     --cycles-max 1000 --block-cycles 10 --max-blocks 3 --n-advances 1 \
     --out "$OUTROOT/fatigue_smoke"
-  
+
   "$PYTHON_BIN" run_mpz_dwell.py \
     --classes ceramic --temperatures 300 --K-MPa-sqrt-m 8 \
     --hold-s 0.001 --dt-initial-s 1e-5 --dt-max-s 1e-4 \
