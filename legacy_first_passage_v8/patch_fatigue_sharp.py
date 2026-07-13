@@ -1,0 +1,19 @@
+from pathlib import Path
+p=Path('/mnt/data/patch_cleave/arrhenius_fracture/fatigue_sharp_front.py')
+s=p.read_text()
+# Import apply helper
+old="""from .sharp_front import FrontConfig, FrontEngine, default_cleavage_barrier, default_emission_barrier\n"""
+new="""from .sharp_front import (FrontConfig, FrontEngine, default_cleavage_barrier,\n                          default_emission_barrier, apply_cleavage_barrier_args)\n"""
+if old not in s: raise SystemExit('import marker not found')
+s=s.replace(old,new)
+# Replace cb block
+old="""    cb = default_cleavage_barrier()\n    if args.cleave_H0_eV is not None:\n        cb.H0_eV = args.cleave_H0_eV\n    if args.cleave_S_sigma_max_kB is not None:\n        cb.S_sigma_max_kB = args.cleave_S_sigma_max_kB\n    if args.cleave_entropy_form is not None:\n        cb.entropy_stress_form = args.cleave_entropy_form\n\n    # The front engine still needs an emission barrier for compatibility, but\n"""
+new="""    cb = apply_cleavage_barrier_args(default_cleavage_barrier(), args)\n\n    # The front engine still needs an emission barrier for compatibility, but\n"""
+if old not in s: raise SystemExit('cb block not found')
+s=s.replace(old,new)
+# Add parser args after cleave entropy form
+old="""    p.add_argument(\"--cleave-entropy-form\", choices=[\"affine\", \"gated\", \"physical\", \"meyer_neldel\"], default=None)\n\n    # EXP-floor plasticity family and mechanism scalings\n"""
+new="""    p.add_argument(\"--cleave-entropy-form\", choices=[\"affine\", \"gated\", \"physical\", \"meyer_neldel\"], default=None)\n    p.add_argument(\"--cleave-barrier-kind\", choices=[\"classic\", \"exp_floor\"], default=None, dest=\"cleave_barrier_kind\")\n    p.add_argument(\"--cleave-G00-eV\", type=float, default=None, dest=\"cleave_G00_eV\")\n    p.add_argument(\"--cleave-gT-eV-per-K\", type=float, default=None, dest=\"cleave_gT_eV_per_K\")\n    p.add_argument(\"--cleave-sigc0-GPa\", type=float, default=None, dest=\"cleave_sigc0_GPa\")\n    p.add_argument(\"--cleave-sT-GPa-per-K\", type=float, default=None, dest=\"cleave_sT_GPa_per_K\")\n    p.add_argument(\"--cleave-exp-a\", type=float, default=None, dest=\"cleave_exp_a\")\n    p.add_argument(\"--cleave-exp-n\", type=float, default=None, dest=\"cleave_exp_n\")\n    p.add_argument(\"--cleave-floor-frac\", type=float, default=None, dest=\"cleave_floor_frac\")\n    p.add_argument(\"--cleave-floor-min-eV\", type=float, default=None, dest=\"cleave_floor_min_eV\")\n    p.add_argument(\"--cleave-floor-max-frac\", type=float, default=None, dest=\"cleave_floor_max_frac\")\n    p.add_argument(\"--cleave-Tref-K\", type=float, default=None, dest=\"cleave_Tref_K\")\n    p.add_argument(\"--cleave-exp-T-mode\", choices=[\"linear\", \"mu_scale\"], default=None, dest=\"cleave_exp_T_mode\")\n    p.add_argument(\"--cleave-mu-dlnmu-dT-per-K\", type=float, default=None, dest=\"cleave_mu_dlnmu_dT_per_K\")\n    p.add_argument(\"--cleave-G0-mu-power\", type=float, default=None, dest=\"cleave_G0_mu_power\")\n    p.add_argument(\"--cleave-sigc-mu-power\", type=float, default=None, dest=\"cleave_sigc_mu_power\")\n    p.add_argument(\"--cleave-S-hs-kB\", type=float, default=None, dest=\"cleave_S_hs_kB\")\n    p.add_argument(\"--cleave-sigma-S-GPa\", type=float, default=None, dest=\"cleave_sigma_S_GPa\")\n    p.add_argument(\"--cleave-S-hs-power\", type=float, default=None, dest=\"cleave_S_hs_power\")\n    p.add_argument(\"--cleave-S-hs-dT-per-K\", type=float, default=None, dest=\"cleave_S_hs_dT_per_K\")\n    p.add_argument(\"--cleave-S-hs-Tref-K\", type=float, default=None, dest=\"cleave_S_hs_Tref_K\")\n    p.add_argument(\"--cleave-monotone-stress\", action=argparse.BooleanOptionalAction, default=None, dest=\"cleave_monotone_stress\")\n\n    # EXP-floor plasticity family and mechanism scalings\n"""
+if old not in s: raise SystemExit('parser insertion not found')
+s=s.replace(old,new)
+p.write_text(s)

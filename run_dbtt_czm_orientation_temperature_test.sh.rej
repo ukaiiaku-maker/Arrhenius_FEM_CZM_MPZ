@@ -1,0 +1,63 @@
+@@ -7,27 +7,34 @@
+ BACKEND=${CRACK_BACKEND:-adaptive_czm}
+ MAX_JOBS=${MAX_JOBS:-2}
+ FORCE=${FORCE:-0}
++CONDA_ENV=${CONDA_ENV:-arrhenius-fem-czm}
+ 
+-# Use the active environment interpreter by default.  On macOS, `python3`
+-# can resolve to the Apple CommandLineTools Python even while Conda is active.
++# Interpreter precedence:
++#   1. explicit PYTHON_BIN
++#   2. Python from CONDA_ENV (default: arrhenius-fem-czm)
++# This deliberately avoids silently using a broken or mutable base environment.
+ if [[ -n "${PYTHON_BIN:-}" ]]; then
+   PYTHON_EXE="$PYTHON_BIN"
++elif command -v conda >/dev/null 2>&1 && conda env list | awk '{print $1}' | grep -Fxq "$CONDA_ENV"; then
++  PYTHON_EXE="$(conda run -n "$CONDA_ENV" python - <<'PY'
++import sys
++print(sys.executable)
++PY
++)"
++  PYTHON_EXE="$(printf '%s\n' "$PYTHON_EXE" | tail -n 1)"
+ else
+-  PYTHON_EXE="$(command -v python || true)"
++  echo "ERROR: isolated Conda environment '$CONDA_ENV' was not found." >&2
++  echo "Create it once with:" >&2
++  echo "  bash setup_fem_czm_env.sh" >&2
++  echo "or override explicitly with PYTHON_BIN=/path/to/python." >&2
++  exit 2
+ fi
++
+ if [[ -z "$PYTHON_EXE" || ! -x "$PYTHON_EXE" ]]; then
+   echo "ERROR: no usable Python interpreter found." >&2
+-  echo "Activate the project environment or run with PYTHON_BIN=/path/to/python." >&2
+   exit 2
+ fi
+ 
+-# Resolve to an absolute executable path before parallel child shells are started.
+-PYTHON_EXE="$($PYTHON_EXE - <<'PY'
+-import sys
+-print(sys.executable)
+-PY
+-)"
+-
+ mkdir -p "$OUTROOT"
+ 
+ echo "=== DBTT adaptive-CZM orientation sweep ==="
+@@ -37,6 +44,7 @@
+ echo "theta:    ${THETA} deg"
+ echo "temps:    ${TEMPS}"
+ echo "backend:  ${BACKEND}"
++echo "conda_env:${CONDA_ENV}"
+ echo "max_jobs: ${MAX_JOBS}"
+ echo "outroot:  ${OUTROOT}"
+ 
+@@ -92,7 +100,7 @@
+ }
+ 
+ export -f run_one
+-export THETA OUTROOT BACKEND FORCE PYTHON_EXE
++export THETA OUTROOT BACKEND FORCE PYTHON_EXE CONDA_ENV
+ 
+ # `bash -c`, not `bash -lc`: a login shell can reset PATH and bypass Conda.
+ if ! printf '%s\n' $TEMPS | xargs -n1 -P "$MAX_JOBS" bash -c 'run_one "$1"' _; then
