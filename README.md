@@ -1,29 +1,33 @@
-# Arrhenius FEM/CZM MPZ v9.9 continuation and promotion
+# Arrhenius FEM/CZM MPZ v9.10 unified broad search
 
-The active workflow now uses the successful v9.8.1 basins as warm starts, reduces their absolute Peierls–Taylor barriers, and then tests the resulting candidates during finite crack growth:
+The active calibration gate now uses one mobile/retained state model in both the analytical search and spatial crack-growth validation:
 
 1. [v9.2 analytical virgin-tip first-passage atlas](README_MPZ_V9_2_ANALYTIC_ATLAS.md)
 2. v9.6 uncapped, detailed-balance Peierls–Taylor constitutive audit
 3. v9.7 independent-entropy calibration audit
-4. [v9.8/v9.8.1 joint cleavage–emission–Peierls–Taylor optimization](README_MPZ_V9_8_JOINT_OPTIMIZATION.md)
-5. [v9.9 common-barrier scaling and spatial MPZ promotion](README_MPZ_V9_9_BARRIER_CONTINUATION.md)
-6. 2-D FEM/CZM validation of the leading spatial candidates
+4. v9.8/v9.8.1 joint response optimization audit
+5. v9.9 barrier-scaling and spatial-mismatch audit
+6. [v9.10 unified Peierls-transport/Taylor-retention global search](README_MPZ_V9_10_UNIFIED_SEARCH.md)
+7. v9.10 unified spatial MPZ promotion
+8. 2-D FEM/CZM validation of candidates whose response persists during crack growth
 
-Version 9.8.1 produced numerically strong ceramic and weak-temperature basins and a useful DBTT trend, but the selected absolute Peierls and Taylor barriers were large. Version 9.9 therefore scales `H_P` and `H_T` together, preserving their ratio and `H_P <= H_T`, while locally reoptimizing activation entropy, effective prefactors, Taylor correlation, finite source inventory, recovery, development length, and blunting.
+Version 9.9 demonstrated that its analytical retention proxy and spatial MPZ were not equivalent. The proxy could create shield-effective retention by suppressing Peierls motion, whereas the spatial state emitted mobile dislocations and required a separate legacy trap barrier to create retained lines. This caused the analytical DBTT R-curve to disappear during spatial crack growth and prevented the weak-temperature/FCC-like search from combining fast Peierls motion with substantial retained shielding.
 
-The only class-specific mobility requirement is that the weak-temperature/FCC-like candidate must have a Peierls traverse number of at least one over the loading time. Slow Peierls motion is allowed for ceramic-like candidates, and no mechanism-dominance rule is imposed on DBTT candidates. DBTT acceptance is based on the low-temperature shelf, high-temperature branch, and persistence of the transition during crack extension rather than exact agreement with the provisional target points.
+Version 9.10 removes the independent trap barrier. Peierls kinetics set the mobile transport velocity, forest encounters convert mobile lines to retained lines, and Taylor completion releases retained lines. Therefore `H_P < H_T` has the intended physical interpretation: FCC-like candidates can combine a low Peierls transport barrier with a larger Taylor obstacle barrier, while ceramic-like candidates may retain slow Peierls mobility.
 
-The active installed package remains v0.9.6 with the v9.5 spatial MPZ state. The v9.9 independent-entropy spatial adapter is used only inside the promotion workflow and is not activated globally. The prior first-passage `N_sat` and shielding coefficients remain historical benchmark coordinates, not production caps or optimizer parameters.
+Every v9.10 optimization begins from a full 25-dimensional Sobol population over common broad bounds. It does not use the v9.8.1 or v9.9 shortlist as an initial population or class-specific down-selection. Cleavage, emission, Peierls, Taylor, finite source inventory, encounter efficiency, recovery, development length, and blunting are optimized together. The microscopic attempt frequencies remain fixed at `1e12 s^-1` and `1e11 s^-1`; independent activation entropies provide the effective-prefactor variation without reopening the prior eleven-decade prefactor degeneracy.
 
-Implementation and change records:
+The active installed package remains v0.9.6 with the v9.5 spatial MPZ state. The v9.10 unified state is used only inside the new search and promotion workflows until spatial and 2-D validation is complete. No constitutive density, stress, rate, mobile-population, jump-length, Taylor-order, or shielding cap is introduced.
 
+Implementation records:
+
+- [README_MPZ_V9_10_UNIFIED_SEARCH.md](README_MPZ_V9_10_UNIFIED_SEARCH.md)
 - [README_MPZ_V9_9_BARRIER_CONTINUATION.md](README_MPZ_V9_9_BARRIER_CONTINUATION.md)
 - [README_MPZ_V9_8_JOINT_OPTIMIZATION.md](README_MPZ_V9_8_JOINT_OPTIMIZATION.md)
 - [README_MPZ_V9_7_PT_ENTROPY_CALIBRATION.md](README_MPZ_V9_7_PT_ENTROPY_CALIBRATION.md)
 - [CHANGELOG_MPZ_V9_6.md](CHANGELOG_MPZ_V9_6.md)
 - [CHANGELOG_MPZ_V9_5.md](CHANGELOG_MPZ_V9_5.md)
-- [README_MPZ_V9_4_DEVELOPED_STATE_SEARCH.md](README_MPZ_V9_4_DEVELOPED_STATE_SEARCH.md)
 
-Run `bash verify_mpz_v9_4.sh` after pulling `main`. The retained verifier filename now checks the v9.9 continuation helpers and independent-entropy promotion state in addition to the earlier production and calibration models.
+Run `bash verify_mpz_v9_4.sh` after pulling `main`.
 
-Do not promote the raw v9.8.1 parameter values directly into 2-D production. Use the v9.9 continuation manifest, pass the selected candidates through the spatial MPZ gate, and then validate the retained ceramic, weak-temperature, and DBTT candidates in the 2-D FEM/CZM solver.
+Do not resume the v9.9 continuation as the active calibration workflow and do not promote its DBTT or weak-temperature candidates into 2-D production. Their outputs remain useful evidence for the model mismatch. Use the v9.10 broad global search, then require persistence in the v9.10 spatial MPZ before 2-D validation.
