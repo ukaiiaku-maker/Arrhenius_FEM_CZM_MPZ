@@ -34,37 +34,20 @@ from .diagnostics import (
     save_history, plot_diagnostics, plot_toughness_vs_T,
 )
 
-# Preserve the existing import surface while activating the v9.4 signed
-# detailed-balance completion everywhere the v9.3 module is imported lazily.
-from . import emission_derived_plasticity as _pt_v93
-from .emission_derived_plasticity_v94 import (
-    EmissionDerivedPeierlsTaylorModel as _PTModelV94,
+# Preserve the existing import surface while activating the uncapped v9.6
+# emission-derived Peierls--Taylor closure everywhere the base module is
+# imported lazily by bulk FEM, fatigue, or moving-process-zone paths.
+from . import emission_derived_plasticity as _pt_base
+from .emission_derived_plasticity_v96 import (
+    EmissionDerivedPeierlsTaylorModel as _PTModelV96,
 )
+_pt_base.EmissionDerivedPeierlsTaylorModel = _PTModelV96
 
-
-def _exact_pt_series_rate(rate_a, rate_b):
-    """Harmonic sequential rate with exact absorbing zero bottlenecks."""
-    import numpy as np
-
-    a, b = np.broadcast_arrays(
-        np.maximum(np.asarray(rate_a, dtype=float), 0.0),
-        np.maximum(np.asarray(rate_b, dtype=float), 0.0),
-    )
-    out = np.zeros_like(a, dtype=float)
-    active = (a > 0.0) & (b > 0.0)
-    np.divide(a * b, a + b, out=out, where=active)
-    return out
-
-
-_PTModelV94.series_rate = staticmethod(_exact_pt_series_rate)
-_pt_v93.EmissionDerivedPeierlsTaylorModel = _PTModelV94
-
-# v9.5 keeps the v9.4 constitutive closure but evaluates forest density and
-# effective stress locally in every moving-process-zone bin.  Patch the module
-# attribute before mpz_front_engine imports it, while preserving public imports.
-from . import moving_process_zone as _mpz_v94
+# v9.5 spatial local-density MPZ remains active.  It now calls the v9.6 PT
+# closure through the patched base-module import above.
+from . import moving_process_zone as _mpz_base
 from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
-_mpz_v94.MovingProcessZoneState = _MPZStateV95
+_mpz_base.MovingProcessZoneState = _MPZStateV95
 MovingProcessZoneState = _MPZStateV95
 
-__version__ = '0.9.5'
+__version__ = '0.9.6'
