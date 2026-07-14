@@ -253,7 +253,12 @@ def main() -> None:
                     <= a.reference_stress_max_GPa
                 )
                 score = (
-                    abs(math.log10(max(ref_low, 1.0e-30) / a.target_reference_stress_GPa))
+                    abs(
+                        math.log10(
+                            max(ref_low, 1.0e-30)
+                            / a.target_reference_stress_GPa
+                        )
+                    )
                     if finite and ref_low > 0.0
                     else 1.0e6
                 )
@@ -271,8 +276,16 @@ def main() -> None:
                         "reference_rho_m2": ref_rho,
                         "reference_stress_low_rate_GPa": ref_low,
                         "reference_stress_high_rate_GPa": ref_high,
-                        "stress_min_GPa": float(np.nanmin(low)) if np.any(np.isfinite(low)) else np.nan,
-                        "stress_max_GPa": float(np.nanmax(high)) if np.any(np.isfinite(high)) else np.nan,
+                        "stress_min_GPa": (
+                            float(np.nanmin(low))
+                            if np.any(np.isfinite(low))
+                            else np.nan
+                        ),
+                        "stress_max_GPa": (
+                            float(np.nanmax(high))
+                            if np.any(np.isfinite(high))
+                            else np.nan
+                        ),
                         "finite": finite,
                         "rate_sensitive": rate_sensitive,
                         "in_reference_window": in_window,
@@ -282,15 +295,29 @@ def main() -> None:
     magnitude = pd.DataFrame(magnitude_rows)
     magnitude.to_csv(out / "pt_magnitude_grid.csv", index=False)
     selected_magnitude = (
-        magnitude[magnitude.finite & magnitude.rate_sensitive]
+        magnitude[
+            magnitude.finite
+            & magnitude.rate_sensitive
+            & magnitude.in_reference_window
+        ]
         .sort_values(["target_class", "magnitude_score"])
         .groupby("target_class", as_index=False)
         .head(a.magnitude_top_per_class)
         .reset_index(drop=True)
     )
     selected_magnitude.to_csv(out / "pt_magnitude_selected.csv", index=False)
+    missing_classes = sorted(
+        set(materials[class_col].astype(str))
+        - set(selected_magnitude.target_class.astype(str))
+    )
+    if missing_classes:
+        raise SystemExit(
+            "no finite GPa-scale magnitude pair found for class(es): "
+            + ", ".join(missing_classes)
+            + "; inspect pt_magnitude_grid.csv or widen the energy-ratio range"
+        )
 
-    # Stage B: independent entropy sweep around the accepted magnitude families.
+    # Stage B: independent entropy sweep around accepted magnitude families.
     entropy = entropy_samples(
         a.entropy_samples, a.seed, a.entropy_min_kB, a.entropy_max_kB
     )
@@ -325,6 +352,13 @@ def main() -> None:
             ref_by_T = {
                 T: float(values[(T, low_rate)][ref_index]) for T in temperatures
             }
+            reference_min = float(np.nanmin(list(ref_by_T.values())))
+            reference_max = float(np.nanmax(list(ref_by_T.values())))
+            reference_window_all_T = bool(
+                finite
+                and reference_min >= a.reference_stress_min_GPa
+                and reference_max <= a.reference_stress_max_GPa
+            )
             stress_all = np.concatenate(list(values.values()))
             raw_barriers = [
                 model.raw_zero_stress_barrier_eV(mech, T)
@@ -332,27 +366,46 @@ def main() -> None:
                 for T in temperatures
             ]
             min_raw_barrier = float(np.min(raw_barriers))
-            rate_sensitive = all(
-                np.all(
-                    values[(T, strain_rates[-1])]
-                    >= values[(T, strain_rates[0])] * (1.0 - 1.0e-8)
+            rate_sensitive = (
+                all(
+                    np.all(
+                        values[(T, strain_rates[-1])]
+                        >= values[(T, strain_rates[0])] * (1.0 - 1.0e-8)
+                    )
+                    for T in temperatures
                 )
-                for T in temperatures
-            ) if finite else False
-            stress_min = float(np.nanmin(stress_all)) if np.any(np.isfinite(stress_all)) else np.nan
-            stress_max = float(np.nanmax(stress_all)) if np.any(np.isfinite(stress_all)) else np.nan
+                if finite
+                else False
+            )
+            stress_min = (
+                float(np.nanmin(stress_all))
+                if np.any(np.isfinite(stress_all))
+                else np.nan
+            )
+            stress_max = (
+                float(np.nanmax(stress_all))
+                if np.any(np.isfinite(stress_all))
+                else np.nan
+            )
             plausible = bool(
                 finite
                 and rate_sensitive
                 and min_raw_barrier > 0.0
-                and stress_min >= 1.0e-6
+                and reference_window_all_T
                 and stress_max <= a.global_stress_max_GPa
             )
             T_lo, T_hi = min(temperatures), max(temperatures)
             ratio = ref_by_T[T_hi] / max(ref_by_T[T_lo], 1.0e-30)
-            ref_mid = ref_by_T[min(temperatures, key=lambda x: abs(x - a.magnitude_temperature_K))]
+            ref_mid = ref_by_T[
+                min(
+                    temperatures,
+                    key=lambda x: abs(x - a.magnitude_temperature_K),
+                )
+            ]
             score = abs(
-                math.log10(max(ref_mid, 1.0e-30) / a.target_reference_stress_GPa)
+                math.log10(
+                    max(ref_mid, 1.0e-30) / a.target_reference_stress_GPa
+                )
             )
             if not plausible:
                 score += 100.0
@@ -367,7 +420,13 @@ def main() -> None:
                     "peierls_gT_eV_per_K": -pS * KB_EV_PER_K,
                     "taylor_gT_eV_per_K": -tS * KB_EV_PER_K,
                     "reference_rho_m2": ref_rho,
-                    **{f"stress_ref_{int(T)}K_GPa": ref_by_T[T] for T in temperatures},
+                    **{
+                        f"stress_ref_{int(T)}K_GPa": ref_by_T[T]
+                        for T in temperatures
+                    },
+                    "reference_stress_min_over_T_GPa": reference_min,
+                    "reference_stress_max_over_T_GPa": reference_max,
+                    "reference_window_all_T": reference_window_all_T,
                     "stress_min_GPa": stress_min,
                     "stress_max_GPa": stress_max,
                     "min_raw_zero_stress_barrier_eV": min_raw_barrier,
@@ -383,11 +442,17 @@ def main() -> None:
                 print(f"evaluated {count}/{total}", flush=True)
 
     thermal = pd.DataFrame(thermal_rows)
-    thermal.to_csv(out / "pt_entropy_map_all.csv.gz", index=False, compression="gzip")
+    thermal.to_csv(
+        out / "pt_entropy_map_all.csv.gz",
+        index=False,
+        compression="gzip",
+    )
     plausible = thermal[thermal.plausible.astype(bool)].copy()
     plausible.to_csv(out / "pt_entropy_map_plausible.csv", index=False)
     shortlist = (
-        plausible.sort_values(["target_class", "thermal_regime", "thermal_score"])
+        plausible.sort_values(
+            ["target_class", "thermal_regime", "thermal_score"]
+        )
         .groupby(["target_class", "thermal_regime"], as_index=False)
         .head(max(1, a.shortlist_count // max(1, len(requested) * 4)))
         .sort_values(["thermal_score", "target_class"])
