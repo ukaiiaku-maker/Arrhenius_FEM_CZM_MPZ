@@ -1,0 +1,209 @@
+--- v93_orig/arrhenius_fracture/moving_process_zone.py	2026-07-14 03:09:26.913223519 +0000
++++ v93/arrhenius_fracture/moving_process_zone.py	2026-07-14 02:53:10.344630735 +0000
+@@ -55,6 +55,44 @@
+     glide_step_m: float = 2.5e-10
+     glide_stress_fraction: float = 0.45
+ 
++    # Emission-derived production transport.  Peierls glide and Taylor release
++    # are scaled EXP-floor descendants of the active crack-tip emission barrier.
++    # The fixed glide/detrap barriers below remain only as explicit legacy
++    # ablations when use_emission_derived_pt is false.
++    use_emission_derived_pt: bool = True
++    pt_emit_G00_eV: float = 1.94
++    pt_emit_gT_eV_per_K: float = 0.003934
++    pt_emit_sigc0_Pa: float = 2.298e9
++    pt_emit_sT_Pa_per_K: float = -6.564e5
++    pt_emit_Tref_K: float = 481.33
++    pt_emit_exp_a: float = 0.0845685
++    pt_emit_exp_n: float = 1.0
++    pt_emit_floor_frac: float = 0.02
++    pt_emit_floor_min_eV: float = 1.0e-4
++    pt_emit_floor_max_frac: float = 0.95
++    pt_peierls_energy_ratio: float = 0.005
++    pt_peierls_entropy_ratio: float = 0.005
++    pt_peierls_stress_ratio: float = 1.0
++    pt_peierls_nu0_s: float = 1.0e12
++    pt_taylor_energy_ratio: float = 0.02
++    pt_taylor_entropy_ratio: float = 0.02
++    pt_taylor_stress_ratio: float = 1.0
++    pt_taylor_nu0_s: float = 1.0e11
++    pt_taylor_corr_rho_c: float = 1.0e14
++    pt_taylor_renewal_time_s: float = 1.0e-9
++    pt_taylor_m_exponent: float = 1.0
++    pt_taylor_m_scale: float = 1.0
++    pt_taylor_m_cap: float = float('inf')
++    pt_forest_density_floor_m2: float = 5.0e12
++    pt_mobile_fraction: float = 0.01
++    pt_mobile_saturation_density_m2: float = 1.0e14
++    pt_mobile_density_floor_m2: float = 1.0e6
++    pt_jump_fraction: float = 1.0
++    pt_jump_length_min_m: float = 2.5e-10
++    pt_peierls_stress_fraction: float = 0.5773502691896258
++    pt_taylor_stress_fraction: float = 0.5773502691896258
++    pt_taylor_phi_max: float = 20.0
++
+     trap_nu0_s: float = 1.0e9
+     trap_barrier_eV: float = 0.65
+     trap_activation_volume_b3: float = 1.0
+@@ -294,17 +332,92 @@
+         source_recovered = self._recover_source_sites(dt_s)
+ 
+         tau = max(float(stress_Pa), 0.0)
+-        glide_rate = self._activated_rate(
+-            self.cfg.glide_nu0_s, self.cfg.glide_barrier_eV,
+-            self.cfg.glide_activation_volume_b3,
+-            self.cfg.glide_stress_fraction * tau, T_K, b)
++        pt_diag: dict[str, float] = {}
++        if bool(getattr(self.cfg, 'use_emission_derived_pt', True)):
++            from .emission_derived_plasticity import (
++                CorrelatedTaylorConfig,
++                EmissionDerivedPeierlsTaylorConfig,
++                EmissionDerivedPeierlsTaylorModel,
++                ExpFloorSurface,
++                MechanismScale,
++            )
++            pt_cfg = EmissionDerivedPeierlsTaylorConfig(
++                parent=ExpFloorSurface(
++                    G00_eV=self.cfg.pt_emit_G00_eV,
++                    gT_eV_per_K=self.cfg.pt_emit_gT_eV_per_K,
++                    sigc0_Pa=self.cfg.pt_emit_sigc0_Pa,
++                    sT_Pa_per_K=self.cfg.pt_emit_sT_Pa_per_K,
++                    Tref_K=self.cfg.pt_emit_Tref_K,
++                    a=self.cfg.pt_emit_exp_a,
++                    n=self.cfg.pt_emit_exp_n,
++                    floor_fraction=self.cfg.pt_emit_floor_frac,
++                    floor_min_eV=self.cfg.pt_emit_floor_min_eV,
++                    floor_max_fraction=self.cfg.pt_emit_floor_max_frac,
++                ),
++                peierls=MechanismScale(
++                    self.cfg.pt_peierls_energy_ratio,
++                    self.cfg.pt_peierls_entropy_ratio,
++                    self.cfg.pt_peierls_stress_ratio,
++                    self.cfg.pt_peierls_nu0_s,
++                ),
++                taylor=MechanismScale(
++                    self.cfg.pt_taylor_energy_ratio,
++                    self.cfg.pt_taylor_entropy_ratio,
++                    self.cfg.pt_taylor_stress_ratio,
++                    self.cfg.pt_taylor_nu0_s,
++                ),
++                correlated_taylor=CorrelatedTaylorConfig(
++                    self.cfg.pt_taylor_corr_rho_c,
++                    self.cfg.pt_taylor_renewal_time_s,
++                    self.cfg.pt_taylor_m_exponent,
++                    self.cfg.pt_taylor_m_scale,
++                    self.cfg.pt_taylor_m_cap,
++                ),
++                peierls_stress_fraction=self.cfg.pt_peierls_stress_fraction,
++                taylor_stress_fraction=self.cfg.pt_taylor_stress_fraction,
++                taylor_phi_max=self.cfg.pt_taylor_phi_max,
++                mobile_fraction_low_density=self.cfg.pt_mobile_fraction,
++                mobile_saturation_density_m2=self.cfg.pt_mobile_saturation_density_m2,
++                mobile_density_floor_m2=self.cfg.pt_mobile_density_floor_m2,
++                jump_fraction_of_forest_spacing=self.cfg.pt_jump_fraction,
++                jump_length_min_m=self.cfg.pt_jump_length_min_m,
++            )
++            pt_model = EmissionDerivedPeierlsTaylorModel(pt_cfg)
++            rho_forest = max(
++                float(self.cfg.pt_forest_density_floor_m2)
++                + self.retained_count / max(self.length_m ** 2, 1.0e-30),
++                1.0,
++            )
++            rates = pt_model.rates(tau, rho_forest, T_K, b)
++            glide_rate = float(np.asarray(rates['peierls_rate_s']))
++            detrap_rate = float(np.asarray(rates['taylor_completion_rate_s']))
++            series_rate = float(np.asarray(rates['series_rate_s']))
++            pt_diag = {
++                'peierls_rate_s': glide_rate,
++                'taylor_single_hit_rate_s': float(np.asarray(rates['taylor_single_hit_rate_s'])),
++                'taylor_completion_rate_s': detrap_rate,
++                'peierls_taylor_series_rate_s': series_rate,
++                'taylor_m_eff': float(np.asarray(rates['taylor_m_eff'])),
++                'G_peierls_eV': float(np.asarray(rates['G_peierls_eV'])),
++                'G_taylor_eV': float(np.asarray(rates['G_taylor_eV'])),
++                'rho_forest_m2': rho_forest,
++            }
++        else:
++            glide_rate = self._activated_rate(
++                self.cfg.glide_nu0_s, self.cfg.glide_barrier_eV,
++                self.cfg.glide_activation_volume_b3,
++                self.cfg.glide_stress_fraction * tau, T_K, b)
++            detrap_rate = self._activated_rate(
++                self.cfg.detrap_nu0_s, self.cfg.detrap_barrier_eV,
++                self.cfg.detrap_activation_volume_b3, tau, T_K, b)
++            series_rate = 1.0 / (
++                1.0 / max(glide_rate, 1.0e-300)
++                + 1.0 / max(detrap_rate, 1.0e-300)
++            )
+         velocity = max(float(self.cfg.glide_step_m), 0.0) * glide_rate
+         trap_rate = self._activated_rate(
+             self.cfg.trap_nu0_s, self.cfg.trap_barrier_eV,
+             self.cfg.trap_activation_volume_b3, tau, T_K, b)
+-        detrap_rate = self._activated_rate(
+-            self.cfg.detrap_nu0_s, self.cfg.detrap_barrier_eV,
+-            self.cfg.detrap_activation_volume_b3, tau, T_K, b)
+         retained_recovery_rate = self._activated_rate(
+             self.cfg.retained_recovery_nu0_s,
+             self.cfg.retained_recovery_barrier_eV,
+@@ -360,8 +473,10 @@
+             "trap_rate_s": trap_rate,
+             "detrap_rate_s": detrap_rate,
+             "retained_recovery_rate_s": retained_recovery_rate,
++            "peierls_taylor_series_rate_s": series_rate,
+             "transport_substeps": float(nsub),
+             "available_site_fraction": self.available_site_fraction,
++            **pt_diag,
+         }
+ 
+     def _advect_forward_field(self, field: np.ndarray, distance_m: float) -> tuple[np.ndarray, float]:
+@@ -484,7 +599,9 @@
+ 
+ 
+ def build_mpz_config_from_namespace(args: Any, *, default_length_m: float | None = None) -> MovingProcessZoneConfig:
+-    get = lambda name, default: getattr(args, name, default)
++    def get(name, default):
++        value = getattr(args, name, default)
++        return default if value is None else value
+     L = float(get("mpz_length_m", default_length_m if default_length_m is not None else 2.0e-6))
+     return MovingProcessZoneConfig(
+         length_m=L,
+@@ -502,6 +619,39 @@
+         glide_activation_volume_b3=float(get("mpz_glide_activation_volume_b3", 8.0)),
+         glide_step_m=float(get("mpz_glide_step_m", 2.5e-10)),
+         glide_stress_fraction=float(get("mpz_glide_stress_fraction", 0.45)),
++        use_emission_derived_pt=bool(get("mpz_use_emission_derived_pt", True)),
++        pt_emit_G00_eV=float(get("emit_G00_eV", 1.94)),
++        pt_emit_gT_eV_per_K=float(get("emit_gT_eV_per_K", 0.003934)),
++        pt_emit_sigc0_Pa=float(get("emit_sigc0_GPa", 2.298)) * 1.0e9,
++        pt_emit_sT_Pa_per_K=float(get("emit_sT_GPa_per_K", -6.564e-4)) * 1.0e9,
++        pt_emit_Tref_K=float(get("emit_Tref_K", 481.33)),
++        pt_emit_exp_a=float(get("emit_exp_a", 0.0845685)),
++        pt_emit_exp_n=float(get("emit_exp_n", 1.0)),
++        pt_emit_floor_frac=float(get("emit_floor_frac", 0.02)),
++        pt_emit_floor_min_eV=float(get("emit_floor_min_eV", 1.0e-4)),
++        pt_emit_floor_max_frac=float(get("emit_floor_max_frac", 0.95)),
++        pt_peierls_energy_ratio=float(get("pt_peierls_energy_ratio", get("peierls_energy_scale", 0.005))),
++        pt_peierls_entropy_ratio=float(get("pt_peierls_entropy_ratio", get("peierls_entropy_scale", 0.005))),
++        pt_peierls_stress_ratio=float(get("pt_peierls_stress_ratio", get("peierls_stress_scale", 1.0))),
++        pt_peierls_nu0_s=float(get("pt_peierls_nu0_s", get("nu0_peierls", 1.0e12))),
++        pt_taylor_energy_ratio=float(get("pt_taylor_energy_ratio", get("taylor_energy_scale", 0.02))),
++        pt_taylor_entropy_ratio=float(get("pt_taylor_entropy_ratio", get("taylor_entropy_scale", 0.02))),
++        pt_taylor_stress_ratio=float(get("pt_taylor_stress_ratio", get("taylor_stress_scale", 1.0))),
++        pt_taylor_nu0_s=float(get("pt_taylor_nu0_s", get("nu0_taylor", 1.0e11))),
++        pt_taylor_corr_rho_c=float(get("pt_taylor_corr_rho_c", 1.0e14)),
++        pt_taylor_renewal_time_s=float(get("pt_taylor_renewal_time_s", 1.0e-9)),
++        pt_taylor_m_exponent=float(get("pt_taylor_m_exponent", 1.0)),
++        pt_taylor_m_scale=float(get("pt_taylor_m_scale", 1.0)),
++        pt_taylor_m_cap=float(get("pt_taylor_m_cap", float('inf'))),
++        pt_forest_density_floor_m2=float(get("pt_forest_density_floor_m2", 5.0e12)),
++        pt_mobile_fraction=float(get("pt_mobile_fraction", 0.01)),
++        pt_mobile_saturation_density_m2=float(get("pt_mobile_saturation_density_m2", 1.0e14)),
++        pt_mobile_density_floor_m2=float(get("pt_mobile_density_floor_m2", 1.0e6)),
++        pt_jump_fraction=float(get("pt_jump_fraction", 1.0)),
++        pt_jump_length_min_m=float(get("pt_jump_length_min_m", 2.5e-10)),
++        pt_peierls_stress_fraction=float(get("pt_peierls_stress_fraction", 0.5773502691896258)),
++        pt_taylor_stress_fraction=float(get("pt_taylor_stress_fraction", 0.5773502691896258)),
++        pt_taylor_phi_max=float(get("pt_taylor_phi_max", 20.0)),
+         trap_nu0_s=float(get("mpz_trap_nu0_s", 1.0e9)),
+         trap_barrier_eV=float(get("mpz_trap_barrier_eV", 0.65)),
+         trap_activation_volume_b3=float(get("mpz_trap_activation_volume_b3", 1.0)),
