@@ -1,0 +1,210 @@
+name: Apply MPZ v9.4 detailed-balance plasticity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-v9.4-detailed-balance.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply signed detailed-balance correction
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'patch anchor not found in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          path = 'arrhenius_fracture/emission_derived_plasticity.py'
+
+          replace_once(
+              path,
+              '''    def peierls_rate(\n        self, sigma_eq_Pa: np.ndarray | float, T_K: float\n    ) -> np.ndarray:\n        tau = max(\n            float(self.cfg.peierls_stress_fraction), 0.0\n        ) * np.maximum(np.asarray(sigma_eq_Pa, dtype=float), 0.0)\n        G = self.barrier_eV("peierls", tau, T_K)\n        return self._arrhenius_rate(\n            G, T_K, self.cfg.peierls.rate_prefactor_s\n        )\n''',
+              '''    def raw_zero_stress_barrier_eV(\n        self, mechanism: str, T_K: float\n    ) -> float:\n        """Unclamped zero-stress free energy used for parameter validation."""\n        key = str(mechanism).lower()\n        if key in {"peierls", "p"}:\n            scale = self.cfg.peierls\n        elif key in {"taylor", "t"}:\n            scale = self.cfg.taylor\n        elif key in {"emission", "emit", "e"}:\n            scale = MechanismScale(1.0, 1.0, 1.0, 1.0)\n        else:\n            raise ValueError(f"unknown mechanism: {mechanism}")\n        dT = float(T_K) - float(self.cfg.parent.Tref_K)\n        return (\n            float(scale.energy_ratio) * float(self.cfg.parent.G00_eV)\n            + float(scale.entropy_ratio)\n            * float(self.cfg.parent.gT_eV_per_K) * dT\n        )\n\n    def peierls_rates(\n        self, sigma_eq_Pa: np.ndarray | float, T_K: float\n    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:\n        """Net, forward, and reverse Peierls rates.\n\n        The reverse reference uses the zero-stress EXP-floor barrier, matching\n        the signed detailed-balance Peierls law used in the prior DDD model.\n        Consequently forward and reverse rates are identical at zero stress and\n        the net plastic drift is exactly zero.\n        """\n        tau = max(\n            float(self.cfg.peierls_stress_fraction), 0.0\n        ) * np.maximum(np.asarray(sigma_eq_Pa, dtype=float), 0.0)\n        G_forward = self.barrier_eV("peierls", tau, T_K)\n        G_reverse = self.barrier_eV("peierls", 0.0, T_K)\n        forward = self._arrhenius_rate(\n            G_forward, T_K, self.cfg.peierls.rate_prefactor_s\n        )\n        reverse = self._arrhenius_rate(\n            G_reverse, T_K, self.cfg.peierls.rate_prefactor_s\n        )\n        net = np.maximum(forward - reverse, 0.0)\n        return net, forward, np.broadcast_to(reverse, np.shape(forward))\n\n    def peierls_rate(\n        self, sigma_eq_Pa: np.ndarray | float, T_K: float\n    ) -> np.ndarray:\n        return self.peierls_rates(sigma_eq_Pa, T_K)[0]\n'''
+          )
+
+          replace_once(
+              path,
+              '''    def taylor_single_hit_rate(\n        self,\n        sigma_eq_Pa: np.ndarray | float,\n        rho_forest_m2: np.ndarray | float,\n        T_K: float,\n        b_m: float,\n    ) -> np.ndarray:\n        sigma_local = self.taylor_local_stress(\n            sigma_eq_Pa, rho_forest_m2, b_m\n        )\n        G = self.barrier_eV("taylor", sigma_local, T_K)\n        return self._arrhenius_rate(\n            G, T_K, self.cfg.taylor.rate_prefactor_s\n        )\n\n    def taylor_completion_rate(\n        self,\n        sigma_eq_Pa: np.ndarray | float,\n        rho_forest_m2: np.ndarray | float,\n        T_K: float,\n        b_m: float,\n    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:\n        h1 = self.taylor_single_hit_rate(\n            sigma_eq_Pa, rho_forest_m2, T_K, b_m\n        )\n        m = self.cfg.correlated_taylor.hit_order(rho_forest_m2)\n        tc = max(\n            float(self.cfg.correlated_taylor.renewal_time_s), 1.0e-30\n        )\n        exposure = np.minimum(np.maximum(h1 * tc, 0.0), 1.0e12)\n        rate = gammainc(m, exposure) / tc\n        return np.maximum(rate, 0.0), m, h1\n''',
+              '''    def taylor_single_hit_rates(\n        self,\n        sigma_eq_Pa: np.ndarray | float,\n        rho_forest_m2: np.ndarray | float,\n        T_K: float,\n        b_m: float,\n    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:\n        """Net, forward, and zero-stress reverse Taylor hit rates."""\n        sigma_local = self.taylor_local_stress(\n            sigma_eq_Pa, rho_forest_m2, b_m\n        )\n        G_forward = self.barrier_eV("taylor", sigma_local, T_K)\n        G_reverse = self.barrier_eV("taylor", 0.0, T_K)\n        forward = self._arrhenius_rate(\n            G_forward, T_K, self.cfg.taylor.rate_prefactor_s\n        )\n        reverse = self._arrhenius_rate(\n            G_reverse, T_K, self.cfg.taylor.rate_prefactor_s\n        )\n        reverse = np.broadcast_to(reverse, np.shape(forward))\n        return np.maximum(forward - reverse, 0.0), forward, reverse\n\n    def taylor_single_hit_rate(\n        self,\n        sigma_eq_Pa: np.ndarray | float,\n        rho_forest_m2: np.ndarray | float,\n        T_K: float,\n        b_m: float,\n    ) -> np.ndarray:\n        return self.taylor_single_hit_rates(\n            sigma_eq_Pa, rho_forest_m2, T_K, b_m\n        )[0]\n\n    def taylor_completion_rate(\n        self,\n        sigma_eq_Pa: np.ndarray | float,\n        rho_forest_m2: np.ndarray | float,\n        T_K: float,\n        b_m: float,\n    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:\n        single_net, single_forward, single_reverse = (\n            self.taylor_single_hit_rates(\n                sigma_eq_Pa, rho_forest_m2, T_K, b_m\n            )\n        )\n        m = self.cfg.correlated_taylor.hit_order(rho_forest_m2)\n        tc = max(\n            float(self.cfg.correlated_taylor.renewal_time_s), 1.0e-30\n        )\n        exposure_forward = np.minimum(\n            np.maximum(single_forward * tc, 0.0), 1.0e12\n        )\n        exposure_reverse = np.minimum(\n            np.maximum(single_reverse * tc, 0.0), 1.0e12\n        )\n        completion_forward = gammainc(m, exposure_forward) / tc\n        completion_reverse = gammainc(m, exposure_reverse) / tc\n        completion_net = np.maximum(\n            completion_forward - completion_reverse, 0.0\n        )\n        return (\n            completion_net, m, single_net, single_forward, single_reverse,\n            completion_forward, completion_reverse,\n        )\n'''
+          )
+
+          replace_once(
+              path,
+              '''        p = self.peierls_rate(sigma_eq_Pa, T_K)\n        t, m, t1 = self.taylor_completion_rate(\n            sigma_eq_Pa, rho_forest_m2, T_K, b_m\n        )\n        series = self.series_rate(p, t)\n''',
+              '''        p, p_forward, p_reverse = self.peierls_rates(\n            sigma_eq_Pa, T_K\n        )\n        (\n            t, m, t1, t1_forward, t1_reverse,\n            t_forward, t_reverse,\n        ) = self.taylor_completion_rate(\n            sigma_eq_Pa, rho_forest_m2, T_K, b_m\n        )\n        series = self.series_rate(p, t)\n'''
+          )
+
+          replace_once(
+              path,
+              '''            "peierls_rate_s": np.asarray(p, dtype=float),\n            "taylor_single_hit_rate_s": np.asarray(t1, dtype=float),\n            "taylor_completion_rate_s": np.asarray(t, dtype=float),\n''',
+              '''            "peierls_rate_s": np.asarray(p, dtype=float),\n            "peierls_forward_rate_s": np.asarray(p_forward, dtype=float),\n            "peierls_reverse_rate_s": np.asarray(p_reverse, dtype=float),\n            "taylor_single_hit_rate_s": np.asarray(t1, dtype=float),\n            "taylor_single_hit_forward_rate_s": np.asarray(t1_forward, dtype=float),\n            "taylor_single_hit_reverse_rate_s": np.asarray(t1_reverse, dtype=float),\n            "taylor_completion_rate_s": np.asarray(t, dtype=float),\n            "taylor_completion_forward_rate_s": np.asarray(t_forward, dtype=float),\n            "taylor_completion_reverse_rate_s": np.asarray(t_reverse, dtype=float),\n'''
+          )
+
+          # Tighten and validate the analytical PT screening stage.
+          sp = 'search_mpz_peierls_taylor_parameters.py'
+          replace_once(
+              sp,
+              '"pt_entropy_multiplier": log_scale(u[:, 2], 0.25, 128.0),',
+              '"pt_entropy_multiplier": log_scale(u[:, 2], 0.25, 8.0),'
+          )
+          replace_once(
+              sp,
+              '''    curves = []\n    slopes = []\n    drops = []\n    resolved = True\n''',
+              '''    curves = []\n    slopes = []\n    drops = []\n    resolved = True\n    raw_peierls = np.asarray([\n        model.raw_zero_stress_barrier_eV("peierls", T)\n        for T in temperatures\n    ], dtype=float)\n    raw_taylor = np.asarray([\n        model.raw_zero_stress_barrier_eV("taylor", T)\n        for T in temperatures\n    ], dtype=float)\n    min_raw_barrier = float(min(raw_peierls.min(), raw_taylor.min()))\n    barrier_valid = bool(min_raw_barrier > 1.0e-8)\n    zero_rate_max = 0.0\n    for T in temperatures:\n        zr = model.rates(0.0, rho, T, b)["equivalent_plastic_rate_s"]\n        zero_rate_max = max(zero_rate_max, float(np.max(np.abs(zr))))\n    detailed_balance_valid = bool(zero_rate_max <= 1.0e-20)\n'''
+          )
+          replace_once(
+              sp,
+              '''    admissible = (\n        resolved\n        and monotonic\n        and np.isfinite(smax)\n        and smax <= max_stress_GPa\n    )\n''',
+              '''    admissible = (\n        resolved\n        and monotonic\n        and barrier_valid\n        and detailed_balance_valid\n        and np.isfinite(smax)\n        and smax <= max_stress_GPa\n    )\n'''
+          )
+          replace_once(
+              sp,
+              '''    if strength_window:\n        status = "strict_strength_window"\n    elif admissible:\n        status = "monotonic_topology_only"\n    elif not resolved:\n        status = "unresolved_at_sigma_limit"\n    elif not monotonic:\n        status = "high_density_downturn"\n    else:\n        status = "stress_above_limit"\n''',
+              '''    if strength_window:\n        status = "strict_strength_window"\n    elif admissible:\n        status = "monotonic_topology_only"\n    elif not barrier_valid:\n        status = "invalid_scaled_zero_stress_barrier"\n    elif not detailed_balance_valid:\n        status = "zero_stress_ratchet"\n    elif not resolved:\n        status = "unresolved_at_sigma_limit"\n    elif not monotonic:\n        status = "high_density_downturn"\n    else:\n        status = "stress_above_limit"\n'''
+          )
+          replace_once(
+              sp,
+              '''        "resolved": bool(resolved),\n        "monotonic": bool(monotonic),\n        "accepted": bool(admissible),\n''',
+              '''        "resolved": bool(resolved),\n        "monotonic": bool(monotonic),\n        "barrier_valid": bool(barrier_valid),\n        "detailed_balance_valid": bool(detailed_balance_valid),\n        "min_raw_scaled_G0_eV": min_raw_barrier,\n        "zero_stress_rate_max_s": zero_rate_max,\n        "accepted": bool(admissible),\n'''
+          )
+          replace_once(
+              sp,
+              'ap.add_argument("--max-stress-GPa", type=float, default=80.0)',
+              'ap.add_argument("--max-stress-GPa", type=float, default=40.0)'
+          )
+          replace_once(
+              sp,
+              '''            stress_penalty = abs(math.log(sigma_ref / 2.0))\n''',
+              '''            stress_penalty = (\n                abs(math.log(sigma_ref / 2.0))\n                + max(float(metrics["sigma_max_GPa"]) - 20.0, 0.0) / 10.0\n            )\n'''
+          )
+
+          # Clean the benign pandas fragmentation warning from the one-time join.
+          jp = 'prepare_mpz_v9_3_pt_input.py'
+          replace_once(
+              jp,
+              '''import argparse\nfrom pathlib import Path\n\nimport pandas as pd\n''',
+              '''import argparse\nfrom pathlib import Path\nimport warnings\n\nimport pandas as pd\n'''
+          )
+          replace_once(
+              jp,
+              '''    joined = atlas.merge(\n        materials,\n        on="candidate_id",\n        how="left",\n        suffixes=("", "__material"),\n        validate="many_to_one",\n        indicator=True,\n    )\n''',
+              '''    with warnings.catch_warnings():\n        warnings.simplefilter("ignore", pd.errors.PerformanceWarning)\n        joined = atlas.merge(\n            materials,\n            on="candidate_id",\n            how="left",\n            suffixes=("", "__material"),\n            validate="many_to_one",\n            indicator=True,\n        )\n'''
+          )
+
+          # Expose the maximum-stress screen in the shell runner.
+          rp = 'run_mpz_v9_3_peierls_taylor_search.sh'
+          replace_once(
+              rp,
+              '''RHO_POINTS="${RHO_POINTS:-65}"\nSEED="${SEED:-93017}"\n''',
+              '''RHO_POINTS="${RHO_POINTS:-65}"\nMAX_STRESS_GPA="${MAX_STRESS_GPA:-40}"\nSEED="${SEED:-93017}"\n'''
+          )
+          replace_once(
+              rp,
+              '''echo "[$(stamp)] rho=$RHO_MIN..$RHO_MAX points=$RHO_POINTS"\n''',
+              '''echo "[$(stamp)] rho=$RHO_MIN..$RHO_MAX points=$RHO_POINTS max_stress_GPa=$MAX_STRESS_GPA"\n'''
+          )
+          replace_once(
+              rp,
+              '''  --rho-points "$RHO_POINTS" \\\n  --seed "$SEED" \\\n''',
+              '''  --rho-points "$RHO_POINTS" \\\n  --max-stress-GPa "$MAX_STRESS_GPA" \\\n  --seed "$SEED" \\\n'''
+          )
+
+          # Add regression coverage for the zero-stress detailed-balance rule.
+          tp = Path('tests/test_emission_derived_peierls_taylor.py')
+          text = tp.read_text()
+          extra = '''\n\ndef test_signed_detailed_balance_gives_zero_net_rate_at_zero_stress():\n    model = EmissionDerivedPeierlsTaylorModel(\n        EmissionDerivedPeierlsTaylorConfig(\n            correlated_taylor=CorrelatedTaylorConfig(\n                rho_c_m2=1.0e11, renewal_time_s=1.0e-10, m_cap=22.0\n            )\n        )\n    )\n    rho = np.logspace(12, 17, 20)\n    zero = model.rates(0.0, rho, 700.0, 2.74e-10)\n    assert np.all(zero["peierls_rate_s"] == 0.0)\n    assert np.all(zero["taylor_single_hit_rate_s"] == 0.0)\n    assert np.all(zero["taylor_completion_rate_s"] == 0.0)\n    assert np.all(zero["series_rate_s"] == 0.0)\n    assert np.all(zero["equivalent_plastic_rate_s"] == 0.0)\n\n    driven = model.rates(2.0e9, rho, 700.0, 2.74e-10)\n    assert np.all(driven["peierls_forward_rate_s"] >= driven["peierls_reverse_rate_s"])\n    assert np.all(driven["taylor_completion_forward_rate_s"] >= driven["taylor_completion_reverse_rate_s"])\n    assert np.any(driven["series_rate_s"] > 0.0)\n'''
+          if 'test_signed_detailed_balance_gives_zero_net_rate_at_zero_stress' not in text:
+              tp.write_text(text.rstrip() + extra + '\n')
+
+          # Version and high-level documentation.
+          for file, old, new in [
+              ('pyproject.toml', 'version = "0.9.3"', 'version = "0.9.4"'),
+              ('arrhenius_fracture/__init__.py', "__version__ = '0.9.3'", "__version__ = '0.9.4'"),
+          ]:
+              replace_once(file, old, new)
+          PY
+
+      - name: Add v9.4 notes
+        shell: bash
+        run: |
+          cat > CHANGELOG_MPZ_V9_4.md <<'EOF'
+          # MPZ v9.4 changelog
+
+          - Restored the signed detailed-balance Peierls law used in the prior DDD model: net glide is forward minus zero-stress reverse rate and is exactly zero at zero effective stress.
+          - Applied the same forward/reverse subtraction to correlated Taylor completion before the sequential Peierls–Taylor rate is formed.
+          - Added explicit diagnostics and rejection for a zero-stress plastic ratchet.
+          - Rejects parameter rows whose scaled, unclamped zero-stress Peierls or Taylor free energy becomes non-positive over the screening temperatures.
+          - Narrowed the plastic temperature-slope multiplier search to 0.25–8 and reduced the broad maximum-stress acceptance ceiling to 40 GPa.
+          - Retained the no-total-density-cap and high-density monotonicity requirements.
+          - The completed v9.3 v2 search remains an audit demonstrating why detailed balance is required; its shortlist is not a production parameter set.
+          EOF
+
+      - name: Install and test
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m compileall -q \
+            arrhenius_fracture \
+            prepare_mpz_v9_3_pt_input.py \
+            search_mpz_peierls_taylor_parameters.py
+          python -m pytest -q \
+            tests/test_emission_derived_peierls_taylor.py \
+            tests/test_bulk_pt_plasticity.py \
+            tests/test_moving_process_zone.py \
+            tests/test_prepare_mpz_v9_3_pt_input.py
+          python - <<'PY'
+          import arrhenius_fracture as af
+          assert af.__version__ == '0.9.4'
+          print('package version:', af.__version__)
+          PY
+
+      - name: Run detailed-balance PT search smoke
+        shell: bash
+        run: |
+          cat > /tmp/pt_search_input.csv <<'CSV'
+          candidate_id,region,shape_family,Kdot_MPa_sqrt_m_per_s,ceramic_score,weakT_score,DBTT_precursor_score,refined_Kc_T300,refined_Kc_T1200,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa,emit_sT_GPa_per_K,emit_exp_a,emit_exp_n,emit_floor_frac
+          c1,ceramic_intrinsic,ceramic,0.005,0.1,9,9,18,7,2.8,0.002,5.0,0.0,0.35,1.1,0.04
+          w1,weakT_intrinsic,weakT,0.005,9,0.1,9,15,15,2.2,0.002,4.0,0.0,0.50,0.9,0.03
+          d1,DBTT_precursor,DBTT,0.005,9,9,0.1,15,10,2.5,0.001,4.5,0.0,0.20,1.0,0.035
+          CSV
+          python search_mpz_peierls_taylor_parameters.py \
+            --atlas-shortlist /tmp/pt_search_input.csv \
+            --transport-samples 16 \
+            --intrinsic-top-per-region 1 \
+            --top-per-intrinsic 1 \
+            --temperatures '300 700 1200' \
+            --strain-rates '1e-5 1e-3' \
+            --rho-points 25 \
+            --max-stress-GPa 40 \
+            --out runs/ci_pt_v94_smoke
+          test -s runs/ci_pt_v94_smoke/peierls_taylor_search_summary.csv
+
+      - name: Commit complete v9.4 source
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -rf arrhenius_fem_czm.egg-info
+          rm -f .github/workflows/apply-v9.4-detailed-balance.yml
+          git add -A
+          git commit -m 'Restore detailed-balance Peierls-Taylor kinetics v9.4'
+          git push origin HEAD:main
