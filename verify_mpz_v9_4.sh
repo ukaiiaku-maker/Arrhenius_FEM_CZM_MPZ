@@ -9,12 +9,14 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   search_mpz_peierls_taylor_parameters.py \
   search_mpz_peierls_taylor_parameters_v94.py \
   search_mpz_v9_4_developed_state.py \
+  audit_mpz_v9_5_state_continuation.py \
   select_mpz_v9_4_pt_candidates.py
 
 PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_emission_derived_peierls_taylor.py \
   tests/test_bulk_pt_plasticity.py \
   tests/test_moving_process_zone.py \
+  tests/test_moving_process_zone_v95.py \
   tests/test_prepare_mpz_v9_3_pt_input.py \
   tests/test_pt_search_v94_wrapper.py \
   tests/test_mpz_v9_4_developed_state_search.py
@@ -28,7 +30,10 @@ from arrhenius_fracture.emission_derived_plasticity import (
     EmissionDerivedPeierlsTaylorModel,
 )
 
-assert af.__version__ == "0.9.4"
+assert af.__version__ == "0.9.5"
+assert af.MovingProcessZoneState.__module__.endswith(
+    "moving_process_zone_v95"
+)
 assert EmissionDerivedPeierlsTaylorModel.__module__.endswith(
     "emission_derived_plasticity_v94"
 )
@@ -48,8 +53,9 @@ assert np.all(zero["taylor_completion_rate_s"] == 0.0)
 assert np.all(zero["series_rate_s"] == 0.0)
 assert np.all(zero["equivalent_plastic_rate_s"] == 0.0)
 print("package version:", af.__version__)
+print("active MPZ state:", af.MovingProcessZoneState.__module__)
 print("active PT model:", EmissionDerivedPeierlsTaylorModel.__module__)
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 PY
 
-echo "MPZ v9.4 focused verification passed."
+echo "MPZ v9.5 focused verification passed."
