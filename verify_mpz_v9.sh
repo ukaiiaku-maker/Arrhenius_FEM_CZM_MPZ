@@ -13,6 +13,7 @@ mkdir -p "$OUTROOT"
   arrhenius_fracture \
   audit_legacy_caps_and_ablations.py \
   audit_mpz_three_class_convergence.py \
+  build_mpz_analytic_first_passage_atlas.py \
   fit_mpz_four_classes.py \
   fit_mpz_three_classes.py \
   mpz_run_utils.py \
@@ -22,11 +23,12 @@ mkdir -p "$OUTROOT"
 
 PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_moving_process_zone.py \
-  tests/test_mpz_three_class_fit.py
+  tests/test_mpz_three_class_fit.py \
+  tests/test_mpz_analytic_first_passage_atlas.py
 
 "$PYTHON_BIN" - <<'PY'
 import arrhenius_fracture as af
-assert af.__version__ == '0.9.1'
+assert af.__version__ == '0.9.2'
 print('package version:', af.__version__)
 PY
 
@@ -40,6 +42,16 @@ if [[ "$RUN_PROTOCOL_SMOKES" == "1" ]]; then
     --classes ceramic --temperatures 300 \
     --dK 0.5 --Kmax 5 --n-advances 1 \
     --out "$OUTROOT/fit_smoke"
+
+  "$PYTHON_BIN" build_mpz_analytic_first_passage_atlas.py \
+    --initial mpz_three_class_initial_guesses.csv \
+    --shape-families "ceramic weakT DBTT" \
+    --temperatures "300 700 1200" \
+    --Kdot-values "0.005" \
+    --samples-per-family 32 \
+    --dK 0.25 --refine-dK 0.05 --Kmax 40 \
+    --top-per-region 2 \
+    --out "$OUTROOT/analytic_atlas_smoke"
 
   "$PYTHON_BIN" run_mpz_fatigue_matrix.py \
     --classes ceramic --temperatures 300 --Kmax-values 8 \
@@ -70,4 +82,4 @@ if [[ "$RUN_2D_SMOKE" == "1" ]]; then
     --front-state-model moving_pz --sigma-cap-GPa 0 --save-snapshots 0
 fi
 
-echo "MPZ v9.1 verification passed. Outputs: $OUTROOT"
+echo "MPZ v9.2 verification passed. Outputs: $OUTROOT"
