@@ -59,4 +59,12 @@ def _exact_pt_series_rate(rate_a, rate_b):
 _PTModelV94.series_rate = staticmethod(_exact_pt_series_rate)
 _pt_v93.EmissionDerivedPeierlsTaylorModel = _PTModelV94
 
-__version__ = '0.9.4'
+# v9.5 keeps the v9.4 constitutive closure but evaluates forest density and
+# effective stress locally in every moving-process-zone bin.  Patch the module
+# attribute before mpz_front_engine imports it, while preserving public imports.
+from . import moving_process_zone as _mpz_v94
+from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
+_mpz_v94.MovingProcessZoneState = _MPZStateV95
+MovingProcessZoneState = _MPZStateV95
+
+__version__ = '0.9.5'
