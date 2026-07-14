@@ -76,3 +76,5 @@ jobs:
           git add -A
           git commit -m 'Use sequential Peierls-Taylor rate for MPZ release'
           git push origin HEAD:main
+
+# Trigger revision 2
