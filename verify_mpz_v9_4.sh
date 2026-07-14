@@ -9,11 +9,13 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   prepare_mpz_v9_6_canonical_proxies.py \
   audit_mpz_v9_6_uncapped_pt.py \
   search_mpz_v9_6_broad_dbtt_map.py \
+  calibrate_mpz_v9_7_pt_entropy.py \
   search_mpz_v9_4_developed_state.py \
   audit_mpz_v9_5_state_continuation.py
 
 PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_emission_derived_peierls_taylor_v96.py \
+  tests/test_emission_derived_peierls_taylor_v97.py \
   tests/test_emission_derived_peierls_taylor.py \
   tests/test_bulk_pt_plasticity.py \
   tests/test_moving_process_zone.py \
@@ -30,6 +32,10 @@ from arrhenius_fracture.emission_derived_plasticity import (
     CorrelatedTaylorConfig,
     EmissionDerivedPeierlsTaylorConfig,
     EmissionDerivedPeierlsTaylorModel,
+)
+from arrhenius_fracture.emission_derived_plasticity_v97 import (
+    EmissionDerivedPeierlsTaylorModel as EntropyCalibrationModel,
+    IndependentEntropyMechanismScale,
 )
 
 assert af.__version__ == "0.9.6"
@@ -62,11 +68,33 @@ assert np.all(zero["equivalent_plastic_rate_s"] == 0.0)
 assert np.all(np.diff(driven["taylor_m_eff"]) > 0.0)
 assert np.all(np.diff(driven["taylor_amplification"]) < 0.0)
 assert not bool(np.asarray(driven["constitutive_caps_active"]))
+
+calibration = EntropyCalibrationModel(
+    EmissionDerivedPeierlsTaylorConfig(
+        peierls=IndependentEntropyMechanismScale(0.5, -20.0),
+        taylor=IndependentEntropyMechanismScale(0.5, -10.0, rate_prefactor_s=1.0e11),
+        correlated_taylor=CorrelatedTaylorConfig(
+            rho_c_m2=1.0e14,
+            renewal_time_s=1.0,
+            m_cap=float("inf"),
+        ),
+        mobile_saturation_density_m2=float("inf"),
+        mobile_density_floor_m2=0.0,
+        jump_length_min_m=0.0,
+        taylor_phi_max=float("inf"),
+        rate_cap_s=float("inf"),
+    )
+)
+cal_zero = calibration.rates(0.0, rho, 700.0, 2.74e-10)
+assert np.all(cal_zero["equivalent_plastic_rate_s"] == 0.0)
+assert bool(np.asarray(cal_zero["entropy_decoupled_from_emission"]))
+
 print("package version:", af.__version__)
 print("active MPZ state:", af.MovingProcessZoneState.__module__)
 print("active PT model:", EmissionDerivedPeierlsTaylorModel.__module__)
+print("entropy calibration model:", EntropyCalibrationModel.__module__)
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 focused verification passed."
+echo "MPZ v9.6 production and v9.7 entropy-calibration verification passed."
