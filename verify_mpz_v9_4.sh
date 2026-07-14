@@ -15,6 +15,8 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   continue_mpz_v9_9_barrier_scale.py \
   continue_mpz_v9_9_1_barrier_scale.py \
   promote_mpz_v9_9_spatial.py \
+  optimize_mpz_v9_10_unified_global.py \
+  promote_mpz_v9_10_spatial.py \
   search_mpz_v9_4_developed_state.py \
   audit_mpz_v9_5_state_continuation.py
 
@@ -31,7 +33,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_mpz_v9_4_developed_state_search.py \
   tests/test_mpz_v9_8_joint_optimizer.py \
   tests/test_mpz_v9_9_barrier_continuation.py \
-  tests/test_mpz_v9_9_1_metadata_wrapper.py
+  tests/test_mpz_v9_9_1_metadata_wrapper.py \
+  tests/test_mpz_v9_10_unified_transport.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
@@ -48,14 +51,20 @@ from arrhenius_fracture.emission_derived_plasticity_v97 import (
 from arrhenius_fracture.moving_process_zone_v99 import (
     MovingProcessZoneState as PromotionMPZState,
 )
+from arrhenius_fracture.moving_process_zone_v910 import (
+    MovingProcessZoneState as UnifiedMPZState,
+)
 from optimize_mpz_v9_8_joint_response import PARAMETER_NAMES, bounds_array
 from continue_mpz_v9_9_barrier_scale import LOCAL_NAMES, LOCAL_BOUNDS
+from optimize_mpz_v9_10_unified_global import (
+    PARAMETER_NAMES as UNIFIED_NAMES,
+    BOUNDS as UNIFIED_BOUNDS,
+)
 
 assert af.__version__ == "0.9.6"
-assert af.MovingProcessZoneState.__module__.endswith(
-    "moving_process_zone_v95"
-)
+assert af.MovingProcessZoneState.__module__.endswith("moving_process_zone_v95")
 assert PromotionMPZState.__module__.endswith("moving_process_zone_v99")
+assert UnifiedMPZState.__module__.endswith("moving_process_zone_v910")
 assert EmissionDerivedPeierlsTaylorModel.__module__.endswith(
     "emission_derived_plasticity_v96"
 )
@@ -104,16 +113,21 @@ assert np.all(cal_zero["equivalent_plastic_rate_s"] == 0.0)
 assert bool(np.asarray(cal_zero["entropy_decoupled_from_emission"]))
 assert len(PARAMETER_NAMES) == len(bounds_array()) == 17
 assert len(LOCAL_NAMES) == len(LOCAL_BOUNDS) == 11
+assert len(UNIFIED_NAMES) == len(UNIFIED_BOUNDS) == 25
+encounter_zero = UnifiedMPZState.encounter_rate_s(0.0, 1.0e-8, rho, 10.0)
+assert np.all(encounter_zero == 0.0)
 
 print("package version:", af.__version__)
 print("active MPZ state:", af.MovingProcessZoneState.__module__)
-print("promotion MPZ state:", PromotionMPZState.__module__)
+print("v9.9 promotion MPZ state:", PromotionMPZState.__module__)
+print("v9.10 unified MPZ state:", UnifiedMPZState.__module__)
 print("active PT model:", EmissionDerivedPeierlsTaylorModel.__module__)
 print("entropy calibration model:", EntropyCalibrationModel.__module__)
-print("joint optimizer parameters:", len(PARAMETER_NAMES))
-print("continuation local parameters:", len(LOCAL_NAMES))
+print("v9.8 joint optimizer parameters:", len(PARAMETER_NAMES))
+print("v9.9 continuation local parameters:", len(LOCAL_NAMES))
+print("v9.10 full-search parameters:", len(UNIFIED_NAMES))
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 production through v9.9.1 continuation/promotion verification passed."
+echo "MPZ v9.6 production through v9.10 unified broad-search verification passed."
