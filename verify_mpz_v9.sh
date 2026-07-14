@@ -14,6 +14,7 @@ mkdir -p "$OUTROOT"
   audit_legacy_caps_and_ablations.py \
   audit_mpz_three_class_convergence.py \
   build_mpz_analytic_first_passage_atlas.py \
+  search_mpz_peierls_taylor_parameters.py \
   fit_mpz_four_classes.py \
   fit_mpz_three_classes.py \
   mpz_run_utils.py \
@@ -24,11 +25,13 @@ mkdir -p "$OUTROOT"
 PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_moving_process_zone.py \
   tests/test_mpz_three_class_fit.py \
-  tests/test_mpz_analytic_first_passage_atlas.py
+  tests/test_mpz_analytic_first_passage_atlas.py \
+  tests/test_emission_derived_peierls_taylor.py \
+  tests/test_bulk_pt_plasticity.py
 
 "$PYTHON_BIN" - <<'PY'
 import arrhenius_fracture as af
-assert af.__version__ == '0.9.2'
+assert af.__version__ == '0.9.3'
 print('package version:', af.__version__)
 PY
 
@@ -52,6 +55,19 @@ if [[ "$RUN_PROTOCOL_SMOKES" == "1" ]]; then
     --dK 0.25 --refine-dK 0.05 --Kmax 40 \
     --top-per-region 2 \
     --out "$OUTROOT/analytic_atlas_smoke"
+
+  cat > "$OUTROOT/pt_search_smoke_input.csv" <<'CSV'
+candidate_id,region,Kdot_MPa_sqrt_m_per_s,ceramic_score,weakT_score,DBTT_precursor_score,refined_Kc_T300,refined_Kc_T1200,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa,emit_sT_GPa_per_K,emit_exp_a,emit_exp_n,emit_floor_frac
+c1,ceramic_intrinsic,0.005,0.1,9,9,18,7,1.3922,0.0091197,2.9802,0.002031,0.2383,1.1169,0.041
+w1,weakT_intrinsic,0.005,9,0.1,9,15,15,1.1173,0.0063971,0.9506,0.0009817,0.5055,0.8432,0.0309
+d1,DBTT_precursor,0.005,9,9,0.1,15,10,1.6954,0.0008853,3.7521,0.0022809,0.0944,0.835,0.03524
+CSV
+  "$PYTHON_BIN" search_mpz_peierls_taylor_parameters.py \
+    --atlas-shortlist "$OUTROOT/pt_search_smoke_input.csv" \
+    --transport-samples 16 --intrinsic-top-per-region 1 \
+    --top-per-intrinsic 1 --temperatures "300 700 1200" \
+    --strain-rates "1e-5 1e-3" --rho-points 25 \
+    --out "$OUTROOT/pt_search_smoke"
 
   "$PYTHON_BIN" run_mpz_fatigue_matrix.py \
     --classes ceramic --temperatures 300 --Kmax-values 8 \
@@ -82,4 +98,4 @@ if [[ "$RUN_2D_SMOKE" == "1" ]]; then
     --front-state-model moving_pz --sigma-cap-GPa 0 --save-snapshots 0
 fi
 
-echo "MPZ v9.2 verification passed. Outputs: $OUTROOT"
+echo "MPZ v9.3 verification passed. Outputs: $OUTROOT"
