@@ -1,14 +1,17 @@
-# Arrhenius FEM/CZM MPZ v9.2
+# Arrhenius FEM/CZM MPZ v9.3
 
-The active calibration front end is now the analytical virgin-tip first-passage atlas:
+The active workflow now has two analytical front-end stages before transient fracture calculations:
 
-- [README_MPZ_V9_2_ANALYTIC_ATLAS.md](README_MPZ_V9_2_ANALYTIC_ATLAS.md)
-- [CHANGELOG_MPZ_V9_2.md](CHANGELOG_MPZ_V9_2.md)
+1. [v9.2 analytical virgin-tip first-passage atlas](README_MPZ_V9_2_ANALYTIC_ATLAS.md)
+2. [v9.3 emission-derived Peierls–Taylor monotonicity search](README_MPZ_V9_3_PEIERLS_TAYLOR_SEARCH.md)
 
-The v9.1 moving-process-zone implementation and three-class transient fitting workflow remain included for regression and for the subsequent developed-state validation stage:
+Version 9.3 makes the moving process zone and bulk FEM plasticity use the same emission-derived EXP-floor Peierls–Taylor chain. Taylor completion uses a correlated multi-hit renewal so the independent-Poisson high-density stress turnover is not hidden with a fitted dislocation-density cap.
 
+Implementation and change records:
+
+- [IMPLEMENTATION_STATUS_V9_3.md](IMPLEMENTATION_STATUS_V9_3.md)
+- [CHANGELOG_MPZ_V9_3.md](CHANGELOG_MPZ_V9_3.md)
 - [README_MPZ_V9_1_THREE_CLASS_TUNING.md](README_MPZ_V9_1_THREE_CLASS_TUNING.md)
-- [IMPLEMENTATION_STATUS_V9_1.md](IMPLEMENTATION_STATUS_V9_1.md)
-- [VALIDATION_REPORT_V9_1.md](VALIDATION_REPORT_V9_1.md)
+- [README_MPZ_V9_0.md](README_MPZ_V9_0.md)
 
-Version 9.0 architecture and preservation documentation remains included for reference. The full anisotropic, mixed-mode, multifront, branching, coalescence, fatigue, dwell, checkpoint, and snapshot capabilities remain present.
+The full anisotropic, mixed-mode, multifront, branching, coalescence, fatigue, dwell, checkpoint, snapshot, and adaptive FEM/CZM capabilities remain present.
