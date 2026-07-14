@@ -16,6 +16,7 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   continue_mpz_v9_9_1_barrier_scale.py \
   promote_mpz_v9_9_spatial.py \
   optimize_mpz_v9_10_unified_global.py \
+  optimize_mpz_v9_10_1_shared_shape_global.py \
   promote_mpz_v9_10_spatial.py \
   search_mpz_v9_4_developed_state.py \
   audit_mpz_v9_5_state_continuation.py
@@ -34,7 +35,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_mpz_v9_8_joint_optimizer.py \
   tests/test_mpz_v9_9_barrier_continuation.py \
   tests/test_mpz_v9_9_1_metadata_wrapper.py \
-  tests/test_mpz_v9_10_unified_transport.py
+  tests/test_mpz_v9_10_unified_transport.py \
+  tests/test_mpz_v9_10_1_shared_shape.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
@@ -59,6 +61,11 @@ from continue_mpz_v9_9_barrier_scale import LOCAL_NAMES, LOCAL_BOUNDS
 from optimize_mpz_v9_10_unified_global import (
     PARAMETER_NAMES as UNIFIED_NAMES,
     BOUNDS as UNIFIED_BOUNDS,
+)
+from optimize_mpz_v9_10_1_shared_shape_global import (
+    PARAMETER_NAMES as SHARED_NAMES,
+    BOUNDS as SHARED_BOUNDS,
+    decode as decode_shared,
 )
 
 assert af.__version__ == "0.9.6"
@@ -114,6 +121,15 @@ assert bool(np.asarray(cal_zero["entropy_decoupled_from_emission"]))
 assert len(PARAMETER_NAMES) == len(bounds_array()) == 17
 assert len(LOCAL_NAMES) == len(LOCAL_BOUNDS) == 11
 assert len(UNIFIED_NAMES) == len(UNIFIED_BOUNDS) == 25
+assert len(SHARED_NAMES) == len(SHARED_BOUNDS) == 23
+mid = np.asarray([
+    0.5 * (SHARED_BOUNDS[name][0] + SHARED_BOUNDS[name][1])
+    for name in SHARED_NAMES
+])
+shared = decode_shared(mid)
+assert shared["cleave_exp_a"] == shared["emit_exp_a"] == shared["peierls_exp_a"] == shared["taylor_exp_a"]
+assert shared["cleave_exp_n"] == shared["emit_exp_n"] == shared["peierls_exp_n"] == shared["taylor_exp_n"]
+assert shared["taylor_H0_eV"] > shared["peierls_H0_eV"]
 encounter_zero = UnifiedMPZState.encounter_rate_s(0.0, 1.0e-8, rho, 10.0)
 assert np.all(encounter_zero == 0.0)
 
@@ -126,8 +142,9 @@ print("entropy calibration model:", EntropyCalibrationModel.__module__)
 print("v9.8 joint optimizer parameters:", len(PARAMETER_NAMES))
 print("v9.9 continuation local parameters:", len(LOCAL_NAMES))
 print("v9.10 full-search parameters:", len(UNIFIED_NAMES))
+print("v9.10.1 shared-shape parameters:", len(SHARED_NAMES))
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 production through v9.10 unified broad-search verification passed."
+echo "MPZ v9.6 production through v9.10.1 shared-shape broad-search verification passed."
