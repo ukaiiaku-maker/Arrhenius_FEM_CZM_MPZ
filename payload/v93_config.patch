@@ -45,9 +45,9 @@
 +    pt_taylor_stress_ratio: float = 1.0
 +    pt_taylor_nu0_s: float = 1.0e11
 +
-+    # Correlated Taylor completion. The hit order grows with forest density
-+    # and is uncapped constitutively. pt_taylor_m_cap is an emergency numerical
-+    # ceiling only and defaults to infinity.
++    # Correlated Taylor completion. The hit order grows with forest density.
++    # pt_taylor_m_cap is the finite obstacle count in one correlation domain,
++    # not a total-density cap; infinity leaves the cooperative order uncapped.
 +    pt_taylor_corr_rho_c: float = 1.0e14
 +    pt_taylor_renewal_time_s: float = 1.0e-9
 +    pt_taylor_m_exponent: float = 1.0
