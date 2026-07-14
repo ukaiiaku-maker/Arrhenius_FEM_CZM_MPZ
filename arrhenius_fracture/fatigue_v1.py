@@ -637,15 +637,15 @@ def build_controller_from_namespace(args) -> FatigueCycleHazardController:
     )
     peierls = ScaledExpFloorBarrier(
         base=base, mechanism="peierls_glide_escape",
-        energy_scale=float(getattr(args, "peierls_energy_scale", 0.02)),
-        entropy_scale=float(getattr(args, "peierls_entropy_scale", 0.02)),
+        energy_scale=float(getattr(args, "peierls_energy_scale", 0.005)),
+        entropy_scale=float(getattr(args, "peierls_entropy_scale", 0.005)),
         stress_scale=float(getattr(args, "peierls_stress_scale", 1.0)),
         rate_prefactor=float(getattr(args, "nu0_peierls", 1.0e12)),
     )
     taylor = ScaledExpFloorBarrier(
         base=base, mechanism="taylor_junction_depinning_escape",
-        energy_scale=float(getattr(args, "taylor_energy_scale", 0.10)),
-        entropy_scale=float(getattr(args, "taylor_entropy_scale", 0.10)),
+        energy_scale=float(getattr(args, "taylor_energy_scale", 0.02)),
+        entropy_scale=float(getattr(args, "taylor_entropy_scale", 0.02)),
         stress_scale=float(getattr(args, "taylor_stress_scale", 1.0)),
         rate_prefactor=float(getattr(args, "nu0_taylor", 1.0e11)),
     )

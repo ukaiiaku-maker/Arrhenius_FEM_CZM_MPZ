@@ -577,7 +577,7 @@ class DislocationConfig:
         drho/dt = (k_store/b)*sqrt(rho)*dot_ep - k_dyn*rho*dot_ep - gamma_static
     """
     rho0: float = 5e12             # initial density [m^-2]
-    rho_cap: float = 1e16          # physical/numerical cap for heavily deformed W [m^-2]
+    rho_cap: float = 1e20          # overflow ceiling only; production PT kinetics must remain far below it
     k_store: float = np.sqrt(2)    # storage coefficient
     k_dyn: float = 1.0             # dynamic recovery coefficient
     dot_ep_max: float = 1e3        # plastic strain rate cap [1/s] for explicit quasi-static update
@@ -664,6 +664,60 @@ class DislocationConfig:
     taylor_renewal_time_s: float = 1e-9  # correlated-segment renewal time t_c [s]
     taylor_m_max: float = 5.0            # max cooperative hit number at high density
     taylor_m_exponent: float = 1.0       # sharpness p of m(rho) crossover
+
+    # --- Production emission-derived Peierls--Taylor kinetics (v9.3) -----
+    # The bulk FEM and moving process zone use the crack-tip emission
+    # EXP-floor surface as their parent free-energy landscape. Peierls glide
+    # and Taylor depinning are scaled descendants and act as sequential rates.
+    # No additive Peierls/Taylor flow stress or athermal Taylor floor is used.
+    bulk_kinetics_model: str = 'emission_derived_peierls_taylor_multihit'
+
+    # Parent emission EXP-floor surface. The 2-D sharp-front driver overwrites
+    # these values from the active --emit-* material row before plasticity runs.
+    pt_emit_G00_eV: float = 1.94
+    pt_emit_gT_eV_per_K: float = 0.003934
+    pt_emit_sigc0_Pa: float = 2.298e9
+    pt_emit_sT_Pa_per_K: float = -6.564e5
+    pt_emit_Tref_K: float = 481.33
+    pt_emit_exp_a: float = 0.0845685
+    pt_emit_exp_n: float = 1.0
+    pt_emit_floor_frac: float = 0.02
+    pt_emit_floor_min_eV: float = 1.0e-4
+    pt_emit_floor_max_frac: float = 0.95
+
+    # Production relative scales selected from the prior Arrhenius chain.
+    # The active emission surface is scale 1.0; do not reapply the historical
+    # 0.75 export factor to an already-effective emission candidate.
+    pt_peierls_energy_ratio: float = 0.005
+    pt_peierls_entropy_ratio: float = 0.005
+    pt_peierls_stress_ratio: float = 1.0
+    pt_peierls_nu0_s: float = 1.0e12
+    pt_taylor_energy_ratio: float = 0.02
+    pt_taylor_entropy_ratio: float = 0.02
+    pt_taylor_stress_ratio: float = 1.0
+    pt_taylor_nu0_s: float = 1.0e11
+
+    # Correlated Taylor completion. The hit order grows with forest density.
+    # pt_taylor_m_cap is the finite obstacle count in one correlation domain,
+    # not a total-density cap; infinity leaves the cooperative order uncapped.
+    pt_taylor_corr_rho_c: float = 1.0e14
+    pt_taylor_renewal_time_s: float = 1.0e-9
+    pt_taylor_m_exponent: float = 1.0
+    pt_taylor_m_scale: float = 1.0
+    pt_taylor_m_cap: float = float('inf')
+
+    # Separate mobile-carrier and forest-density roles. Since the current bulk
+    # FEM stores one density field, a trapping partition maps forest density to
+    # mobile density; the moving-PZ path already stores them separately.
+    pt_mobile_fraction: float = 0.01
+    pt_mobile_saturation_density_m2: float = 1.0e14
+    pt_mobile_density_floor_m2: float = 1.0e6
+    pt_jump_fraction: float = 1.0
+    pt_jump_length_min_m: float = 2.5e-10
+    pt_equivalent_strain_factor: float = 0.5773502691896258
+    pt_peierls_stress_fraction: float = 0.5773502691896258
+    pt_taylor_stress_fraction: float = 0.5773502691896258
+    pt_taylor_phi_max: float = 20.0
 
     # Explicit integration stabilizers.  These are not intended to fit the
     # toughness; they keep the pseudo-time radial-return update from creating
