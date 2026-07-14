@@ -1,4 +1,4 @@
-name: Verify MPZ v9.6 through v9.10.1
+name: Verify MPZ v9.6 through v9.10.2
 
 on:
   push:
@@ -38,7 +38,9 @@ jobs:
             promote_mpz_v9_9_spatial.py \
             optimize_mpz_v9_10_unified_global.py \
             optimize_mpz_v9_10_1_shared_shape_global.py \
+            optimize_mpz_v9_10_2_independent_shape_global.py \
             promote_mpz_v9_10_spatial.py \
+            promote_mpz_v9_10_2_spatial.py \
             fit_mpz_three_classes.py
       - name: Run focused regression tests
         run: |
@@ -59,7 +61,8 @@ jobs:
             tests/test_mpz_v9_9_barrier_continuation.py \
             tests/test_mpz_v9_9_1_metadata_wrapper.py \
             tests/test_mpz_v9_10_unified_transport.py \
-            tests/test_mpz_v9_10_1_shared_shape.py
+            tests/test_mpz_v9_10_1_shared_shape.py \
+            tests/test_mpz_v9_10_2_independent_shapes.py
       - name: Run joined-input Peierls-Taylor search smoke
         shell: bash
         run: |
