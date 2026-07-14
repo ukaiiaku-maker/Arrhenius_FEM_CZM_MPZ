@@ -5,7 +5,9 @@ from arrhenius_fracture.moving_process_zone import MovingProcessZoneConfig
 
 
 def test_v95_state_is_active_and_local_density_scales_with_bin_area():
-    assert af.__version__ == "0.9.5"
+    # The MPZ implementation remains v9.5 while later package versions may
+    # update the Peierls--Taylor constitutive closure.
+    assert tuple(int(x) for x in af.__version__.split(".")) >= (0, 9, 5)
     state = af.MovingProcessZoneState(
         MovingProcessZoneConfig(
             length_m=5.0e-5,
