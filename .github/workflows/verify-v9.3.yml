@@ -1,4 +1,4 @@
-name: Verify MPZ v9.5
+name: Verify MPZ v9.6 and v9.7 calibration
 
 on:
   push:
@@ -23,10 +23,14 @@ jobs:
             arrhenius_fracture \
             build_mpz_analytic_first_passage_atlas.py \
             prepare_mpz_v9_3_pt_input.py \
+            prepare_mpz_v9_6_canonical_proxies.py \
             search_mpz_peierls_taylor_parameters.py \
             search_mpz_peierls_taylor_parameters_v94.py \
             search_mpz_v9_4_developed_state.py \
             audit_mpz_v9_5_state_continuation.py \
+            audit_mpz_v9_6_uncapped_pt.py \
+            search_mpz_v9_6_broad_dbtt_map.py \
+            calibrate_mpz_v9_7_pt_entropy.py \
             fit_mpz_three_classes.py
       - name: Run focused regression tests
         run: |
@@ -36,8 +40,11 @@ jobs:
             tests/test_mpz_three_class_fit.py \
             tests/test_mpz_analytic_first_passage_atlas.py \
             tests/test_emission_derived_peierls_taylor.py \
+            tests/test_emission_derived_peierls_taylor_v96.py \
+            tests/test_emission_derived_peierls_taylor_v97.py \
             tests/test_bulk_pt_plasticity.py \
             tests/test_prepare_mpz_v9_3_pt_input.py \
+            tests/test_prepare_mpz_v9_6_canonical_proxies.py \
             tests/test_pt_search_v94_wrapper.py \
             tests/test_mpz_v9_4_developed_state_search.py
       - name: Run joined-input Peierls-Taylor search smoke
