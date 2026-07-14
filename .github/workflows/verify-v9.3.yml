@@ -1,4 +1,4 @@
-name: Verify MPZ v9.6 and v9.7 calibration
+name: Verify MPZ v9.6 through v9.9
 
 on:
   push:
@@ -31,6 +31,10 @@ jobs:
             audit_mpz_v9_6_uncapped_pt.py \
             search_mpz_v9_6_broad_dbtt_map.py \
             calibrate_mpz_v9_7_pt_entropy.py \
+            optimize_mpz_v9_8_joint_response.py \
+            optimize_mpz_v9_8_1_joint_response.py \
+            continue_mpz_v9_9_barrier_scale.py \
+            promote_mpz_v9_9_spatial.py \
             fit_mpz_three_classes.py
       - name: Run focused regression tests
         run: |
@@ -46,7 +50,9 @@ jobs:
             tests/test_prepare_mpz_v9_3_pt_input.py \
             tests/test_prepare_mpz_v9_6_canonical_proxies.py \
             tests/test_pt_search_v94_wrapper.py \
-            tests/test_mpz_v9_4_developed_state_search.py
+            tests/test_mpz_v9_4_developed_state_search.py \
+            tests/test_mpz_v9_8_joint_optimizer.py \
+            tests/test_mpz_v9_9_barrier_continuation.py
       - name: Run joined-input Peierls-Taylor search smoke
         shell: bash
         run: |
