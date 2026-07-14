@@ -34,4 +34,12 @@ from .diagnostics import (
     save_history, plot_diagnostics, plot_toughness_vs_T,
 )
 
-__version__ = '0.9.3'
+# Preserve the existing import surface while activating the v9.4 signed
+# detailed-balance completion everywhere the v9.3 module is imported lazily.
+from . import emission_derived_plasticity as _pt_v93
+from .emission_derived_plasticity_v94 import (
+    EmissionDerivedPeierlsTaylorModel as _PTModelV94,
+)
+_pt_v93.EmissionDerivedPeierlsTaylorModel = _PTModelV94
+
+__version__ = '0.9.4'
