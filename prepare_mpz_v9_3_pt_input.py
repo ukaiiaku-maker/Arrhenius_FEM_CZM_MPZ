@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import warnings
 
 import pandas as pd
 
@@ -71,14 +72,16 @@ def prepare_input(
     # atlas. Keep one complete material row per ID and preserve refined atlas
     # predictions and sampled coordinates as the authoritative values.
     materials = materials.drop_duplicates("candidate_id", keep="last")
-    joined = atlas.merge(
-        materials,
-        on="candidate_id",
-        how="left",
-        suffixes=("", "__material"),
-        validate="many_to_one",
-        indicator=True,
-    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
+        joined = atlas.merge(
+            materials,
+            on="candidate_id",
+            how="left",
+            suffixes=("", "__material"),
+            validate="many_to_one",
+            indicator=True,
+        )
     unmatched = joined.loc[joined["_merge"] != "both", "candidate_id"].astype(str)
     if not unmatched.empty:
         examples = ", ".join(unmatched.head(8))
