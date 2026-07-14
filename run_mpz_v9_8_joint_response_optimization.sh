@@ -3,7 +3,7 @@ set -euo pipefail
 
 CONDA_ENV="${CONDA_ENV:-arrhenius-fem-czm}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
-OUTROOT="${OUTROOT:-runs/mpz_v9_8_joint_response_optimization_v1}"
+OUTROOT="${OUTROOT:-runs/mpz_v9_8_1_joint_response_optimization_v1}"
 TARGET_CLASSES="${TARGET_CLASSES:-ceramic weakT DBTT}"
 TEMPERATURES="${TEMPERATURES:-300 700 900 1200}"
 SEED_COUNT="${SEED_COUNT:-6}"
@@ -21,13 +21,30 @@ SEED="${SEED:-98017}"
 export PYTHONUNBUFFERED=1
 mkdir -p "$OUTROOT"
 
-clean_incomplete_checkpoints() {
+checkpoint_is_valid() {
+  local path="$1"
+  "$PYTHON_BIN" - "$path" <<'PY'
+import json
+import math
+import sys
+
+try:
+    data = json.load(open(sys.argv[1]))
+    objective = float(data.get("summary", {}).get("objective", float("nan")))
+    valid = data.get("status") == "COMPLETE" and math.isfinite(objective)
+except Exception:
+    valid = False
+raise SystemExit(0 if valid else 1)
+PY
+}
+
+clean_invalid_checkpoints() {
   local class_name="$1"
   local checkpoint_dir="$OUTROOT/$class_name/checkpoints"
   [ -d "$checkpoint_dir" ] || return 0
   while IFS= read -r -d '' path; do
-    if ! grep -q '"status": "COMPLETE"' "$path"; then
-      echo "Removing incomplete basin checkpoint: $path"
+    if ! checkpoint_is_valid "$path"; then
+      echo "Removing incomplete or non-finite basin checkpoint: $path"
       rm -f "$path"
     fi
   done < <(find "$checkpoint_dir" -type f -name 'basin_*.json' -print0)
@@ -36,10 +53,10 @@ clean_incomplete_checkpoints() {
 run_one() {
   local class_name="$1"
   local class_seed="$2"
-  clean_incomplete_checkpoints "$class_name"
+  clean_invalid_checkpoints "$class_name"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] starting class=$class_name"
   conda run -n "$CONDA_ENV" --no-capture-output "$PYTHON_BIN" -u \
-    optimize_mpz_v9_8_joint_response.py \
+    optimize_mpz_v9_8_1_joint_response.py \
     --target-class "$class_name" \
     --temperatures "$TEMPERATURES" \
     --seed-count "$SEED_COUNT" \
@@ -81,4 +98,4 @@ for pid in "${pids[@]}"; do
   wait "$pid"
 done
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] all v9.8 joint optimizations complete"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] all v9.8.1 joint optimizations complete"
