@@ -13,6 +13,7 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   optimize_mpz_v9_8_joint_response.py \
   optimize_mpz_v9_8_1_joint_response.py \
   continue_mpz_v9_9_barrier_scale.py \
+  continue_mpz_v9_9_1_barrier_scale.py \
   promote_mpz_v9_9_spatial.py \
   search_mpz_v9_4_developed_state.py \
   audit_mpz_v9_5_state_continuation.py
@@ -29,7 +30,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_pt_search_v94_wrapper.py \
   tests/test_mpz_v9_4_developed_state_search.py \
   tests/test_mpz_v9_8_joint_optimizer.py \
-  tests/test_mpz_v9_9_barrier_continuation.py
+  tests/test_mpz_v9_9_barrier_continuation.py \
+  tests/test_mpz_v9_9_1_metadata_wrapper.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
@@ -114,4 +116,4 @@ print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 production through v9.9 continuation/promotion verification passed."
+echo "MPZ v9.6 production through v9.9.1 continuation/promotion verification passed."
