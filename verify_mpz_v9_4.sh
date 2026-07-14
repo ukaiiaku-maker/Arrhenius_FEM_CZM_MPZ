@@ -10,6 +10,7 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   audit_mpz_v9_6_uncapped_pt.py \
   search_mpz_v9_6_broad_dbtt_map.py \
   calibrate_mpz_v9_7_pt_entropy.py \
+  optimize_mpz_v9_8_joint_response.py \
   search_mpz_v9_4_developed_state.py \
   audit_mpz_v9_5_state_continuation.py
 
@@ -23,7 +24,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_prepare_mpz_v9_3_pt_input.py \
   tests/test_prepare_mpz_v9_6_canonical_proxies.py \
   tests/test_pt_search_v94_wrapper.py \
-  tests/test_mpz_v9_4_developed_state_search.py
+  tests/test_mpz_v9_4_developed_state_search.py \
+  tests/test_mpz_v9_8_joint_optimizer.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
@@ -37,6 +39,7 @@ from arrhenius_fracture.emission_derived_plasticity_v97 import (
     EmissionDerivedPeierlsTaylorModel as EntropyCalibrationModel,
     IndependentEntropyMechanismScale,
 )
+from optimize_mpz_v9_8_joint_response import PARAMETER_NAMES, bounds_array
 
 assert af.__version__ == "0.9.6"
 assert af.MovingProcessZoneState.__module__.endswith(
@@ -88,13 +91,15 @@ calibration = EntropyCalibrationModel(
 cal_zero = calibration.rates(0.0, rho, 700.0, 2.74e-10)
 assert np.all(cal_zero["equivalent_plastic_rate_s"] == 0.0)
 assert bool(np.asarray(cal_zero["entropy_decoupled_from_emission"]))
+assert len(PARAMETER_NAMES) == len(bounds_array()) == 17
 
 print("package version:", af.__version__)
 print("active MPZ state:", af.MovingProcessZoneState.__module__)
 print("active PT model:", EmissionDerivedPeierlsTaylorModel.__module__)
 print("entropy calibration model:", EntropyCalibrationModel.__module__)
+print("joint optimizer parameters:", len(PARAMETER_NAMES))
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 production and v9.7 entropy-calibration verification passed."
+echo "MPZ v9.6 production, v9.7 calibration, and v9.8 joint-optimizer verification passed."
