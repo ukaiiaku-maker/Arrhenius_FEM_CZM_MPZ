@@ -73,16 +73,16 @@ def _mark_outputs() -> None:
             "--out", "runs/mpz_v9_10_2_independent_shape_spatial_promotion_v1"
         )
     ).resolve()
-    summary = outroot / "unified_spatial_run_summary.json"
-    if summary.exists():
-        data = json.loads(summary.read_text())
+    report = outroot / "unified_spatial_report.json"
+    if report.exists():
+        data = json.loads(report.read_text())
         data.update(
             {
                 "status": "V9_10_2_INDEPENDENT_SHAPE_SPATIAL_COMPLETE_NOT_2D_VALIDATED",
                 "shape_mode": "INDEPENDENT_ALPHA_N_FOR_C_E_P_T",
             }
         )
-        summary.write_text(json.dumps(data, indent=2))
+        report.write_text(json.dumps(data, indent=2))
 
 
 def main() -> None:
