@@ -40,6 +40,23 @@ from . import emission_derived_plasticity as _pt_v93
 from .emission_derived_plasticity_v94 import (
     EmissionDerivedPeierlsTaylorModel as _PTModelV94,
 )
+
+
+def _exact_pt_series_rate(rate_a, rate_b):
+    """Harmonic sequential rate with exact absorbing zero bottlenecks."""
+    import numpy as np
+
+    a, b = np.broadcast_arrays(
+        np.maximum(np.asarray(rate_a, dtype=float), 0.0),
+        np.maximum(np.asarray(rate_b, dtype=float), 0.0),
+    )
+    out = np.zeros_like(a, dtype=float)
+    active = (a > 0.0) & (b > 0.0)
+    np.divide(a * b, a + b, out=out, where=active)
+    return out
+
+
+_PTModelV94.series_rate = staticmethod(_exact_pt_series_rate)
 _pt_v93.EmissionDerivedPeierlsTaylorModel = _PTModelV94
 
 __version__ = '0.9.4'
