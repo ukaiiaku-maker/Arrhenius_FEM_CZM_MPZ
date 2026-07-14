@@ -41,9 +41,26 @@ from . import emission_derived_plasticity as _pt_base
 from .emission_derived_plasticity_v96 import (
     EmissionDerivedPeierlsTaylorModel as _PTModelV96,
 )
+
+
+def _exact_uncapped_pt_series_rate(rate_a, rate_b):
+    """Harmonic sequential rate with exact absorbing zero bottlenecks."""
+    import numpy as np
+
+    a, b = np.broadcast_arrays(
+        np.maximum(np.asarray(rate_a, dtype=float), 0.0),
+        np.maximum(np.asarray(rate_b, dtype=float), 0.0),
+    )
+    out = np.zeros_like(a, dtype=float)
+    active = (a > 0.0) & (b > 0.0)
+    np.divide(a * b, a + b, out=out, where=active)
+    return out
+
+
+_PTModelV96.series_rate = staticmethod(_exact_uncapped_pt_series_rate)
 _pt_base.EmissionDerivedPeierlsTaylorModel = _PTModelV96
 
-# v9.5 spatial local-density MPZ remains active.  It now calls the v9.6 PT
+# v9.5 spatial local-density MPZ remains active. It now calls the v9.6 PT
 # closure through the patched base-module import above.
 from . import moving_process_zone as _mpz_base
 from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
