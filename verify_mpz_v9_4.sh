@@ -7,14 +7,17 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   arrhenius_fracture \
   prepare_mpz_v9_3_pt_input.py \
   search_mpz_peierls_taylor_parameters.py \
-  search_mpz_peierls_taylor_parameters_v94.py
+  search_mpz_peierls_taylor_parameters_v94.py \
+  search_mpz_v9_4_developed_state.py \
+  select_mpz_v9_4_pt_candidates.py
 
 PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_emission_derived_peierls_taylor.py \
   tests/test_bulk_pt_plasticity.py \
   tests/test_moving_process_zone.py \
   tests/test_prepare_mpz_v9_3_pt_input.py \
-  tests/test_pt_search_v94_wrapper.py
+  tests/test_pt_search_v94_wrapper.py \
+  tests/test_mpz_v9_4_developed_state_search.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
