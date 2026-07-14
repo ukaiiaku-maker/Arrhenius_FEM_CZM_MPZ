@@ -112,12 +112,7 @@ def exp_floor_barrier_eV(
     floor_min_eV: float,
     floor_max_frac: float,
 ) -> np.ndarray:
-    """Vectorized EXP-floor barrier matching FractureBarrier._exp_floor.
-
-    Arrays broadcast over candidate x temperature. The high-stress entropy
-    correction is absent because v9.1 fixes cleave_S_hs_kB=0 and does not expose
-    an emission high-stress entropy fit parameter.
-    """
+    """Vectorized EXP-floor barrier matching FractureBarrier._exp_floor."""
     G0 = np.maximum(G00 + gT * (T - Tref_K), 1.0e-9)
     sigc = np.maximum(
         (sigc0_GPa + sT_GPa_per_K * (T - Tref_K)) * 1.0e9,
@@ -221,32 +216,12 @@ def evaluate_candidates(
     K_emit = {name: np.full_like(B, np.nan) for name in hazard_targets}
 
     Gc0 = exp_floor_barrier_eV(
-        0.0,
-        T,
-        Gc00,
-        gcT,
-        sc0,
-        c_sT,
-        c_a,
-        c_n,
-        c_ff,
-        Tref_K,
-        floor_min_eV,
-        floor_max_frac,
+        0.0, T, Gc00, gcT, sc0, c_sT, c_a, c_n, c_ff,
+        Tref_K, floor_min_eV, floor_max_frac,
     )
     Ge0 = exp_floor_barrier_eV(
-        0.0,
-        T,
-        Ge00,
-        geT,
-        se0,
-        e_sT,
-        e_a,
-        e_n,
-        e_ff,
-        Tref_K,
-        floor_min_eV,
-        floor_max_frac,
+        0.0, T, Ge00, geT, se0, e_sT, e_a, e_n, e_ff,
+        Tref_K, floor_min_eV, floor_max_frac,
     )
     lc_prev = cleavage_effective_rate(Gc0, T, nu0_c, m_hits, tau_c)
     le_prev = emission_rate(Ge0, T, nu0_e)
@@ -259,32 +234,12 @@ def evaluate_candidates(
         step = K - Kprev
         sigma = K * 1.0e6 / math.sqrt(2.0 * math.pi * r0)
         Gc = exp_floor_barrier_eV(
-            sigma,
-            T,
-            Gc00,
-            gcT,
-            sc0,
-            c_sT,
-            c_a,
-            c_n,
-            c_ff,
-            Tref_K,
-            floor_min_eV,
-            floor_max_frac,
+            sigma, T, Gc00, gcT, sc0, c_sT, c_a, c_n, c_ff,
+            Tref_K, floor_min_eV, floor_max_frac,
         )
         Ge = exp_floor_barrier_eV(
-            sigma,
-            T,
-            Ge00,
-            geT,
-            se0,
-            e_sT,
-            e_a,
-            e_n,
-            e_ff,
-            Tref_K,
-            floor_min_eV,
-            floor_max_frac,
+            sigma, T, Ge00, geT, se0, e_sT, e_a, e_n, e_ff,
+            Tref_K, floor_min_eV, floor_max_frac,
         )
         lc = cleavage_effective_rate(Gc, T, nu0_c, m_hits, tau_c)
         le = emission_rate(Ge, T, nu0_e)
@@ -303,36 +258,14 @@ def evaluate_candidates(
             Hcross = H + frac * dH
             Kc[crossed] = Kcross[crossed]
             H_at_Kc[crossed] = Hcross[crossed]
-            sigma_cross = (
-                Kcross * 1.0e6 / math.sqrt(2.0 * math.pi * r0)
-            )
+            sigma_cross = Kcross * 1.0e6 / math.sqrt(2.0 * math.pi * r0)
             Gccross = exp_floor_barrier_eV(
-                sigma_cross,
-                T,
-                Gc00,
-                gcT,
-                sc0,
-                c_sT,
-                c_a,
-                c_n,
-                c_ff,
-                Tref_K,
-                floor_min_eV,
-                floor_max_frac,
+                sigma_cross, T, Gc00, gcT, sc0, c_sT, c_a, c_n, c_ff,
+                Tref_K, floor_min_eV, floor_max_frac,
             )
             Gecross = exp_floor_barrier_eV(
-                sigma_cross,
-                T,
-                Ge00,
-                geT,
-                se0,
-                e_sT,
-                e_a,
-                e_n,
-                e_ff,
-                Tref_K,
-                floor_min_eV,
-                floor_max_frac,
+                sigma_cross, T, Ge00, geT, se0, e_sT, e_a, e_n, e_ff,
+                Tref_K, floor_min_eV, floor_max_frac,
             )
             Gc_at_Kc[crossed] = Gccross[crossed]
             Ge_at_Kc[crossed] = Gecross[crossed]
@@ -341,8 +274,6 @@ def evaluate_candidates(
         B[active] = Bnew[active]
         H[active] = Hnew[active]
 
-        # Emission onset is an intrinsic full-ramp quantity and may occur above
-        # cleavage for some rows. Maintain a separate accumulator to map it.
         H_full += dH
         for name, Htarget in hazard_targets.items():
             unresolved = ~np.isfinite(K_emit[name])
@@ -351,9 +282,7 @@ def evaluate_candidates(
                 hc = unresolved & (H_full >= Htarget)
                 if np.any(hc):
                     denomH = np.maximum(dH, 1.0e-300)
-                    fracH = np.clip(
-                        (Htarget - prev_full) / denomH, 0.0, 1.0
-                    )
+                    fracH = np.clip((Htarget - prev_full) / denomH, 0.0, 1.0)
                     K_emit[name][hc] = (Kprev + fracH * step)[hc]
 
         lc_prev = lc
@@ -397,9 +326,7 @@ def add_temperature_columns(
         tag = temperature_tag(T)
         for key, arr in result.items():
             cols[f"{key}_T{tag}"] = arr[:, j]
-    return pd.concat(
-        [df.reset_index(drop=True), pd.DataFrame(cols)], axis=1
-    )
+    return pd.concat([df.reset_index(drop=True), pd.DataFrame(cols)], axis=1)
 
 
 def finite_ptp(a: np.ndarray, axis: int = 1) -> np.ndarray:
@@ -419,14 +346,13 @@ def summarize_regions(
     low = T <= 500.0
     high = T >= 900.0
 
-    with np.errstate(all="ignore"):
-        Klow = np.nanmedian(Kc[:, low], axis=1)
-        Khigh = np.nanmedian(Kc[:, high], axis=1)
-        flow = np.nanmedian(frac[:, low], axis=1)
-        fhigh = np.nanmedian(frac[:, high], axis=1)
-        Elow = np.nanmedian(emitted[:, low], axis=1)
-        Ehigh = np.nanmedian(emitted[:, high], axis=1)
-        Krange = finite_ptp(Kc)
+    Klow = np.nanmedian(Kc[:, low], axis=1)
+    Khigh = np.nanmedian(Kc[:, high], axis=1)
+    flow = np.nanmedian(frac[:, low], axis=1)
+    fhigh = np.nanmedian(frac[:, high], axis=1)
+    Elow = np.nanmedian(emitted[:, low], axis=1)
+    Ehigh = np.nanmedian(emitted[:, high], axis=1)
+    Krange = finite_ptp(Kc)
     dK = Khigh - Klow
     finite = np.all(np.isfinite(Kc), axis=1)
     dKsteps = np.diff(Kc, axis=1)
@@ -446,18 +372,8 @@ def summarize_regions(
         eps,
     )
 
-    ceramic = (
-        finite
-        & (dK <= -3.0)
-        & (fhigh <= 0.01)
-        & (dec_fraction >= 0.8)
-    )
-    weakT = (
-        finite
-        & (Krange <= 3.0)
-        & (fhigh >= 1.0e-4)
-        & (fhigh <= 0.85)
-    )
+    ceramic = finite & (dK <= -3.0) & (fhigh <= 0.01) & (dec_fraction >= 0.8)
+    weakT = finite & (Krange <= 3.0) & (fhigh >= 1.0e-4) & (fhigh <= 0.85)
     dbtt = (
         finite
         & (flow <= 0.01)
@@ -529,26 +445,16 @@ def shortlist(regions: pd.DataFrame, top_n: int) -> pd.DataFrame:
         ("DBTT_precursor", "DBTT_precursor_score"),
     )
     for region, score in specs:
-        g = (
-            regions[regions.region == region]
-            .sort_values(score)
-            .head(top_n)
-            .copy()
-        )
+        g = regions[regions.region == region].sort_values(score).head(top_n).copy()
         if not g.empty:
             g["shortlist_rank"] = np.arange(1, len(g) + 1)
             g["shortlist_score_name"] = score
             g["shortlist_score"] = g[score]
             rows.append(g)
-    if rows:
-        return pd.concat(rows, ignore_index=True)
-    return pd.DataFrame(columns=list(regions.columns))
+    return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=list(regions.columns))
 
 
-def material_rows_from_shortlist(
-    short: pd.DataFrame,
-    shape_rows: pd.DataFrame,
-) -> pd.DataFrame:
+def material_rows_from_shortlist(short: pd.DataFrame, shape_rows: pd.DataFrame) -> pd.DataFrame:
     if short.empty:
         return pd.DataFrame()
     class_map = {
@@ -573,12 +479,8 @@ def material_rows_from_shortlist(
         row["analytic_candidate_id"] = rec["candidate_id"]
         row["analytic_shortlist_rank"] = int(rec["shortlist_rank"])
         row["analytic_shortlist_score"] = float(rec["shortlist_score"])
-        row["Kdot_MPa_sqrt_m_per_s"] = float(
-            rec["Kdot_MPa_sqrt_m_per_s"]
-        )
-        row["status"] = (
-            "ANALYTIC_ATLAS_CANDIDATE_NOT_TRANSIENTLY_VALIDATED"
-        )
+        row["Kdot_MPa_sqrt_m_per_s"] = float(rec["Kdot_MPa_sqrt_m_per_s"])
+        row["status"] = "ANALYTIC_ATLAS_CANDIDATE_NOT_TRANSIENTLY_VALIDATED"
         rows.append(dict(row))
     return pd.DataFrame(rows)
 
@@ -599,20 +501,10 @@ def refine_shortlist(
             continue
         p = g[list(PARAM_NAMES)].copy().reset_index(drop=True)
         res = evaluate_candidates(
-            p,
-            shape_rows.loc[family],
-            temperatures,
-            float(Kdot),
-            args.refine_dK,
-            args.Kmax,
-            args.nu0_cleave,
-            args.nu0_emit,
-            args.multihit_m,
-            args.multihit_tau,
-            args.Tref_K,
-            args.floor_min_eV,
-            args.floor_max_frac,
-            progress_every=0,
+            p, shape_rows.loc[family], temperatures, float(Kdot),
+            args.refine_dK, args.Kmax, args.nu0_cleave, args.nu0_emit,
+            args.multihit_m, args.multihit_tau, args.Tref_K,
+            args.floor_min_eV, args.floor_max_frac, progress_every=0,
         )
         base = g.reset_index(drop=True).copy()
         cols: dict[str, np.ndarray] = {}
@@ -643,27 +535,13 @@ def evaluate_anchor_table(
         if klass not in shape_rows.index:
             continue
         row = g.iloc[-1]
-        missing = [p for p in PARAM_NAMES if p not in row.index]
-        if missing:
+        if any(p not in row.index for p in PARAM_NAMES):
             continue
-        p = pd.DataFrame(
-            [{name: float(row[name]) for name in PARAM_NAMES}]
-        )
+        p = pd.DataFrame([{name: float(row[name]) for name in PARAM_NAMES}])
         res = evaluate_candidates(
-            p,
-            shape_rows.loc[klass],
-            temperatures,
-            Kdot,
-            args.dK,
-            args.Kmax,
-            args.nu0_cleave,
-            args.nu0_emit,
-            args.multihit_m,
-            args.multihit_tau,
-            args.Tref_K,
-            args.floor_min_eV,
-            args.floor_max_frac,
-            progress_every=0,
+            p, shape_rows.loc[klass], temperatures, Kdot, args.dK, args.Kmax,
+            args.nu0_cleave, args.nu0_emit, args.multihit_m, args.multihit_tau,
+            args.Tref_K, args.floor_min_eV, args.floor_max_frac, progress_every=0,
         )
         rec = {
             "anchor_file": str(path),
@@ -673,9 +551,7 @@ def evaluate_anchor_table(
         for j, T in enumerate(temperatures):
             tag = temperature_tag(T)
             for key in (
-                "Kc",
-                "H_emit_at_Kc",
-                "source_fraction_at_Kc",
+                "Kc", "H_emit_at_Kc", "source_fraction_at_Kc",
                 "expected_emitted_at_Kc",
             ):
                 rec[f"{key}_T{tag}"] = float(res[key][0, j])
@@ -691,7 +567,6 @@ def make_plots(
 ) -> None:
     try:
         import matplotlib
-
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except Exception:
@@ -712,9 +587,7 @@ def make_plots(
         ax.scatter(
             g["delta_K_high_minus_low_MPa_sqrt_m"],
             g["emission_crossover_decades"],
-            s=size,
-            alpha=alpha,
-            label=name,
+            s=size, alpha=alpha, label=name,
         )
     ax.axhline(2.0, lw=1.0, ls="--")
     ax.axvline(0.0, lw=1.0, ls=":")
@@ -730,11 +603,7 @@ def make_plots(
     if short.empty:
         return
     for ykey, ylabel, filename in (
-        (
-            "Kc",
-            r"$K_c$ [MPa$\sqrt{m}$]",
-            "analytic_atlas_shortlist_Kc_T.png",
-        ),
+        ("Kc", r"$K_c$ [MPa$\sqrt{m}$]", "analytic_atlas_shortlist_Kc_T.png"),
         (
             "source_fraction_at_Kc",
             "Source fraction emitted before cleavage",
@@ -743,15 +612,9 @@ def make_plots(
     ):
         fig, ax = plt.subplots(figsize=(8.6, 6.2))
         for _, r in short.iterrows():
-            y = [
-                r.get(f"{ykey}_T{temperature_tag(T)}", np.nan)
-                for T in temperatures
-            ]
+            y = [r.get(f"{ykey}_T{temperature_tag(T)}", np.nan) for T in temperatures]
             ax.plot(
-                temperatures,
-                y,
-                marker="o",
-                ms=3,
+                temperatures, y, marker="o", ms=3,
                 label=f"{r['region']} {r['candidate_id']}",
             )
         ax.set_xlabel("Temperature [K]")
@@ -765,18 +628,11 @@ def make_plots(
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--initial",
-        type=Path,
-        default=Path("mpz_three_class_initial_guesses.csv"),
-    )
+    ap.add_argument("--initial", type=Path, default=Path("mpz_three_class_initial_guesses.csv"))
     ap.add_argument("--shape-families", default="ceramic weakT DBTT")
-    ap.add_argument(
-        "--temperatures",
-        default="300 400 500 600 700 800 900 1000 1100 1200",
-    )
+    ap.add_argument("--temperatures", default="300 400 500 600 700 800 900 1000 1100 1200")
     ap.add_argument("--Kdot-values", default="0.005")
-    ap.add_argument("--samples-per-family", type=int, default=32768)
+    ap.add_argument("--samples-per-family", type=int, default=16384)
     ap.add_argument("--seed", type=int, default=92031)
     ap.add_argument("--dK", type=float, default=0.05)
     ap.add_argument("--Kmax", type=float, default=80.0)
@@ -789,34 +645,24 @@ def main() -> None:
     ap.add_argument("--floor-max-frac", type=float, default=0.95)
     ap.add_argument("--top-per-region", type=int, default=20)
     ap.add_argument(
-        "--refine-dK",
-        type=float,
-        default=0.01,
-        help=(
-            "Re-evaluate shortlisted rows at this finer K increment; "
-            "<=0 disables."
-        ),
+        "--refine-dK", type=float, default=0.01,
+        help="Re-evaluate shortlisted rows at this finer K increment; <=0 disables.",
     )
     ap.add_argument("--anchor-tables", default="")
     ap.add_argument(
-        "--out",
-        type=Path,
+        "--out", type=Path,
         default=Path("runs/mpz_v9_2_analytic_first_passage_atlas"),
     )
     ap.add_argument("--progress-every", type=int, default=200)
     a = ap.parse_args()
 
     if a.dK <= 0 or a.Kmax <= 0 or a.samples_per_family <= 0:
-        raise SystemExit(
-            "dK, Kmax, and samples-per-family must be positive"
-        )
+        raise SystemExit("dK, Kmax, and samples-per-family must be positive")
     temperatures = parse_float_list(a.temperatures)
     rates = parse_float_list(a.Kdot_values)
     families = parse_str_list(a.shape_families)
     if not temperatures or not rates or not families:
-        raise SystemExit(
-            "temperatures, Kdot values, and shape families may not be empty"
-        )
+        raise SystemExit("temperatures, Kdot values, and shape families may not be empty")
 
     out = a.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -835,141 +681,89 @@ def main() -> None:
             run_index += 1
             print(
                 f"[{run_index}/{len(rates) * len(families)}] "
-                f"family={family} Kdot={Kdot:g} "
-                f"samples={a.samples_per_family}",
+                f"family={family} Kdot={Kdot:g} samples={a.samples_per_family}",
                 flush=True,
             )
             shape = shapes.loc[family]
             params = sobol_parameters(
-                a.samples_per_family,
-                a.seed + 1009 * irate + 7919 * ifam,
+                a.samples_per_family, a.seed + 1009 * irate + 7919 * ifam
             )
+            params.insert(0, "candidate_index", np.arange(len(params), dtype=int))
             params.insert(
-                0, "candidate_index", np.arange(len(params), dtype=int)
-            )
-            params.insert(
-                0,
-                "candidate_id",
-                [
-                    f"{family}_r{rate_tag(Kdot)}_{i:07d}"
-                    for i in range(len(params))
-                ],
+                0, "candidate_id",
+                [f"{family}_r{rate_tag(Kdot)}_{i:07d}" for i in range(len(params))],
             )
             params.insert(0, "shape_family", family)
             params["Kdot_MPa_sqrt_m_per_s"] = Kdot
             result = evaluate_candidates(
-                params,
-                shape,
-                temperatures,
-                Kdot,
-                a.dK,
-                a.Kmax,
-                a.nu0_cleave,
-                a.nu0_emit,
-                a.multihit_m,
-                a.multihit_tau,
-                a.Tref_K,
-                a.floor_min_eV,
-                a.floor_max_frac,
+                params, shape, temperatures, Kdot, a.dK, a.Kmax,
+                a.nu0_cleave, a.nu0_emit, a.multihit_m, a.multihit_tau,
+                a.Tref_K, a.floor_min_eV, a.floor_max_frac,
                 progress_every=a.progress_every,
             )
             wide = add_temperature_columns(params, result, temperatures)
-            regions = summarize_regions(wide, result, temperatures, shape)
+            regions = summarize_regions(params, result, temperatures, shape)
             short = shortlist(regions, a.top_per_region)
+            if not short.empty:
+                temp_cols = [c for c in wide.columns if c not in params.columns]
+                short = short.merge(
+                    wide[["candidate_id", *temp_cols]],
+                    on="candidate_id", how="left", validate="one_to_one",
+                )
             all_candidates.append(wide)
             all_regions.append(regions)
             all_short.append(short)
 
         for ptext in parse_str_list(a.anchor_tables):
             p = Path(ptext)
-            adf = evaluate_anchor_table(
-                p, shapes, temperatures, Kdot, a
-            )
+            adf = evaluate_anchor_table(p, shapes, temperatures, Kdot, a)
             if not adf.empty:
                 adf["Kdot_MPa_sqrt_m_per_s"] = Kdot
                 anchors.append(adf)
 
     candidates_df = pd.concat(all_candidates, ignore_index=True)
     regions_df = pd.concat(all_regions, ignore_index=True)
-    short_df = (
-        pd.concat(all_short, ignore_index=True)
-        if all_short
-        else pd.DataFrame()
-    )
-    anchor_df = (
-        pd.concat(anchors, ignore_index=True) if anchors else pd.DataFrame()
-    )
+    short_df = pd.concat(all_short, ignore_index=True) if all_short else pd.DataFrame()
+    anchor_df = pd.concat(anchors, ignore_index=True) if anchors else pd.DataFrame()
     refined_df = refine_shortlist(short_df, shapes, temperatures, a)
     material_df = material_rows_from_shortlist(short_df, shapes)
 
     candidates_df.to_csv(
-        out / "analytic_first_passage_atlas_candidates.csv", index=False
+        out / "analytic_first_passage_atlas_candidates.csv.gz",
+        index=False, compression="gzip",
     )
-    regions_df.to_csv(
-        out / "analytic_first_passage_atlas_regions.csv", index=False
-    )
-    short_df.to_csv(
-        out / "analytic_first_passage_atlas_shortlist.csv", index=False
-    )
+    regions_df.to_csv(out / "analytic_first_passage_atlas_regions.csv", index=False)
+    short_df.to_csv(out / "analytic_first_passage_atlas_shortlist.csv", index=False)
     if not refined_df.empty:
-        refined_df.to_csv(
-            out / "analytic_first_passage_atlas_shortlist_refined.csv",
-            index=False,
-        )
+        refined_df.to_csv(out / "analytic_first_passage_atlas_shortlist_refined.csv", index=False)
     if not material_df.empty:
-        material_df.to_csv(
-            out / "mpz_analytic_shortlist_material_rows.csv", index=False
-        )
+        material_df.to_csv(out / "mpz_analytic_shortlist_material_rows.csv", index=False)
     if not anchor_df.empty:
-        anchor_df.to_csv(
-            out / "analytic_first_passage_anchor_predictions.csv",
-            index=False,
-        )
+        anchor_df.to_csv(out / "analytic_first_passage_anchor_predictions.csv", index=False)
 
     counts = (
-        regions_df.groupby(
-            ["Kdot_MPa_sqrt_m_per_s", "shape_family", "region"]
-        )
-        .size()
-        .rename("n_candidates")
-        .reset_index()
+        regions_df.groupby(["Kdot_MPa_sqrt_m_per_s", "shape_family", "region"])
+        .size().rename("n_candidates").reset_index()
     )
-    counts.to_csv(
-        out / "analytic_first_passage_region_counts.csv", index=False
-    )
+    counts.to_csv(out / "analytic_first_passage_region_counts.csv", index=False)
     make_plots(regions_df, short_df, temperatures, out)
 
     config = vars(a).copy()
     for k, v in list(config.items()):
         if isinstance(v, Path):
             config[k] = str(v)
-    config.update(
-        {
-            "temperatures_resolved": temperatures,
-            "Kdot_values_resolved": rates,
-            "shape_families_resolved": families,
-            "parameter_bounds": {
-                k: list(v) for k, v in DEFAULT_BOUNDS.items()
-            },
-            "interpretation": {
-                "ceramic_intrinsic": (
-                    "cleavage first passage with negligible emission exposure"
-                ),
-                "weakT_intrinsic": (
-                    "nearly flat virgin first passage with finite but "
-                    "nonsaturated emission exposure"
-                ),
-                "DBTT_precursor": (
-                    "low-T cleavage dominance and high-T emission exposure; "
-                    "requires transient MPZ validation"
-                ),
-                "emission_saturated": (
-                    "source inventory mostly exhausted before cleavage; "
-                    "reject or audit separately"
-                ),
-            },
-        }
-    )
+    config.update({
+        "temperatures_resolved": temperatures,
+        "Kdot_values_resolved": rates,
+        "shape_families_resolved": families,
+        "parameter_bounds": {k: list(v) for k, v in DEFAULT_BOUNDS.items()},
+        "interpretation": {
+            "ceramic_intrinsic": "cleavage first passage with negligible emission exposure",
+            "weakT_intrinsic": "nearly flat virgin first passage with finite but nonsaturated emission exposure",
+            "DBTT_precursor": "low-T cleavage dominance and high-T emission exposure; requires transient MPZ validation",
+            "emission_saturated": "source inventory mostly exhausted before cleavage; reject or audit separately",
+        },
+    })
     (out / "analytic_first_passage_atlas_config.json").write_text(
         json.dumps(config, indent=2)
     )
