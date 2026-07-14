@@ -1,0 +1,86 @@
+name: Apply MPZ v9.3 Peierls-Taylor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-v9.3-peierls-taylor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply v9.3 integration patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch --batch --forward -p1 < payload/v93_config.patch
+          patch --batch --forward -p1 < payload/v93_plasticity.patch
+          patch --batch --forward -p1 < payload/v93_moving_process_zone.patch
+          patch --batch --forward -p1 < payload/v93_sharp_front.patch
+          patch --batch --forward -p1 < payload/v93_fatigue.patch
+          python payload/v93_post_apply_patch.py
+          rm -f .github/workflows/verify-v9.2.yml
+
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+
+      - name: Compile updated sources
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture \
+            build_mpz_analytic_first_passage_atlas.py \
+            search_mpz_peierls_taylor_parameters.py \
+            fit_mpz_three_classes.py
+
+      - name: Run focused regression tests
+        run: |
+          python -m pytest -q \
+            tests/test_moving_process_zone.py \
+            tests/test_mpz_three_class_fit.py \
+            tests/test_mpz_analytic_first_passage_atlas.py \
+            tests/test_emission_derived_peierls_taylor.py \
+            tests/test_bulk_pt_plasticity.py
+
+      - name: Run Peierls-Taylor search smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/pt_search_input.csv <<'CSV'
+          candidate_id,region,Kdot_MPa_sqrt_m_per_s,ceramic_score,weakT_score,DBTT_precursor_score,refined_Kc_T300,refined_Kc_T1200,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa,emit_sT_GPa_per_K,emit_exp_a,emit_exp_n,emit_floor_frac
+          c1,ceramic_intrinsic,0.005,0.1,9,9,18,7,1.3922,0.0091197,2.9802,0.002031,0.2383,1.1169,0.041
+          w1,weakT_intrinsic,0.005,9,0.1,9,15,15,1.1173,0.0063971,0.9506,0.0009817,0.5055,0.8432,0.0309
+          d1,DBTT_precursor,0.005,9,9,0.1,15,10,1.6954,0.0008853,3.7521,0.0022809,0.0944,0.835,0.03524
+          CSV
+          python search_mpz_peierls_taylor_parameters.py \
+            --atlas-shortlist /tmp/pt_search_input.csv \
+            --transport-samples 16 \
+            --intrinsic-top-per-region 1 \
+            --top-per-intrinsic 1 \
+            --temperatures '300 700 1200' \
+            --strain-rates '1e-5 1e-3' \
+            --rho-points 25 \
+            --out runs/apply_pt_search_smoke
+          test -s runs/apply_pt_search_smoke/peierls_taylor_search_summary.csv
+
+      - name: Commit complete v9.3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -rf payload/v93_*
+          rm -f .github/workflows/apply-v9.3-peierls-taylor.yml
+          git add -A
+          git commit -m 'Unify MPZ and FEM plasticity with Peierls-Taylor v9.3'
+          git push origin HEAD:main
