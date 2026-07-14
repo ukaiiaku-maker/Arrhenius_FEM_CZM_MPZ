@@ -21,9 +21,22 @@ SEED="${SEED:-98017}"
 export PYTHONUNBUFFERED=1
 mkdir -p "$OUTROOT"
 
+clean_incomplete_checkpoints() {
+  local class_name="$1"
+  local checkpoint_dir="$OUTROOT/$class_name/checkpoints"
+  [ -d "$checkpoint_dir" ] || return 0
+  while IFS= read -r -d '' path; do
+    if ! grep -q '"status": "COMPLETE"' "$path"; then
+      echo "Removing incomplete basin checkpoint: $path"
+      rm -f "$path"
+    fi
+  done < <(find "$checkpoint_dir" -type f -name 'basin_*.json' -print0)
+}
+
 run_one() {
   local class_name="$1"
   local class_seed="$2"
+  clean_incomplete_checkpoints "$class_name"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] starting class=$class_name"
   conda run -n "$CONDA_ENV" --no-capture-output "$PYTHON_BIN" -u \
     optimize_mpz_v9_8_joint_response.py \
