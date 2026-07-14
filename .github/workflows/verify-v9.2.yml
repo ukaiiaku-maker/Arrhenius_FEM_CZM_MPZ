@@ -1,0 +1,45 @@
+name: Verify MPZ v9.2
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Compile updated sources
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture \
+            build_mpz_analytic_first_passage_atlas.py \
+            fit_mpz_three_classes.py \
+            audit_mpz_three_class_convergence.py
+      - name: Run focused tests
+        run: |
+          python -m pytest -q \
+            tests/test_moving_process_zone.py \
+            tests/test_mpz_three_class_fit.py \
+            tests/test_mpz_analytic_first_passage_atlas.py
+      - name: Run analytical atlas smoke
+        run: |
+          python build_mpz_analytic_first_passage_atlas.py \
+            --initial mpz_three_class_initial_guesses.csv \
+            --shape-families 'ceramic weakT DBTT' \
+            --temperatures '300 700 1200' \
+            --Kdot-values '0.005' \
+            --samples-per-family 32 \
+            --dK 0.25 \
+            --refine-dK 0.05 \
+            --Kmax 40 \
+            --top-per-region 2 \
+            --out runs/ci_analytic_atlas_smoke
