@@ -34,4 +34,4 @@ from .diagnostics import (
     save_history, plot_diagnostics, plot_toughness_vs_T,
 )
 
-__version__ = '0.9.2'
+__version__ = '0.9.3'
