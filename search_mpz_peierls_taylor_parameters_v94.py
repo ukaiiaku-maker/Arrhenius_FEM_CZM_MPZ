@@ -14,6 +14,11 @@ from scipy.stats import qmc
 
 import search_mpz_peierls_taylor_parameters as _legacy
 
+# Preserve the original functions before replacing the module globals used by
+# the legacy main loop. The wrapper's evaluate_one must call this saved object,
+# not the monkeypatched module attribute.
+_LEGACY_EVALUATE_ONE = _legacy.evaluate_one
+
 
 def _log_scale(u: np.ndarray, lo: float, hi: float) -> np.ndarray:
     return 10.0 ** (
@@ -73,7 +78,7 @@ def evaluate_one(
     drop_tol_fraction,
     zero_stress_threshold_GPa,
 ):
-    out = _legacy.evaluate_one(
+    out = _LEGACY_EVALUATE_ONE(
         model,
         rho,
         temperatures,
