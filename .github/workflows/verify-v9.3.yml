@@ -22,6 +22,7 @@ jobs:
           python -m compileall -q \
             arrhenius_fracture \
             build_mpz_analytic_first_passage_atlas.py \
+            prepare_mpz_v9_3_pt_input.py \
             search_mpz_peierls_taylor_parameters.py \
             fit_mpz_three_classes.py
       - name: Run focused regression tests
@@ -31,16 +32,27 @@ jobs:
             tests/test_mpz_three_class_fit.py \
             tests/test_mpz_analytic_first_passage_atlas.py \
             tests/test_emission_derived_peierls_taylor.py \
-            tests/test_bulk_pt_plasticity.py
-      - name: Run Peierls-Taylor search smoke
+            tests/test_bulk_pt_plasticity.py \
+            tests/test_prepare_mpz_v9_3_pt_input.py
+      - name: Run joined-input Peierls-Taylor search smoke
         shell: bash
         run: |
-          cat > /tmp/pt_search_input.csv <<'CSV'
-          candidate_id,region,Kdot_MPa_sqrt_m_per_s,ceramic_score,weakT_score,DBTT_precursor_score,refined_Kc_T300,refined_Kc_T1200,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa,emit_sT_GPa_per_K,emit_exp_a,emit_exp_n,emit_floor_frac
-          c1,ceramic_intrinsic,0.005,0.1,9,9,18,7,1.3922,0.0091197,2.9802,0.002031,0.2383,1.1169,0.041
-          w1,weakT_intrinsic,0.005,9,0.1,9,15,15,1.1173,0.0063971,0.9506,0.0009817,0.5055,0.8432,0.0309
-          d1,DBTT_precursor,0.005,9,9,0.1,15,10,1.6954,0.0008853,3.7521,0.0022809,0.0944,0.835,0.03524
+          cat > /tmp/pt_atlas.csv <<'CSV'
+          candidate_id,region,shape_family,Kdot_MPa_sqrt_m_per_s,ceramic_score,weakT_score,DBTT_precursor_score,refined_Kc_T300,refined_Kc_T1200,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa
+          c1,ceramic_intrinsic,ceramic,0.005,0.1,9,9,18,7,1.3922,0.0091197,2.9802
+          w1,weakT_intrinsic,weakT,0.005,9,0.1,9,15,15,1.1173,0.0063971,0.9506
+          d1,DBTT_precursor,DBTT,0.005,9,9,0.1,15,10,1.6954,0.0008853,3.7521
           CSV
+          cat > /tmp/pt_materials.csv <<'CSV'
+          analytic_candidate_id,analytic_region,analytic_shape_family,emit_G00_eV,emit_gT_eV_per_K,emit_sigc0_GPa,emit_sT_GPa_per_K,emit_exp_a,emit_exp_n,emit_floor_frac
+          c1,ceramic_intrinsic,ceramic,1.3922,0.0091197,2.9802,0.002031,0.2383,1.1169,0.041
+          w1,weakT_intrinsic,weakT,1.1173,0.0063971,0.9506,0.0009817,0.5055,0.8432,0.0309
+          d1,DBTT_precursor,DBTT,1.6954,0.0008853,3.7521,0.0022809,0.0944,0.835,0.03524
+          CSV
+          python prepare_mpz_v9_3_pt_input.py \
+            --atlas-shortlist /tmp/pt_atlas.csv \
+            --material-rows /tmp/pt_materials.csv \
+            --out /tmp/pt_search_input.csv
           python search_mpz_peierls_taylor_parameters.py \
             --atlas-shortlist /tmp/pt_search_input.csv \
             --transport-samples 16 \
