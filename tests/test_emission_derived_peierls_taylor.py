@@ -32,7 +32,7 @@ def test_multihit_order_is_uncapped_and_density_monotone():
     assert order[-1] > 100
 
 
-def test_correlated_completion_never_exceeds_single_hit_rate():
+def test_correlated_completion_never_exceeds_forward_rates():
     model = EmissionDerivedPeierlsTaylorModel(
         EmissionDerivedPeierlsTaylorConfig(
             correlated_taylor=CorrelatedTaylorConfig(rho_c_m2=1e12)
@@ -42,7 +42,7 @@ def test_correlated_completion_never_exceeds_single_hit_rate():
     rates = model.rates(2e9, rho, 700, 2.74e-10)
     assert np.all(
         rates["taylor_completion_rate_s"]
-        <= rates["taylor_single_hit_rate_s"] * (1 + 1e-12)
+        <= rates["taylor_completion_forward_rate_s"] * (1 + 1e-12)
     )
     assert np.all(
         rates["series_rate_s"]
@@ -52,6 +52,36 @@ def test_correlated_completion_never_exceeds_single_hit_rate():
         rates["series_rate_s"]
         <= rates["taylor_completion_rate_s"] * (1 + 1e-12)
     )
+
+
+def test_signed_detailed_balance_gives_zero_net_rate_at_zero_stress():
+    model = EmissionDerivedPeierlsTaylorModel(
+        EmissionDerivedPeierlsTaylorConfig(
+            correlated_taylor=CorrelatedTaylorConfig(
+                rho_c_m2=1.0e11,
+                renewal_time_s=1.0e-10,
+                m_cap=22.0,
+            )
+        )
+    )
+    rho = np.logspace(12, 17, 20)
+    zero = model.rates(0.0, rho, 700.0, 2.74e-10)
+    assert np.all(zero["peierls_rate_s"] == 0.0)
+    assert np.all(zero["taylor_single_hit_rate_s"] == 0.0)
+    assert np.all(zero["taylor_completion_rate_s"] == 0.0)
+    assert np.all(zero["series_rate_s"] == 0.0)
+    assert np.all(zero["equivalent_plastic_rate_s"] == 0.0)
+
+    driven = model.rates(2.0e9, rho, 700.0, 2.74e-10)
+    assert np.all(
+        driven["peierls_forward_rate_s"]
+        >= driven["peierls_reverse_rate_s"]
+    )
+    assert np.all(
+        driven["taylor_completion_forward_rate_s"]
+        >= driven["taylor_completion_reverse_rate_s"]
+    )
+    assert np.any(driven["series_rate_s"] > 0.0)
 
 
 def test_finite_correlation_domain_is_not_a_density_cap_and_can_remain_monotone():
