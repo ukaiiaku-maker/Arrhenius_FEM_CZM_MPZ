@@ -13,7 +13,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_emission_derived_peierls_taylor.py \
   tests/test_bulk_pt_plasticity.py \
   tests/test_moving_process_zone.py \
-  tests/test_prepare_mpz_v9_3_pt_input.py
+  tests/test_prepare_mpz_v9_3_pt_input.py \
+  tests/test_pt_search_v94_wrapper.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
