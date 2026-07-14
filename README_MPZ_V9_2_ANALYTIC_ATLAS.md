@@ -81,7 +81,7 @@ and the crack-extension scale for convergence toward the developed state.
 
 ```bash
 nohup env \
-SAMPLES_PER_FAMILY=32768 \
+SAMPLES_PER_FAMILY=16384 \
 KDOT_VALUES="0.005 0.02" \
 DK=0.10 \
 REFINE_DK=0.01 \
@@ -100,8 +100,8 @@ The default output directory is
 
 Important files:
 
-- `analytic_first_passage_atlas_candidates.csv`: full replot-ready Sobol atlas;
-- `analytic_first_passage_atlas_regions.csv`: region metrics and classifications;
+- `analytic_first_passage_atlas_candidates.csv.gz`: compressed full, replot-ready Sobol atlas;
+- `analytic_first_passage_atlas_regions.csv`: compact region metrics and classifications;
 - `analytic_first_passage_atlas_shortlist.csv`: top candidates per region;
 - `analytic_first_passage_atlas_shortlist_refined.csv`: fine-increment predictions;
 - `mpz_analytic_shortlist_material_rows.csv`: complete material rows for the
