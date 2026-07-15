@@ -17,11 +17,14 @@ REQUIRED_CORE = [
 REQUIRED_V911 = [
     "arrhenius_fracture/mpz_parameterization_v911.py",
     "arrhenius_fracture/bulk_plasticity_v9102.py",
+    "arrhenius_fracture/bulk_state_v911.py",
     "arrhenius_fracture/process_zone_2d_v911.py",
     "arrhenius_fracture/moving_process_zone_v911.py",
     "arrhenius_fracture/mpz_front_engine_v911.py",
     "arrhenius_fracture/mixed_mode_first_passage_v9_11.py",
     "arrhenius_fracture/mode_i_first_passage_v9_11.py",
+    "run_mpz_v9_11_mode_i_rcurve_3T.py",
+    "run_mpz_v9_11_bulk_mode_matrix_700K.py",
 ]
 
 
