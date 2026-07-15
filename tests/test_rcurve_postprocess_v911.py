@@ -45,6 +45,8 @@ def test_postprocessor_preserves_raw_and_writes_clustered_compatibility_file(tmp
         "da_block_m": [5e-6, 5e-6, 5e-6, 5e-6],
         "n_fire": [1, 1, 1, 1],
         "B": [0.1, 0.2, 0.3, 0.4],
+        "sigma_tip_Pa": [5e9, 6e9, 7e9, 8e9],
+        "mpz_K_shield_Pa_sqrt_m": [0.1e6, 0.2e6, 0.3e6, 0.4e6],
     })
     rows.to_csv(tmp_path / "steps_0700K.csv", index=False)
     metrics = write_cascade_aware_outputs(tmp_path, 700.0)
@@ -52,6 +54,8 @@ def test_postprocessor_preserves_raw_and_writes_clustered_compatibility_file(tmp
     clustered = pd.read_csv(tmp_path / "R_curve_load_events_clustered.csv")
     compat = pd.read_csv(tmp_path / "R_curve_event_sampled.csv")
     assert len(raw) == 4
+    assert np.allclose(raw["sigma_tip_GPa"], [5.0, 6.0, 7.0, 8.0])
+    assert np.allclose(raw["K_shield_MPa_sqrt_m"], [0.1, 0.2, 0.3, 0.4])
     assert len(clustered) == 2
     pd.testing.assert_frame_equal(clustered, compat)
     assert metrics["largest_same_load_jump_um"] == 15.0
