@@ -2,9 +2,9 @@
 
 The direct Mode-I runner is routed through the mature directional
 ``_advance_polyline`` path while the admissible cleavage inventory is constrained
-to one exactly forward plane.  A same-load correction is scheduled once per
+to one exactly forward plane. A same-load correction is scheduled once per
 accepted *physical Arrhenius renewal*, not once per internal exact-ray CZM
-subsegment.  Geometry-veto rollback cancels the corresponding pending correction.
+subsegment. Geometry-veto rollback cancels the corresponding pending correction.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from . import crack_backend as _crack_backend
 from . import crystal as _crystal
 from . import mode_i_first_passage_v9_13 as _base
 from . import sharp_front as _sharp_front
-from .mpz_front_engine import MovingProcessZoneFrontEngine
+from .mpz_front_engine_v911 import MovingProcessZone2DFrontEngine
 
 
 class _PostEventEquilibriumController:
@@ -43,7 +43,7 @@ class _PostEventEquilibriumController:
 
     def schedule_physical_event(self) -> int:
         # A single-front accepted solve can contain several adaptive-CZM
-        # subsegments, but only one Arrhenius renewal.  Do not multiply the
+        # subsegments, but only one Arrhenius renewal. Do not multiply the
         # correction count when a lower-level routine is called repeatedly.
         if self.pending_event_id is not None:
             self.duplicate_schedule_calls += 1
@@ -104,20 +104,26 @@ class _ControlledScalar(float):
 
 
 class _LoadingProxy:
-    """Delegate loading settings while wrapping assigned dt and dU scalars."""
+    """Delegate loading settings while wrapping dt and dU at every access."""
 
     def __init__(self, base: Any, controller: _PostEventEquilibriumController):
         object.__setattr__(self, "_base", base)
         object.__setattr__(self, "_controller", controller)
 
     def __getattr__(self, name: str):
-        return getattr(self._base, name)
+        value = getattr(self._base, name)
+        if name == "dt":
+            return _ControlledScalar(value, self._controller, "dt")
+        if name == "dU_top":
+            return _ControlledScalar(value, self._controller, "dU")
+        return value
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name == "dt":
-            setattr(self._base, name, _ControlledScalar(value, self._controller, "dt"))
-        elif name == "dU_top":
-            setattr(self._base, name, _ControlledScalar(value, self._controller, "dU"))
+        if name in {"dt", "dU_top"}:
+            # Store the physical base value. ControlledScalar is reconstructed on
+            # access, so later configuration assignments cannot silently remove
+            # the post-event correction hook.
+            setattr(self._base, name, float(value))
         else:
             setattr(self._base, name, value)
 
@@ -163,16 +169,19 @@ def main(argv=None):
     original_planes = _crystal.bcc_cleavage_traces
     original_config = _sharp_front.make_emergent_config
     original_backend_advance = _crack_backend.AdaptiveCZMBackend.advance
-    original_engine_step = MovingProcessZoneFrontEngine.step
-    original_geometry_veto = MovingProcessZoneFrontEngine.restore_geometry_veto
+    original_engine_step_drives = MovingProcessZone2DFrontEngine.step_drives
+    original_geometry_veto = MovingProcessZone2DFrontEngine.restore_geometry_veto
 
     def configured_model():
         cfg = original_config()
         cfg.loading = _LoadingProxy(cfg.loading, controller)
         return cfg
 
-    def step_and_schedule(self, *args, **kwargs):
-        out = original_engine_step(self, *args, **kwargs)
+    def step_drives_and_schedule(self, *args, **kwargs):
+        # CalibratedTipEngineMixin.step(), which is first in the production
+        # dynamic-class MRO, calls this v9.11 method directly. Hooking the older
+        # base-engine step() therefore misses every production event.
+        out = original_engine_step_drives(self, *args, **kwargs)
         if int(out.get("n_fire", 0) or 0) > 0:
             out["v914_physical_event_id"] = controller.schedule_physical_event()
         return out
@@ -195,16 +204,16 @@ def main(argv=None):
 
     _crystal.bcc_cleavage_traces = _forward_mode_i_plane
     _sharp_front.make_emergent_config = configured_model
-    MovingProcessZoneFrontEngine.step = step_and_schedule
-    MovingProcessZoneFrontEngine.restore_geometry_veto = veto_and_cancel
+    MovingProcessZone2DFrontEngine.step_drives = step_drives_and_schedule
+    MovingProcessZone2DFrontEngine.restore_geometry_veto = veto_and_cancel
     _crack_backend.AdaptiveCZMBackend.advance = advance_and_tag
     try:
         results = _base.main(user_args)
     finally:
         _crystal.bcc_cleavage_traces = original_planes
         _sharp_front.make_emergent_config = original_config
-        MovingProcessZoneFrontEngine.step = original_engine_step
-        MovingProcessZoneFrontEngine.restore_geometry_veto = original_geometry_veto
+        MovingProcessZone2DFrontEngine.step_drives = original_engine_step_drives
+        MovingProcessZone2DFrontEngine.restore_geometry_veto = original_geometry_veto
         _crack_backend.AdaptiveCZMBackend.advance = original_backend_advance
 
     out_value = _option_value(user_args, "--out")
@@ -212,6 +221,7 @@ def main(argv=None):
         out = Path(out_value)
         payload = {
             "schema": "post_event_same_load_equilibrium_v914",
+            "runtime_engine_hook": "MovingProcessZone2DFrontEngine.step_drives",
             "events_scheduled": controller.events_scheduled,
             "corrections_consumed": controller.corrections_consumed,
             "events_cancelled": controller.events_cancelled,
