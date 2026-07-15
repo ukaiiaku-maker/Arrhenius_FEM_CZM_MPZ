@@ -1,10 +1,10 @@
 """v9.14 direct Mode-I entry using the conservative adaptive-CZM event path.
 
 The legacy direct Mode-I runner used the non-directional single-front branch in
-``sharp_front``.  That branch inserted cohesive topology but did not execute the
+``sharp_front``. That branch inserted cohesive topology but did not execute the
 mature ``_advance_polyline`` history-transfer path used by the anisotropic
-multi-front solver.  v9.14 enables that path while constraining the admissible
-cleavage inventory to one exactly forward Mode-I plane.  Branching remains off.
+multi-front solver. v9.14 enables that path while constraining the admissible
+cleavage inventory to one exactly forward Mode-I plane. Branching remains off.
 
 Consequences for every accepted cleavage event:
 
@@ -52,7 +52,6 @@ def main(argv=None):
     _inject_once(user_args, "--no-crystal-branch")
     _inject_once(user_args, "--crack-backend", "adaptive_czm")
     _inject_once(user_args, "--adaptive-events")
-    _inject_once(user_args, "--crystal-compete", "0")
     _inject_once(user_args, "--min-global-forward", "0.999999")
 
     original = _crystal.bcc_cleavage_traces
