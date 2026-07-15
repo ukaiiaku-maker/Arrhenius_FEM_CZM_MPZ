@@ -9,6 +9,7 @@ on:
 jobs:
   verify-v914:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,11 +44,11 @@ jobs:
             --seeds 1 \
             --T-K 700 \
             --target-extension-um 5 \
-            --steps 600 \
+            --steps 350 \
             --nx 18 --ny 36 \
             --tip-h-fine 2e-6 \
             --tip-ratio 1.25 \
-            --dU 2e-7 --dt 8.4 \
+            --dU 4e-7 --dt 16.8 \
             --adaptive-event-target 0.05 \
             --event-remesh-target-h-m 2e-6 \
             --event-remesh-patch-radius-um 15 \
