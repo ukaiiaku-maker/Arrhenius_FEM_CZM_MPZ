@@ -15,6 +15,7 @@ from pathlib import Path
 import subprocess
 import sys
 
+import numpy as np
 import pandas as pd
 
 from arrhenius_fracture.bulk_state_v911 import VALID_BULK_MODES
@@ -22,6 +23,14 @@ from arrhenius_fracture.mpz_parameterization_v911 import normalize_class_name
 from arrhenius_fracture.rcurve_postprocess_v911 import write_cascade_aware_outputs
 
 CLASSES = ("ceramic", "weakT", "DBTT")
+_RAW_PROPAGATION_KEYS = (
+    "Kprop_200_500um_median",
+    "Kprop_200_500um_mean",
+    "Kprop_200_500um_p10",
+    "Kprop_200_500um_p90",
+    "delta_KR_median_minus_init",
+    "n_growth_events",
+)
 
 
 def values(text: str, cast=int):
@@ -35,6 +44,45 @@ def read_json(path: Path) -> dict:
         return json.loads(path.read_text())
     except Exception:
         return {}
+
+
+def continuation_metrics(case_dir: Path, K_init) -> dict:
+    path = case_dir / "R_curve_load_events_clustered.csv"
+    if not path.exists():
+        return {
+            "Kload_200_500um_median": np.nan,
+            "Kload_200_500um_mean": np.nan,
+            "Kload_200_500um_p10": np.nan,
+            "Kload_200_500um_p90": np.nan,
+            "delta_Kload_median_minus_init": np.nan,
+        }
+    frame = pd.read_csv(path)
+    if frame.empty:
+        vals = np.asarray([], dtype=float)
+    else:
+        x = pd.to_numeric(frame["crack_extension_um"], errors="coerce")
+        k = pd.to_numeric(frame["KJ_onset_MPa_sqrt_m"], errors="coerce")
+        vals = k[(x >= 200.0) & (x <= 500.5)].dropna().to_numpy(float)
+    if vals.size:
+        med = float(np.median(vals))
+        mean = float(np.mean(vals))
+        p10 = float(np.percentile(vals, 10))
+        p90 = float(np.percentile(vals, 90))
+    else:
+        med = mean = p10 = p90 = np.nan
+    try:
+        init = float(K_init)
+    except (TypeError, ValueError):
+        init = np.nan
+    return {
+        "Kload_200_500um_median": med,
+        "Kload_200_500um_mean": mean,
+        "Kload_200_500um_p10": p10,
+        "Kload_200_500um_p90": p90,
+        "delta_Kload_median_minus_init": (
+            med - init if np.isfinite(med) and np.isfinite(init) else np.nan
+        ),
+    }
 
 
 def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
@@ -119,6 +167,16 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
         run_summary = frame.iloc[0].to_dict() if not frame.empty else {}
     else:
         run_summary = {}
+
+    # Preserve legacy metrics explicitly as serialized-topology diagnostics. They
+    # are not interpreted as resistance after same-load cascades were discovered.
+    for key in _RAW_PROPAGATION_KEYS:
+        if key in run_summary:
+            run_summary[f"serialized_topology_{key}"] = run_summary.pop(key)
+    load_metrics = continuation_metrics(
+        case_dir, run_summary.get("K_init_MPa_sqrt_m")
+    )
+
     row = {
         **run_summary,
         "class": class_name,
@@ -131,10 +189,11 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
         "subprocess_returncode": int(cp.returncode),
         "case_dir": str(case_dir),
         "matrix_log": str(log),
-        "B_target_final": fp_summary.get("B_target"),
-        "stochastic_event_index_final": fp_summary.get("stochastic_event_index"),
+        "B_target_final": fp_summary.get("B_target_final", fp_summary.get("B_target")),
+        "stochastic_event_index_final": fp_summary.get("stochastic_event_index_final"),
         **bulk,
         **cascade,
+        **load_metrics,
     }
     print(
         f"DONE  {class_name:7s} {mode:18s} seed={seed} rc={cp.returncode} "
