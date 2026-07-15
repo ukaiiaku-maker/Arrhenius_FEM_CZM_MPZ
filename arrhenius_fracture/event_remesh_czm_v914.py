@@ -1,14 +1,14 @@
 """Event-centered conservative remeshing for the v9.14 FEM/CZM solver.
 
 The existing :class:`AdaptiveCZMBackend` realizes one Arrhenius renewal as one
-physical crack increment.  This backend retains that event law, refines a
-forward patch around the *new* crack tip, transfers every piecewise-constant
-Gauss-point field through an exact parent map, and immediately re-equilibrates
-the FEM at the unchanged event displacement and physical time.
+physical crack increment. This backend retains that event law, refines a forward
+patch around the *new* crack tip, transfers every piecewise-constant Gauss-point
+field through an exact parent map, and immediately re-equilibrates the FEM at the
+unchanged event displacement and physical time.
 
-The remesh is refinement-only.  Every new triangle has one old parent, every new
+The remesh is refinement-only. Every new triangle has one old parent, every new
 node is introduced at an existing non-cohesive edge midpoint, and pre-existing
-cohesive node numbers/history objects are untouched.  Children inherit their
+cohesive node numbers/history objects are untouched. Children inherit their
 parent state and their areas sum to the parent area, giving an exact conservative
 operator for the solver's element-centered state representation.
 """
@@ -42,6 +42,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         forward_back_margin_m: float = 0.0,
         min_remesh_triangle_quality: float = 0.02,
         require_post_event_equilibrium: bool = True,
+        fail_fast_on_event_error: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(geom=geom, **kwargs)
@@ -54,6 +55,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             float(min_remesh_triangle_quality), 1.0e-8
         )
         self.require_post_event_equilibrium = bool(require_post_event_equilibrium)
+        self.fail_fast_on_event_error = bool(fail_fast_on_event_error)
         self.remesh_audit: list[dict[str, Any]] = []
         self.failed_event_attempts: list[dict[str, Any]] = []
         self.physical_event_counter = 0
@@ -127,7 +129,6 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             return []
         cent = mesh.nodes[mesh.elems].mean(axis=1)
         distance = np.linalg.norm(cent[ids] - tip[None, :], axis=1)
-        # Largest then closest: deterministic and focused on the new J/MPZ domain.
         order = np.lexsort((distance, -lengths[ids]))
         return ids[order].astype(int).tolist()
 
@@ -142,8 +143,6 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         current_mesh = mesh
         current_u = np.asarray(displacement, float).copy()
         current_d = np.asarray(damage, float).copy()
-        # cumulative[e_current] = element on the mesh immediately after the
-        # physical cohesive event and before v9.14 patch refinement.
         cumulative = np.arange(mesh.ne, dtype=int)
         nsplit = 0
         rejected_quality = 0
@@ -181,9 +180,6 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
                 if trial_mesh.nn != current_mesh.nn + 1:
                     raise RuntimeError("event remesh expected one midpoint node per edge split")
 
-                # Linear displacement interpolation is already performed by
-                # _insert_point_on_edge.  Maximum endpoint damage prevents a
-                # remesh from healing an existing notch/crack-surface node.
                 dmid = max(float(current_d[i]), float(current_d[j]))
                 trial_d = np.concatenate([current_d, np.array([dmid], dtype=float)])
                 parent_map = np.asarray(parent_map, dtype=int)
@@ -262,9 +258,21 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         }
         return current_mesh, current_bnd, current_d, current_u, cumulative, audit
 
-    def _rollback_failed_event(self, transaction, kwargs, reason: str, details: dict[str, Any]):
+    def _rollback_failed_event(
+        self,
+        transaction,
+        kwargs,
+        reason: str,
+        details: dict[str, Any],
+    ) -> CrackAdvanceResult:
         self._transaction_rollback(transaction)
-        self.failed_event_attempts.append({"reason": str(reason), **details})
+        record = {"reason": str(reason), **details}
+        self.failed_event_attempts.append(record)
+        if self.fail_fast_on_event_error:
+            raise RuntimeError(
+                "v9.14 event remesh transaction rolled back and the case was "
+                f"aborted: {reason}"
+            )
         return CrackAdvanceResult(
             kwargs["mesh"], kwargs["boundary"], kwargs["damage"],
             kwargs["displacement"], 0.0, False,
@@ -416,6 +424,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             "patch_radius_m": self.patch_radius_m,
             "max_edge_splits_per_event": self.max_edge_splits_per_event,
             "require_post_event_equilibrium": self.require_post_event_equilibrium,
+            "fail_fast_on_event_error": self.fail_fast_on_event_error,
             "events": self.remesh_audit,
             "failed_event_attempts": self.failed_event_attempts,
             "n_events": len(self.remesh_audit),
@@ -505,6 +514,9 @@ def build_event_remesh_backend(args, geom) -> EventRemeshCZMBackend:
         ),
         require_post_event_equilibrium=bool(
             getattr(args, "event_remesh_require_equilibrium", True)
+        ),
+        fail_fast_on_event_error=bool(
+            getattr(args, "event_remesh_fail_fast", True)
         ),
     )
 
