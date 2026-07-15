@@ -28,9 +28,11 @@ jobs:
             arrhenius_fracture/mixed_mode_first_passage_v9_11.py \
             arrhenius_fracture/mode_i_first_passage_v9_11.py \
             run_mixed_mode_fem_czm_v9_11_campaign.py \
+            run_mpz_v9_11_mode_i_rcurve_3T.py \
             verify_mpz_v9_11_install.py \
             verify_mpz_v9_11_physics.py
           bash -n run_mpz_v9_11_full2d_smoke.sh
+          bash -n run_mpz_v9_11_mode_i_rcurve_3T.sh
       - name: Verify installed files and physics contract
         run: |
           python verify_mpz_v9_11_install.py .
@@ -39,6 +41,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_mode_i_first_passage_v9_11.py \
+            tests/test_mpz_v9_11_rcurve_driver.py \
             tests/test_mpz_v9_11_2d_coupling.py \
             tests/test_mpz_v9_10_2_independent_shapes.py \
             tests/test_bulk_pt_plasticity.py \
