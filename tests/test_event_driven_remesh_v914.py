@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import arrhenius_fracture.mode_i_first_passage_v9_14 as mode_i_v914
 from arrhenius_fracture.mode_i_first_passage_v9_14 import (
     _ControlledScalar,
     _PostEventEquilibriumController,
@@ -33,6 +34,24 @@ def test_post_event_controller_zeroes_one_dt_and_du_pair():
     assert ctl.events_scheduled == 1
     assert ctl.corrections_consumed == 1
     assert dt * 0.5 == 4.2
+
+
+def test_v914_entry_injects_only_supported_branch_controls(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_main(argv):
+        captured["argv"] = list(argv)
+        return []
+
+    monkeypatch.setattr(mode_i_v914._base, "main", fake_main)
+    mode_i_v914.main(["--out", str(tmp_path)])
+    argv = captured["argv"]
+    assert "--crystal-aniso" in argv
+    assert "--crack-backend" in argv
+    assert "adaptive_czm" in argv
+    assert "--adaptive-events" in argv
+    assert "--no-crystal-branch" not in argv
+    assert "--crystal-branch" not in argv
 
 
 def test_v914_command_selects_event_remesh_driver():
