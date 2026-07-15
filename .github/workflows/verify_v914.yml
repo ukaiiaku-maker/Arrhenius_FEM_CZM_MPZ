@@ -45,8 +45,8 @@ jobs:
             --classes ceramic \
             --seeds 1 \
             --T-K 700 \
-            --target-extension-um 5 \
-            --steps 350 \
+            --target-extension-um 4 \
+            --steps 400 \
             --nx 18 --ny 36 \
             --tip-h-fine 2e-6 \
             --tip-ratio 1.25 \
@@ -57,7 +57,7 @@ jobs:
             --event-remesh-max-edge-splits 64 \
             --save-snapshots 2 \
             --snapshot-cols 2 \
-            --snapshot-by-extension-um 5 \
+            --snapshot-by-extension-um 4 \
             --outroot runs/ci_v914_one_event \
             --no-skip-existing \
             > runs_v914_smoke.log 2>&1
