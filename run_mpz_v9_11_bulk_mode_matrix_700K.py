@@ -55,7 +55,7 @@ def run_one(args, cls: str, mode: str, root: Path) -> dict:
     with log.open("w") as fp:
         cp = subprocess.run(cmd, stdout=fp, stderr=subprocess.STDOUT, text=True)
 
-    summary_path = out / cls / "rcurve_temperature_summary.csv"
+    summary_path = out / "rcurve_temperature_summary.csv"
     if summary_path.exists():
         frame = pd.read_csv(summary_path)
         row = frame.iloc[0].to_dict() if not frame.empty else {}
