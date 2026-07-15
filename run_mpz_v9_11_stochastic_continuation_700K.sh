@@ -7,7 +7,11 @@ PARAMETER_ROOT=${PARAMETER_ROOT:-mpz_v9_11_parameters}
 OUTROOT=${OUTROOT:-runs/mpz_v9_11_stochastic_continuation_700K_v1}
 SEEDS=${SEEDS:-"1 2 3"}
 CLASSES=${CLASSES:-"ceramic weakT DBTT"}
-BULK_MODES=${BULK_MODES:-"tip_only bulk_same_pt_km"}
+# Production default: only the moving crack-tip MPZ supplies plasticity.
+# The distributed bulk PT+KM implementation remains available as an explicit
+# opt-in with BULK_MODES="bulk_same_pt_km" or for side-by-side diagnostics with
+# BULK_MODES="tip_only bulk_same_pt_km".
+BULK_MODES=${BULK_MODES:-"tip_only"}
 T_K=${T_K:-700}
 TARGET_EXT_UM=${TARGET_EXT_UM:-500}
 STEPS=${STEPS:-12000}
@@ -46,6 +50,11 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
   exit 2
 fi
 mkdir -p "$OUTROOT"
+
+echo "BULK_MODES=$BULK_MODES"
+if [[ " $BULK_MODES " == *" bulk_same_pt_km "* ]]; then
+  echo "NOTICE: bulk_same_pt_km is an explicit optional/diagnostic mode; tip_only is the production default." >&2
+fi
 
 "$PYTHON_BIN" verify_mpz_v9_11_install.py .
 "$PYTHON_BIN" -m pytest -q \
