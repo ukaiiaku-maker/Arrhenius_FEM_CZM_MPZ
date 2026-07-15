@@ -41,17 +41,19 @@ jobs:
         id: full_smoke
         run: |
           set +e
+          # Larger dU and dt preserve the same opening rate used by production,
+          # while the absolute-action controller still substeps near first passage.
           python run_mpz_v9_14_event_remesh_gate.py \
             --classes ceramic \
             --seeds 1 \
             --T-K 700 \
             --target-extension-um 4 \
-            --steps 400 \
+            --steps 220 \
             --nx 18 --ny 36 \
             --tip-h-fine 2e-6 \
             --tip-ratio 1.25 \
-            --dU 4e-7 --dt 16.8 \
-            --adaptive-event-target 0.01 \
+            --dU 2e-6 --dt 84 \
+            --adaptive-event-target 0.02 \
             --event-remesh-target-h-m 2e-6 \
             --event-remesh-patch-radius-um 15 \
             --event-remesh-max-edge-splits 64 \
