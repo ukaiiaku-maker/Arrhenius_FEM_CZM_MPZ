@@ -6,12 +6,16 @@ import os
 
 import numpy as np
 
+from .bulk_remesh_transfer_v911 import install_bulk_remesh_transfer_patch
 from .mpz_front_engine import MovingProcessZoneFrontEngine as _BaseEngine
 from .moving_process_zone_v911 import MovingProcessZoneState
 from .stochastic_kinetics_v911 import (
     HazardThresholdStream,
     normalize_event_statistics,
 )
+
+
+install_bulk_remesh_transfer_patch()
 
 
 class MovingProcessZone2DFrontEngine(_BaseEngine):
