@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import os
 
 import numpy as np
 
@@ -33,9 +34,19 @@ class MovingProcessZone2DFrontEngine(_BaseEngine):
         self._last_pre_renewal_event_snapshot = None
 
         mode = normalize_event_statistics(
-            getattr(self.mpz_config, "event_statistics", "deterministic")
+            getattr(
+                self.mpz_config,
+                "event_statistics",
+                os.environ.get("ARRHENIUS_EVENT_STATISTICS", "deterministic"),
+            )
         )
-        seed = int(getattr(self.mpz_config, "stochastic_seed", 1))
+        seed = int(
+            getattr(
+                self.mpz_config,
+                "stochastic_seed",
+                os.environ.get("ARRHENIUS_STOCHASTIC_SEED", "1"),
+            )
+        )
         stream = int(getattr(self.mpz_config, "stochastic_cleavage_stream", 91101))
         self.event_statistics = mode
         self.stochastic_seed = seed
@@ -53,9 +64,9 @@ class MovingProcessZone2DFrontEngine(_BaseEngine):
 
         ``B`` remains accumulated integrated hazard. In stochastic mode the event
         surface is ``B_target ~ Exp(1)``; after a firing the used threshold is
-        subtracted and a fresh threshold is drawn. Residual action is retained,
-        which is required when adaptive topology permits only one edge insertion
-        per equilibrium solve.
+        subtracted and a fresh threshold is drawn. The residual action is
+        retained, which is required when adaptive topology permits only one edge
+        insertion per equilibrium solve.
         """
         self._sync_compat()
         Npre = float(self.N_em)
