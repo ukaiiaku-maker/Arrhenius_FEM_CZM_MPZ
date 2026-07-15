@@ -20,7 +20,9 @@ jobs:
       - name: Verify and test v9.14
         run: |
           python verify_mpz_v9_14_install.py .
-          python -m pytest -q tests/test_event_driven_remesh_v914.py
+          python -m pytest -q \
+            tests/test_event_driven_remesh_v914.py \
+            tests/test_event_hook_v914.py
           bash -n run_mpz_v9_14_event_driven_remesh_700K.sh
       - name: Inherited integration tests
         run: |
