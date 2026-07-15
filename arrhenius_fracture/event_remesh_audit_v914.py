@@ -78,11 +78,15 @@ def audit_case_v914(case_dir: str | Path, material_class: str, T_K: float) -> di
         remesh.get("all_events_one_physical_cohesive_event", False)
     )
     patch_resolution = bool(remesh.get("all_patch_targets_satisfied", False))
+    mpz_profiles_recomputed = bool(
+        equilibrium.get("all_MPZ_profiles_recomputed", False)
+    )
     equilibrium_complete = bool(
         remesh.get("all_post_event_equilibria_completed", False)
         and equilibrium.get("all_same_time", False)
         and equilibrium.get("all_zero_hazard_increment", False)
         and equilibrium.get("all_J_recomputed", False)
+        and mpz_profiles_recomputed
     )
     no_failed_attempts = int(remesh.get("n_failed_event_attempts", 0) or 0) == 0
     conservation = bool(
@@ -121,6 +125,7 @@ def audit_case_v914(case_dir: str | Path, material_class: str, T_K: float) -> di
         "all_preexisting_cohesive_states_unchanged": cohesive_state,
         "all_events_one_physical_cohesive_event": one_physical_event,
         "all_patch_targets_satisfied": patch_resolution,
+        "all_MPZ_profiles_recomputed": mpz_profiles_recomputed,
         "same_time_same_load_equilibrium_complete": equilibrium_complete,
         "no_failed_event_attempts": no_failed_attempts,
         "max_parent_relative_area_error": area_err,
