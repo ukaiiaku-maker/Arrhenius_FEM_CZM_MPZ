@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import math
+import os
 
 import numpy as np
 
@@ -33,12 +34,27 @@ class MovingProcessZoneState(_V9102State):
         super().__init__(cfg)
         self._profile_2d: ProcessZone2DProfile | None = None
         self.event_statistics = normalize_event_statistics(
-            getattr(cfg, "event_statistics", "deterministic")
+            getattr(
+                cfg,
+                "event_statistics",
+                os.environ.get("ARRHENIUS_EVENT_STATISTICS", "deterministic"),
+            )
         )
         self.stochastic_emission = bool(
-            getattr(cfg, "stochastic_emission", self.event_statistics == "stochastic")
+            getattr(
+                cfg,
+                "stochastic_emission",
+                os.environ.get("ARRHENIUS_STOCHASTIC_EMISSION", "1") != "0"
+                and self.event_statistics == "stochastic",
+            )
         )
-        self.stochastic_seed = int(getattr(cfg, "stochastic_seed", 1))
+        self.stochastic_seed = int(
+            getattr(
+                cfg,
+                "stochastic_seed",
+                os.environ.get("ARRHENIUS_STOCHASTIC_SEED", "1"),
+            )
+        )
         self.stochastic_stream = int(getattr(cfg, "stochastic_emission_stream", 17011))
         self._emission_rng = make_rng(self.stochastic_seed, self.stochastic_stream)
         self.stochastic_emission_events = 0
