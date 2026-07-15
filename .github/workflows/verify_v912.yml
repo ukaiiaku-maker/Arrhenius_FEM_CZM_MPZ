@@ -1,0 +1,41 @@
+name: Verify full 2-D MPZ v9.12
+
+on:
+  push:
+    branches: [v9.12-full-field-material-rcurve]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-v912:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile v9.12
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/material_rcurve_audit_v912.py \
+            run_mpz_v9_12_tip_only_material_rcurve.py \
+            verify_mpz_v9_12_install.py
+          bash -n run_mpz_v9_12_tip_only_material_rcurve_700K.sh
+      - name: Verify full FEM and field-output contract
+        run: python verify_mpz_v9_12_install.py .
+      - name: Test v9.12 audit and runner
+        run: |
+          python -m pytest -q \
+            tests/test_material_rcurve_audit_v912.py \
+            tests/test_mpz_v9_12_runner.py
+      - name: Run inherited v9.11 integration tests
+        run: |
+          python -m pytest -q \
+            tests/test_stochastic_kinetics_v911.py \
+            tests/test_rcurve_postprocess_v911.py \
+            tests/test_mode_i_first_passage_v9_11.py \
+            tests/test_mpz_v9_11_2d_coupling.py \
+            tests/test_mpz_v9_10_2_independent_shapes.py
