@@ -3,8 +3,9 @@
 Version 9.11 is an integration branch, not a re-fit. It preserves the v8
 interaction between domain-integral K and dimensionless anisotropic direction
 factors, replaces the front-local scalar closure with the independently shaped
-MPZ state, and makes the 2-D bulk plasticity use the same independent Peierls and
-Taylor barriers.
+MPZ state, and offers two explicit bulk choices without changing the calibrated
+Peierls/Taylor parameters: elastic bulk with tip sources only, or an explicit
+mobile/retained bulk state with the existing Kocks--Mecking hardening law.
 """
 from __future__ import annotations
 
@@ -18,10 +19,14 @@ import numpy as np
 
 from . import mixed_mode_first_passage_v8 as v8
 from .bulk_plasticity_v9102 import independent_bulk_pt_active
+from .bulk_state_v911 import (
+    BulkPlasticityControllerV911,
+    normalize_bulk_mode,
+    plasticity_wrapper_factory,
+)
 from .mpz_front_engine_v911 import MovingProcessZone2DFrontEngine
 from .mpz_parameterization_v911 import (
     apply_exact_barrier_args,
-    apply_pt_dislocation_config,
     build_mpz_config,
     compact_audit,
     load_selected_row,
@@ -50,6 +55,16 @@ def parser():
     p.add_argument("--mpz-profile-sector-half-angle-deg", type=float, default=45.0)
     p.add_argument("--mpz-profile-damage-cutoff", type=float, default=0.85)
     p.add_argument("--mpz-profile-min-elements", type=int, default=8)
+    p.add_argument(
+        "--bulk-plasticity-mode",
+        default="tip_only",
+        choices=("tip_only", "bulk_same_pt_km"),
+        help=(
+            "tip_only keeps the continuum bulk elastic; bulk_same_pt_km uses "
+            "explicit mobile/retained bulk density with the same class PT "
+            "surfaces and existing Kocks--Mecking coefficients"
+        ),
+    )
     p.add_argument("--mixity-loading-angle-deg", type=float, default=None)
     p.add_argument("--mixity-open-coeff", type=float, default=None)
     p.add_argument("--mixity-shear-coeff", type=float, default=None)
@@ -67,9 +82,14 @@ def parser():
     return p
 
 
-def _set_bulk_pt_namespace_defaults(args: Any, row: dict[str, Any]) -> None:
+def _set_bulk_pt_namespace_defaults(
+    args: Any,
+    row: dict[str, Any],
+    bulk_mode: str,
+) -> None:
     """Set fields consumed while ``sharp_front.run_2d`` builds its bulk config."""
     emit0 = max(float(row["emit_G00_eV"]), 1.0e-30)
+    mode = normalize_bulk_mode(bulk_mode)
     values = {
         "bulk_kinetics_model": "emission_derived_peierls_taylor_multihit",
         "peierls_energy_scale": float(row["peierls_H0_eV"]) / emit0,
@@ -85,7 +105,7 @@ def _set_bulk_pt_namespace_defaults(args: Any, row: dict[str, Any]) -> None:
         "pt_taylor_m_exponent": 1.0,
         "pt_taylor_m_scale": float(row["taylor_corr_scale"]),
         "pt_taylor_m_cap": math.inf,
-        "pt_mobile_fraction": 0.01,
+        "pt_mobile_fraction": 0.0,
         "pt_mobile_saturation_density_m2": math.inf,
         "pt_mobile_density_floor_m2": 0.0,
         "pt_jump_fraction": 1.0,
@@ -94,24 +114,12 @@ def _set_bulk_pt_namespace_defaults(args: Any, row: dict[str, Any]) -> None:
         "front_state_model": "moving_pz",
         "pz_store_to_rho_scale": 0.0,
         "tip_source_rho_per_emit": 0.0,
+        "bulk_mult_frac": 0.0,
         "exhaustion": False,
+        "bulk_plasticity_mode_v911": mode,
     }
     for name, value in values.items():
         setattr(args, name, value)
-
-
-def _plasticity_capture_factory(original, context, row):
-    def wrapped(ep_gp, rho_gp, sigma_gp, mat, T, dt, plast_model, disl_cfg, *a, **kw):
-        apply_pt_dislocation_config(disl_cfg, row)
-        result = original(
-            ep_gp, rho_gp, sigma_gp, mat, T, dt, plast_model, disl_cfg, *a, **kw
-        )
-        try:
-            context.bulk_rho_gp = np.asarray(result[1], float).copy()
-        except Exception:
-            context.bulk_rho_gp = None
-        return result
-    return wrapped
 
 
 def _j_profile_wrapper_factory(original_compute, context, mpz_args):
@@ -186,25 +194,43 @@ def _engine_factory(original_build, context, args, row):
     return build
 
 
-def _write_integration_audit(out: Path, row: dict[str, Any]) -> None:
+def _write_integration_audit(
+    out: Path,
+    row: dict[str, Any],
+    bulk_mode: str,
+) -> None:
+    mode = normalize_bulk_mode(bulk_mode)
     payload = {
         "model": MODEL_ID,
         **compact_audit(row),
         "bulk_PT": {
-            "form": "independent_v9.10.2_EXP_floor_Peierls_then_Taylor",
+            "mode": mode,
+            "form": "same_manifest_independent_v9.10.2_EXP_floor_Peierls_and_Taylor",
             "Peierls_attempt_frequency_s-1": 1.0e12,
             "Taylor_attempt_frequency_s-1": 1.0e11,
             "Taylor_order_cap_active": False,
+            "fixed_mobile_fraction_active": False,
+            "explicit_mobile_retained_state": mode == "bulk_same_pt_km",
             "mobile_density_saturation_active": False,
             "minimum_jump_length_active": False,
             "plastic_rate_cap_active": False,
-            "scalar_density_evolution": "existing_2D_storage_recovery_law_not_part_of_v9.10.2_fit",
-            "scalar_density_role": "forest_density_for_Taylor_and_bulk_carrier_fallback",
+            "hardening_law": (
+                "none_bulk_elastic" if mode == "tip_only" else
+                "existing_Kocks_Mecking_k_store_k_dyn_plus_existing_static_recovery"
+            ),
+            "source_interpretation": (
+                "moving_crack_tip_MPZ_only" if mode == "tip_only" else
+                "uniform_bulk_state_with_Taylor_release_Peierls_glide_and_KM_multiplication"
+            ),
+            "remesh_transfer_gate": (
+                "not_applicable" if mode == "tip_only" else
+                "static_mesh_adaptive_czm_validation_only"
+            ),
         },
         "process_zone_coupling": {
             "absolute_tip_stress": "calibrated_K_drive/sqrt(2*pi*r_eff)",
             "FEM_finite_radius_stress_role": "dimensionless_spatial_and_directional_shape_only",
-            "bulk_scalar_rho_role": "Taylor_forest_density_baseline_only",
+            "bulk_scalar_rho_role": "retained_forest_density_baseline_only",
             "bulk_scalar_rho_signed_shielding": False,
             "bulk_plastic_shielding": "already_in_domain_integral_J_via_FEM_redistribution",
             "unresolved_MPZ_shielding": "retained_line_K_integral_subtracted_once",
@@ -217,6 +243,15 @@ def _write_integration_audit(out: Path, row: dict[str, Any]) -> None:
     )
 
 
+def _append_bulk_audit(out: Path, bulk_summary: dict[str, Any]) -> None:
+    path = out / "mpz_v9_11_integration_audit.json"
+    if not path.exists():
+        return
+    payload = json.loads(path.read_text())
+    payload["bulk_PT_final_state"] = bulk_summary
+    path.write_text(json.dumps(payload, indent=2, default=str))
+
+
 def main(argv=None):
     from . import fem as femmod
     from . import j_integral as jimod
@@ -224,10 +259,11 @@ def main(argv=None):
     from . import sharp_front as sf
 
     mm, remaining = parser().parse_known_args(argv)
+    mm.bulk_plasticity_mode = normalize_bulk_mode(mm.bulk_plasticity_mode)
     row = load_selected_row(mm.mpz_material_manifest, mm.mpz_material_class)
     args = sf._build_parser().parse_args(remaining)
     apply_exact_barrier_args(args, row)
-    _set_bulk_pt_namespace_defaults(args, row)
+    _set_bulk_pt_namespace_defaults(args, row, mm.bulk_plasticity_mode)
 
     if args.mode != "2d":
         raise SystemExit("v9.11 MPZ validation requires --mode 2d")
@@ -237,6 +273,14 @@ def main(argv=None):
         raise SystemExit("v9.11 requires --crystal-compete")
     if bool(getattr(args, "crystal_branch", False)) or int(getattr(args, "max_fronts", 1)) != 1:
         raise SystemExit("v9.11 first validation requires branching off and --max-fronts 1")
+    if mm.bulk_plasticity_mode == "bulk_same_pt_km" and str(
+        getattr(args, "crack_backend", "adaptive_czm")
+    ) == "sharp_wake" and not bool(getattr(args, "no_tip_remesh", False)):
+        raise SystemExit(
+            "bulk_same_pt_km currently requires a static integration-point set; "
+            "use adaptive_czm/edge_split_czm or disable tip remeshing until "
+            "conservative mobile/retained remesh transfer is validated"
+        )
 
     if mm.mixity_open_coeff is not None or mm.mixity_shear_coeff is not None:
         if mm.mixity_open_coeff is None or mm.mixity_shear_coeff is None:
@@ -257,8 +301,15 @@ def main(argv=None):
         mm.directional_factor_max, mm.solver_seed,
     )
     context.bulk_rho_gp = None
+    context.bulk_retained_rho_gp = None
+    context.bulk_mobile_rho_gp = None
     context.mpz_profile_2d = None
     context.material_row = row
+    context.bulk_plasticity_mode = mm.bulk_plasticity_mode
+    bulk_controller = BulkPlasticityControllerV911(
+        mm.bulk_plasticity_mode, row, context=context
+    )
+    context.bulk_state_controller = bulk_controller
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -268,9 +319,12 @@ def main(argv=None):
         **compact_audit(row),
         "crystal_theta_deg": context.crystal_theta_deg,
         "cleavage_gamma_aniso": context.cleavage_gamma_aniso,
-        "note": "v8 exact mixed-mode control + v9.10.2 independent PT + non-double-counted 2-D MPZ coupling",
+        "note": (
+            "v8 exact mixed-mode control + v9.10.2 independent PT + "
+            "mode-explicit bulk state + non-double-counted 2-D MPZ coupling"
+        ),
     }, indent=2, default=str))
-    _write_integration_audit(out, row)
+    _write_integration_audit(out, row, mm.bulk_plasticity_mode)
 
     osolve = femmod.solve_dirichlet
     oJ = jimod.compute_J_integral
@@ -279,7 +333,7 @@ def main(argv=None):
     try:
         femmod.solve_dirichlet = v8._mixed_solve_factory(osolve, context)
         jimod.compute_J_integral = _j_profile_wrapper_factory(oJ, context, mm)
-        plastmod.update_plasticity = _plasticity_capture_factory(oplast, context, row)
+        plastmod.update_plasticity = plasticity_wrapper_factory(oplast, bulk_controller)
         sf.build_engine = _engine_factory(obuild, context, mm, row)
         with independent_bulk_pt_active():
             base = sf.run_2d(args)
@@ -289,14 +343,18 @@ def main(argv=None):
         plastmod.update_plasticity = oplast
         sf.build_engine = obuild
 
+    bulk_summary = bulk_controller.write_outputs(out)
+    _append_bulk_audit(out, bulk_summary)
     v8._write_records(out, context)
     vals = [v8._summary(out, T, context, base) for T in args.temperatures]
     for payload in vals:
         payload.update({
             "model": MODEL_ID,
             **compact_audit(row),
+            **bulk_summary,
             "front_state_model_detail": "moving_pz_v911_independent_shapes_2d_profile",
-            "bulk_pt_model_v9102_active": True,
+            "tip_mpz_pt_model_v9102_active": True,
+            "bulk_pt_model_v9102_active": mm.bulk_plasticity_mode == "bulk_same_pt_km",
             "bulk_scalar_rho_used_for_signed_shielding": False,
             "explicit_GND_backstress_active": False,
         })
