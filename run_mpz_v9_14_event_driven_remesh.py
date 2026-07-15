@@ -120,7 +120,7 @@ def _trim_guard_rcurve_outputs(case_dir: Path, target_um: float) -> dict:
             )
             ax.set_xlabel(r"Projected crack extension $\Delta a_x$ ($\mu$m)")
             ax.set_ylabel(r"$K_J$ at load-event onset (MPa$\sqrt{m}$)")
-            ax.set_title(f"Event-driven R-curve through {target_um:g} $\mu$m")
+            ax.set_title(fr"Event-driven R-curve through {target_um:g} $\mu$m")
             ax.grid(alpha=0.25)
             fig.tight_layout()
             fig.savefig(plot_path, dpi=220)
