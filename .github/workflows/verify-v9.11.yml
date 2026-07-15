@@ -1,0 +1,43 @@
+name: Verify full 2-D MPZ v9.11
+
+on:
+  push:
+    branches: [v9.11-full-2d-three-class-integration]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-v911:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile v9.11 integration
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/mpz_parameterization_v911.py \
+            arrhenius_fracture/bulk_plasticity_v9102.py \
+            arrhenius_fracture/process_zone_2d_v911.py \
+            arrhenius_fracture/moving_process_zone_v911.py \
+            arrhenius_fracture/mpz_front_engine_v911.py \
+            arrhenius_fracture/mixed_mode_first_passage_v9_11.py \
+            run_mixed_mode_fem_czm_v9_11_campaign.py \
+            verify_mpz_v9_11_install.py \
+            verify_mpz_v9_11_physics.py
+      - name: Verify installed files and physics contract
+        run: |
+          python verify_mpz_v9_11_install.py .
+          python verify_mpz_v9_11_physics.py --parameter-root mpz_v9_11_parameters
+      - name: Run v9.11 and inherited parity tests
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_11_2d_coupling.py \
+            tests/test_mpz_v9_10_2_independent_shapes.py \
+            tests/test_bulk_pt_plasticity.py \
+            tests/test_moving_process_zone.py \
+            tests/test_moving_process_zone_v95.py
