@@ -14,6 +14,7 @@ def _case(root: Path, cls: str, curve, yoffset: float = 0.0, complete: bool = Tr
     pd.DataFrame({
         "crack_extension_m": [0.0, 50e-6, 100e-6 if complete else 5e-6],
         "n_fire": [0.0, 1.0, 1.0],
+        "B": [0.4, 0.004, 0.008],
         "mpz_K_shield_Pa_sqrt_m": [0.0, 1e5, 2e5],
         "mpz_retained_count": [0.0, 1.0, 2.0],
         "mpz_mobile_count": [0.0, 2.0, 1.0],
@@ -29,6 +30,7 @@ def _case(root: Path, cls: str, curve, yoffset: float = 0.0, complete: bool = Tr
         "event_statistics": "deterministic",
         "stochastic_emission": False,
         "adaptive_event_coordinate": "absolute_integrated_hazard_action",
+        "adaptive_event_action_tolerance": 0.01,
     }))
     (case / "v9_14_case_summary.json").write_text(json.dumps({
         "schema": "v9.14_case_summary",
@@ -102,6 +104,7 @@ def test_complete_conservative_campaign_passes_numerical_gate(tmp_path):
     assert not out["failed_numerical_remesh_cases"]
     assert out["material_transfer_gate_passed_v914"]
     assert out["material_audit_v913"]["deterministic_mean_protocol_gate_passed"]
+    assert all(case["event_action_localization_gate_passed"] for case in out["cases"])
     assert all(case["all_MPZ_profiles_recomputed"] for case in out["cases"])
 
 
@@ -127,3 +130,18 @@ def test_missing_post_event_mpz_profile_fails_numerical_gate(tmp_path):
     out = audit_campaign(tmp_path, 1, 700.0)
     assert not out["numerical_event_remesh_gate_passed"]
     assert "weakT" in out["failed_numerical_remesh_cases"]
+
+
+def test_post_fire_action_residual_above_tolerance_fails_gate(tmp_path):
+    _case(tmp_path, "ceramic", (1.0, 1.01, 0.99), 0.0)
+    weak = _case(tmp_path, "weakT", (1.0, 1.25, 0.90), 1e-6)
+    _case(tmp_path, "DBTT", (1.0, 0.90, 1.35), 2e-6)
+    path = weak / "steps_0700K.csv"
+    frame = pd.read_csv(path)
+    frame.loc[frame["n_fire"] > 0.0, "B"] = 0.02
+    frame.to_csv(path, index=False)
+    out = audit_campaign(tmp_path, 1, 700.0)
+    assert not out["numerical_event_remesh_gate_passed"]
+    assert "weakT" in out["failed_numerical_remesh_cases"]
+    weak_audit = next(x for x in out["cases"] if x["material_class"] == "weakT")
+    assert not weak_audit["event_action_localization_gate_passed"]
