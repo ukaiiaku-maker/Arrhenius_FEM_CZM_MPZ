@@ -56,7 +56,7 @@ jobs:
             --adaptive-event-target 0.02 \
             --event-remesh-target-h-m 2e-6 \
             --event-remesh-patch-radius-um 15 \
-            --event-remesh-max-edge-splits 64 \
+            --event-remesh-max-edge-splits 256 \
             --save-snapshots 2 \
             --snapshot-cols 2 \
             --snapshot-by-extension-um 4 \
