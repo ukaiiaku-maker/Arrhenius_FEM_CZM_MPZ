@@ -18,6 +18,7 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   optimize_mpz_v9_10_unified_global.py \
   optimize_mpz_v9_10_1_shared_shape_global.py \
   optimize_mpz_v9_10_2_independent_shape_global.py \
+  optimize_mpz_v9_10_3_dbtt_targeted_global.py \
   promote_mpz_v9_10_spatial.py \
   promote_mpz_v9_10_2_spatial.py \
   search_mpz_v9_4_developed_state.py \
@@ -39,7 +40,8 @@ PYTHONPATH=. "$PYTHON_BIN" -m pytest -q \
   tests/test_mpz_v9_9_1_metadata_wrapper.py \
   tests/test_mpz_v9_10_unified_transport.py \
   tests/test_mpz_v9_10_1_shared_shape.py \
-  tests/test_mpz_v9_10_2_independent_shapes.py
+  tests/test_mpz_v9_10_2_independent_shapes.py \
+  tests/test_mpz_v9_10_3_dbtt_targeted.py
 
 "$PYTHON_BIN" - <<'PY'
 import numpy as np
@@ -77,6 +79,10 @@ from optimize_mpz_v9_10_2_independent_shape_global import (
     PARAMETER_NAMES as INDEPENDENT_NAMES,
     BOUNDS as INDEPENDENT_BOUNDS,
     decode as decode_independent,
+)
+from optimize_mpz_v9_10_3_dbtt_targeted_global import (
+    LOW_SHELF_MIN,
+    HIGH_RCURVE_MIN,
 )
 
 assert af.__version__ == "0.9.6"
@@ -135,6 +141,8 @@ assert len(LOCAL_NAMES) == len(LOCAL_BOUNDS) == 11
 assert len(UNIFIED_NAMES) == len(UNIFIED_BOUNDS) == 25
 assert len(SHARED_NAMES) == len(SHARED_BOUNDS) == 23
 assert len(INDEPENDENT_NAMES) == len(INDEPENDENT_BOUNDS) == 29
+assert LOW_SHELF_MIN > 0.0
+assert HIGH_RCURVE_MIN > 0.0
 mid = np.asarray([
     0.5 * (SHARED_BOUNDS[name][0] + SHARED_BOUNDS[name][1])
     for name in SHARED_NAMES
@@ -165,8 +173,10 @@ print("v9.9 continuation local parameters:", len(LOCAL_NAMES))
 print("v9.10 full-search parameters:", len(UNIFIED_NAMES))
 print("v9.10.1 shared-shape parameters:", len(SHARED_NAMES))
 print("v9.10.2 independent-shape parameters:", len(INDEPENDENT_NAMES))
+print("v9.10.3 DBTT low-shelf minimum:", LOW_SHELF_MIN)
+print("v9.10.3 DBTT high-R-curve minimum:", HIGH_RCURVE_MIN)
 print("zero-stress maximum rate:", float(np.max(zero["equivalent_plastic_rate_s"])))
 print("constitutive caps active:", bool(np.asarray(driven["constitutive_caps_active"])))
 PY
 
-echo "MPZ v9.6 production through v9.10.2 independent-shape broad-search verification passed."
+echo "MPZ v9.6 production through v9.10.3 target-aware DBTT verification passed."
