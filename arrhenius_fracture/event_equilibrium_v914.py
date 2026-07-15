@@ -4,8 +4,9 @@ The sharp-front loop commits an Arrhenius renewal after an equilibrium/J solve.
 The v9.14 crack backend changes the mesh for that one event and then calls this
 context before returning.  The context transfers the piecewise-constant bulk
 state through the exact parent map, solves the remeshed FEM at the *existing*
-Dirichlet displacement, recomputes stress/energy and evaluates J at the new tip.
-No physical time, remote displacement or hazard action is advanced here.
+Dirichlet displacement, recomputes stress/energy, refreshes the 2-D MPZ sampling
+profile and evaluates J at the new tip.  No physical time, remote displacement
+or hazard action is advanced here.
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ class JCallSnapshot:
     exclude_radius: float
     J_before: float
     K_before: float
+    coupling_context: Any = None
 
 
 @dataclass
@@ -92,6 +94,7 @@ class EventEquilibriumContext:
         exclude_radius: float,
         J: float,
         K: float,
+        coupling_context=None,
     ) -> None:
         self.latest_j = JCallSnapshot(
             callable=callback,
@@ -101,6 +104,7 @@ class EventEquilibriumContext:
             exclude_radius=float(exclude_radius),
             J_before=float(J),
             K_before=float(K),
+            coupling_context=coupling_context,
         )
 
     @staticmethod
@@ -124,6 +128,27 @@ class EventEquilibriumContext:
             float(np.mean(u[2 * top + 1])),
             float(np.mean(u[2 * bot + 1])),
         )
+
+    @staticmethod
+    def _refresh_coupling_context(js: JCallSnapshot, rho_new: np.ndarray) -> None:
+        """Expose transferred density to the v9.11 J/profile wrapper.
+
+        The J wrapper also samples the finite-radius FEM stress/density profile
+        used by the front MPZ.  Without this update it would see the old mesh-sized
+        rho array during the same-load post-event J evaluation.
+        """
+        context = js.coupling_context
+        if context is None:
+            return
+        context.bulk_rho_gp = np.asarray(rho_new, float).copy()
+        if hasattr(context, "bulk_retained_rho_gp"):
+            previous = getattr(context, "bulk_retained_rho_gp", None)
+            if previous is not None:
+                context.bulk_retained_rho_gp = np.asarray(rho_new, float).copy()
+        if hasattr(context, "bulk_mobile_rho_gp"):
+            previous = getattr(context, "bulk_mobile_rho_gp", None)
+            if previous is not None:
+                context.bulk_mobile_rho_gp = np.zeros_like(rho_new, dtype=float)
 
     def equilibrate(
         self,
@@ -201,8 +226,11 @@ class EventEquilibriumContext:
         K_after = float("nan")
         j_active_elements = 0
         j_reason = "no_recorded_pre_event_J_call"
+        mpz_profile_recomputed = False
+        mpz_profile_reliable = False
         if self.latest_j is not None:
             js = self.latest_j
+            self._refresh_coupling_context(js, rho_new)
             try:
                 J_after, K_after, jinfo = js.callable(
                     new_mesh,
@@ -222,7 +250,14 @@ class EventEquilibriumContext:
                 K_after = float(K_after)
                 j_active_elements = int(jinfo.get("n_active_elements", 0))
                 j_reason = "ok"
-            except Exception as exc:  # audit and fail below through finite gate
+                if js.coupling_context is not None:
+                    mpz_profile_recomputed = getattr(
+                        js.coupling_context, "mpz_profile_2d", None
+                    ) is not None
+                    mpz_profile_reliable = bool(
+                        jinfo.get("mpz_2d_profile_reliable", False)
+                    )
+            except Exception as exc:
                 j_reason = f"{type(exc).__name__}:{exc}"
 
         total_area_old = float(np.sum(pre_mesh.area_e))
@@ -264,6 +299,8 @@ class EventEquilibriumContext:
             "KJ_after_event_equilibrium_Pa_sqrt_m": K_after,
             "J_after_event_active_elements": int(j_active_elements),
             "J_after_event_status": j_reason,
+            "mpz_profile_recomputed_after_event": bool(mpz_profile_recomputed),
+            "mpz_profile_reliable_after_event": bool(mpz_profile_reliable),
             "elastic_energy_before_equilibrium_J_per_m": elastic_energy_before_solve,
             "elastic_energy_after_equilibrium_J_per_m": elastic_energy_after_solve,
             "total_mesh_area_before_m2": total_area_old,
