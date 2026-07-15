@@ -1,15 +1,16 @@
-"""Event-centered local remeshing for the v9.14 FEM/CZM solver.
+"""Event-centered conservative remeshing for the v9.14 FEM/CZM solver.
 
 The existing :class:`AdaptiveCZMBackend` realizes one Arrhenius renewal as one
-physical cohesive increment.  This backend keeps that event law, then refines a
-forward patch around the *new* crack tip before returning control to the FEM.
+physical crack increment.  This backend retains that event law, refines a
+forward patch around the *new* crack tip, transfers every piecewise-constant
+Gauss-point field through an exact parent map, and immediately re-equilibrates
+the FEM at the unchanged event displacement and physical time.
 
-The remesh is deliberately refinement-only.  Every new triangle has one old
-parent, every new node is introduced at an existing edge midpoint, and cohesive
-edges are never bisected.  Therefore the parent map is an exact conservative
-transfer operator for the solver's piecewise-constant Gauss-point fields:
-children inherit the parent value and their areas sum to the parent area.
-Existing cohesive node numbers and cohesive history objects remain unchanged.
+The remesh is refinement-only.  Every new triangle has one old parent, every new
+node is introduced at an existing non-cohesive edge midpoint, and pre-existing
+cohesive node numbers/history objects are untouched.  Children inherit their
+parent state and their areas sum to the parent area, giving an exact conservative
+operator for the solver's element-centered state representation.
 """
 from __future__ import annotations
 
@@ -21,11 +22,12 @@ from typing import Any
 import numpy as np
 
 from .crack_backend import AdaptiveCZMBackend, CrackAdvanceResult
+from .event_equilibrium_v914 import ACTIVE_CONTEXT
 from .mesh import make_boundary_data, rebuild_tri_mesh
 
 
 class EventRemeshCZMBackend(AdaptiveCZMBackend):
-    """One-event CZM advance followed by conservative tip-patch refinement."""
+    """One physical CZM event, conservative tip remesh, same-load equilibrium."""
 
     name = "event_remesh_czm"
 
@@ -39,6 +41,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         target_edge_factor: float = 1.25,
         forward_back_margin_m: float = 0.0,
         min_remesh_triangle_quality: float = 0.02,
+        require_post_event_equilibrium: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(geom=geom, **kwargs)
@@ -50,7 +53,10 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         self.min_remesh_triangle_quality = max(
             float(min_remesh_triangle_quality), 1.0e-8
         )
+        self.require_post_event_equilibrium = bool(require_post_event_equilibrium)
         self.remesh_audit: list[dict[str, Any]] = []
+        self.failed_event_attempts: list[dict[str, Any]] = []
+        self.physical_event_counter = 0
 
     @staticmethod
     def _max_edge_lengths(mesh) -> np.ndarray:
@@ -98,7 +104,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             ))
         return out
 
-    def _candidate_elements(self, mesh, tip: np.ndarray, direction: np.ndarray) -> list[int]:
+    def _patch_mask(self, mesh, tip: np.ndarray, direction: np.ndarray) -> np.ndarray:
         cent = mesh.nodes[mesh.elems].mean(axis=1)
         rel = cent - tip[None, :]
         tangent = direction / max(float(np.linalg.norm(direction)), 1.0e-300)
@@ -106,21 +112,24 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         xi = rel @ tangent
         eta = rel @ normal
         radius = self.patch_radius_m
-        lengths = self._max_edge_lengths(mesh)
-        need = lengths > self.target_edge_factor * self.target_h_m
-        patch = (
+        return (
             (xi >= -self.forward_back_margin_m)
             & (xi <= radius)
             & (np.abs(eta) <= radius)
             & (xi * xi + eta * eta <= radius * radius)
         )
-        ids = np.where(need & patch)[0]
+
+    def _candidate_elements(self, mesh, tip: np.ndarray, direction: np.ndarray) -> list[int]:
+        mask = self._patch_mask(mesh, tip, direction)
+        lengths = self._max_edge_lengths(mesh)
+        ids = np.where(mask & (lengths > self.target_edge_factor * self.target_h_m))[0]
         if ids.size == 0:
             return []
-        # Refine the largest and closest elements first.  This makes a truncated
-        # remesh deterministic and concentrates resolution where J/MPZ use it.
-        score = np.lexsort((np.hypot(xi[ids], eta[ids]), -lengths[ids]))
-        return ids[score].astype(int).tolist()
+        cent = mesh.nodes[mesh.elems].mean(axis=1)
+        distance = np.linalg.norm(cent[ids] - tip[None, :], axis=1)
+        # Largest then closest: deterministic and focused on the new J/MPZ domain.
+        order = np.lexsort((distance, -lengths[ids]))
+        return ids[order].astype(int).tolist()
 
     def _refine_forward_patch(
         self,
@@ -133,8 +142,8 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         current_mesh = mesh
         current_u = np.asarray(displacement, float).copy()
         current_d = np.asarray(damage, float).copy()
-        # cumulative[e_current] = element index on the mesh immediately after the
-        # physical cohesive event and before event-centered refinement.
+        # cumulative[e_current] = element on the mesh immediately after the
+        # physical cohesive event and before v9.14 patch refinement.
         cumulative = np.arange(mesh.ne, dtype=int)
         nsplit = 0
         rejected_quality = 0
@@ -160,7 +169,7 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
                     rejected_duplicate += 1
                     continue
 
-                trial_mesh, trial_u, reason, meta, parent_map = self._insert_point_on_edge(
+                trial_mesh, trial_u, _reason, meta, parent_map = self._insert_point_on_edge(
                     current_mesh, current_u, q, i, j
                 )
                 if trial_mesh is None or parent_map is None:
@@ -169,13 +178,12 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
                 if np.isfinite(qmin) and qmin < self.min_remesh_triangle_quality:
                     rejected_quality += 1
                     continue
-
-                # One midpoint node is appended by _insert_point_on_edge.  Linear
-                # displacement interpolation is already done there.  Damage uses
-                # max-endpoint inheritance so a pre-existing broken/notch edge is
-                # never accidentally healed by remeshing.
                 if trial_mesh.nn != current_mesh.nn + 1:
                     raise RuntimeError("event remesh expected one midpoint node per edge split")
+
+                # Linear displacement interpolation is already performed by
+                # _insert_point_on_edge.  Maximum endpoint damage prevents a
+                # remesh from healing an existing notch/crack-surface node.
                 dmid = max(float(current_d[i]), float(current_d[j]))
                 trial_d = np.concatenate([current_d, np.array([dmid], dtype=float)])
                 parent_map = np.asarray(parent_map, dtype=int)
@@ -200,13 +208,10 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             if not accepted:
                 break
 
-        # Rebuild once with the actual event tip as the resolution center.  This
-        # changes no connectivity or state; it only refreshes hbar_tip accurately.
         current_mesh = rebuild_tri_mesh(
             current_mesh.nodes, current_mesh.elems, tip_centers=[tip]
         )
         current_bnd = make_boundary_data(current_mesh, self.geom)
-
         post_area = np.asarray(mesh.area_e, float)
         final_area = np.asarray(current_mesh.area_e, float)
         inherited_area = np.bincount(
@@ -214,6 +219,11 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         )[: mesh.ne]
         area_error = inherited_area - post_area
         relative_area_error = np.abs(area_error) / np.maximum(post_area, 1.0e-300)
+        patch_ids = np.where(self._patch_mask(current_mesh, tip, direction))[0]
+        max_patch_edge = (
+            float(np.max(self._max_edge_lengths(current_mesh)[patch_ids]))
+            if patch_ids.size else 0.0
+        )
         audit = {
             "n_edge_splits": int(nsplit),
             "n_elements_before_patch": int(mesh.ne),
@@ -221,19 +231,30 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             "n_nodes_before_patch": int(mesh.nn),
             "n_nodes_after_patch": int(current_mesh.nn),
             "target_h_m": float(self.target_h_m),
+            "target_edge_factor": float(self.target_edge_factor),
             "patch_radius_m": float(self.patch_radius_m),
             "hbar_tip_before_m": float(mesh.hbar_tip),
             "hbar_tip_after_m": float(current_mesh.hbar_tip),
-            "max_edge_after_in_patch_m": float(
-                max(self._max_edge_lengths(current_mesh)[self._candidate_elements(current_mesh, tip, direction)], default=0.0)
+            "max_edge_in_patch_after_m": max_patch_edge,
+            "patch_target_satisfied": bool(
+                max_patch_edge <= self.target_edge_factor * self.target_h_m * (1.0 + 1.0e-10)
+            ),
+            "split_budget_exhausted": bool(
+                nsplit >= self.max_edge_splits_per_event
+                and bool(self._candidate_elements(current_mesh, tip, direction))
             ),
             "total_area_before_m2": float(np.sum(post_area)),
             "total_area_after_m2": float(np.sum(final_area)),
             "relative_total_area_error": float(
-                abs(np.sum(final_area) - np.sum(post_area)) / max(abs(np.sum(post_area)), 1.0e-300)
+                abs(np.sum(final_area) - np.sum(post_area))
+                / max(abs(np.sum(post_area)), 1.0e-300)
             ),
-            "max_parent_area_conservation_error": float(np.max(np.abs(area_error))) if area_error.size else 0.0,
-            "max_parent_relative_area_conservation_error": float(np.max(relative_area_error)) if relative_area_error.size else 0.0,
+            "max_parent_area_conservation_error": (
+                float(np.max(np.abs(area_error))) if area_error.size else 0.0
+            ),
+            "max_parent_relative_area_conservation_error": (
+                float(np.max(relative_area_error)) if relative_area_error.size else 0.0
+            ),
             "rejected_quality": int(rejected_quality),
             "rejected_cohesive_edge": int(rejected_cohesive),
             "rejected_duplicate_midpoint": int(rejected_duplicate),
@@ -241,81 +262,147 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
         }
         return current_mesh, current_bnd, current_d, current_u, cumulative, audit
 
+    def _rollback_failed_event(self, transaction, kwargs, reason: str, details: dict[str, Any]):
+        self._transaction_rollback(transaction)
+        self.failed_event_attempts.append({"reason": str(reason), **details})
+        return CrackAdvanceResult(
+            kwargs["mesh"], kwargs["boundary"], kwargs["damage"],
+            kwargs["displacement"], 0.0, False,
+            angle_error_deg=180.0, reason=str(reason), elem_parent_map=None,
+        )
+
     def advance(self, **kwargs) -> CrackAdvanceResult:
         pre_mesh = kwargs["mesh"]
+        transaction = self._transaction_snapshot()
         cohesive_before = self._cohesive_signature(self.cohesive_network)
-        result = super().advance(**kwargs)
-        if not result.inserted or result.moved <= 0.0:
-            return result
+        try:
+            result = super().advance(**kwargs)
+            if not result.inserted or result.moved <= 0.0:
+                return result
 
-        log = self.advance_log[-1]
-        tip = np.array([float(log["x1"]), float(log["y1"])], dtype=float)
-        direction = tip - np.array([float(log["x0"]), float(log["y0"])], dtype=float)
-        direction /= max(float(np.linalg.norm(direction)), 1.0e-300)
+            new_log_rows = self.advance_log[int(transaction["n_log"]):]
+            if not new_log_rows:
+                raise RuntimeError("physical event inserted no advance-log segment")
+            tip = np.array([
+                float(new_log_rows[-1]["x1"]), float(new_log_rows[-1]["y1"])
+            ], dtype=float)
+            start = np.array([
+                float(new_log_rows[0]["x0"]), float(new_log_rows[0]["y0"])
+            ], dtype=float)
+            direction = tip - start
+            direction /= max(float(np.linalg.norm(direction)), 1.0e-300)
 
-        patch_mesh, patch_bnd, patch_d, patch_u, patch_map, patch_audit = \
-            self._refine_forward_patch(
-                result.mesh, result.displacement, result.damage, tip, direction
+            patch_mesh, patch_bnd, patch_d, patch_u, patch_map, patch_audit = \
+                self._refine_forward_patch(
+                    result.mesh, result.displacement, result.damage, tip, direction
+                )
+            event_map = (
+                np.arange(result.mesh.ne, dtype=int)
+                if result.elem_parent_map is None
+                else np.asarray(result.elem_parent_map, dtype=int)
             )
+            composed = event_map[np.asarray(patch_map, dtype=int)]
+            if composed.shape != (patch_mesh.ne,):
+                raise RuntimeError("composed remesh parent map has invalid shape")
 
-        if result.elem_parent_map is None:
-            event_map = np.arange(result.mesh.ne, dtype=int)
-        else:
-            event_map = np.asarray(result.elem_parent_map, dtype=int)
-        composed = event_map[np.asarray(patch_map, dtype=int)]
-        cohesive_after = self._cohesive_signature(self.cohesive_network)
-        cohesive_unchanged = cohesive_before[:-1] == cohesive_after[:-1]
-        # One new cohesive element is expected from the physical event.  Remeshing
-        # itself must not alter any pre-existing cohesive state.
-        existing_count = len(cohesive_before)
-        existing_after = cohesive_after[:existing_count]
-        cohesive_unchanged = cohesive_before == existing_after
+            existing_count = len(cohesive_before)
+            physical_event_index = int(self.physical_event_counter)
+            new_cohesive = self.cohesive_network.elements[existing_count:]
+            if not new_cohesive:
+                raise RuntimeError("physical crack event created no cohesive topology")
+            for ce in new_cohesive:
+                ce.metadata = dict(ce.metadata)
+                ce.metadata["physical_event_index_v914"] = physical_event_index
+                ce.metadata["physical_event_subsegment_count_v914"] = len(new_cohesive)
+            cohesive_after = self._cohesive_signature(self.cohesive_network)
+            preexisting_unchanged = cohesive_before == cohesive_after[:existing_count]
 
-        event_audit = {
-            "event_index": int(log.get("event_index", len(self.remesh_audit))),
-            "front_id": int(log.get("front_id", 0)),
-            "x0_m": float(log["x0"]),
-            "y0_m": float(log["y0"]),
-            "x1_m": float(log["x1"]),
-            "y1_m": float(log["y1"]),
-            "physical_advance_m": float(result.moved),
-            "n_elements_before_event": int(pre_mesh.ne),
-            "n_elements_after_event_before_patch": int(result.mesh.ne),
-            "n_elements_after_patch": int(patch_mesh.ne),
-            "preexisting_cohesive_state_unchanged": bool(cohesive_unchanged),
-            "cohesive_count_before_event": int(existing_count),
-            "cohesive_count_after_event_and_patch": int(len(cohesive_after)),
-            "one_new_cohesive_increment": bool(len(cohesive_after) == existing_count + 1),
-            "parent_map_min": int(np.min(composed)) if composed.size else -1,
-            "parent_map_max": int(np.max(composed)) if composed.size else -1,
-            "parent_map_valid": bool(
-                composed.size == patch_mesh.ne
-                and np.min(composed, initial=0) >= 0
-                and np.max(composed, initial=-1) < pre_mesh.ne
-            ),
-            **patch_audit,
-        }
-        self.remesh_audit.append(event_audit)
-        log.update({
-            "event_remesh_v914": True,
-            "event_remesh_edge_splits": int(patch_audit["n_edge_splits"]),
-            "event_remesh_hbar_tip_after_m": float(patch_mesh.hbar_tip),
-            "event_remesh_parent_area_error": float(
-                patch_audit["max_parent_relative_area_conservation_error"]
-            ),
-        })
-        return CrackAdvanceResult(
-            patch_mesh,
-            patch_bnd,
-            patch_d,
-            patch_u,
-            float(result.moved),
-            True,
-            angle_error_deg=float(result.angle_error_deg),
-            selected_edge_length=float(result.selected_edge_length),
-            reason="ok_event_remeshed",
-            elem_parent_map=np.ascontiguousarray(composed, dtype=int),
-        )
+            ACTIVE_CONTEXT.set_solver(__import__(
+                "arrhenius_fracture.fem", fromlist=["solve_dirichlet"]
+            ).solve_dirichlet)
+            segments = [
+                (np.array([r["x0"], r["y0"]], float),
+                 np.array([r["x1"], r["y1"]], float))
+                for r in self.advance_log
+            ]
+            equilibrium_record: dict[str, Any] = {}
+            if self.require_post_event_equilibrium:
+                patch_u, equilibrium_record = ACTIVE_CONTEXT.equilibrate(
+                    pre_mesh=pre_mesh,
+                    pre_boundary=kwargs["boundary"],
+                    pre_displacement=kwargs["displacement"],
+                    new_mesh=patch_mesh,
+                    new_boundary=patch_bnd,
+                    new_damage=patch_d,
+                    new_displacement=patch_u,
+                    parent_map=composed,
+                    cohesive_network=self.cohesive_network,
+                    new_tip=tip,
+                    direction=direction,
+                    crack_segments=segments,
+                    event_index=physical_event_index,
+                    front_id=int(kwargs.get("front_id", 0)),
+                )
+
+            event_audit = {
+                "physical_event_index": physical_event_index,
+                "front_id": int(kwargs.get("front_id", 0)),
+                "x0_m": float(start[0]),
+                "y0_m": float(start[1]),
+                "x1_m": float(tip[0]),
+                "y1_m": float(tip[1]),
+                "physical_advance_m": float(result.moved),
+                "n_topological_subsegments": int(len(new_cohesive)),
+                "one_physical_cohesive_event": True,
+                "n_elements_before_event": int(pre_mesh.ne),
+                "n_elements_after_event_before_patch": int(result.mesh.ne),
+                "n_elements_after_patch": int(patch_mesh.ne),
+                "preexisting_cohesive_state_unchanged": bool(preexisting_unchanged),
+                "cohesive_count_before_event": int(existing_count),
+                "cohesive_count_after_event_and_patch": int(len(cohesive_after)),
+                "parent_map_min": int(np.min(composed)) if composed.size else -1,
+                "parent_map_max": int(np.max(composed)) if composed.size else -1,
+                "parent_map_valid": bool(
+                    composed.size == patch_mesh.ne
+                    and np.min(composed, initial=0) >= 0
+                    and np.max(composed, initial=-1) < pre_mesh.ne
+                ),
+                "post_event_equilibrium_required": self.require_post_event_equilibrium,
+                "post_event_equilibrium_completed": bool(
+                    (not self.require_post_event_equilibrium) or equilibrium_record
+                ),
+                **patch_audit,
+                **{f"equilibrium_{k}": v for k, v in equilibrium_record.items()},
+            }
+            self.remesh_audit.append(event_audit)
+            self.physical_event_counter += 1
+            for row in new_log_rows:
+                row.update({
+                    "event_remesh_v914": True,
+                    "physical_event_index_v914": physical_event_index,
+                    "physical_event_subsegments_v914": len(new_cohesive),
+                    "event_remesh_edge_splits": int(patch_audit["n_edge_splits"]),
+                    "event_remesh_hbar_tip_after_m": float(patch_mesh.hbar_tip),
+                    "event_remesh_parent_area_error": float(
+                        patch_audit["max_parent_relative_area_conservation_error"]
+                    ),
+                    "post_event_same_load_equilibrium": bool(equilibrium_record),
+                })
+            return CrackAdvanceResult(
+                patch_mesh, patch_bnd, patch_d, patch_u,
+                float(result.moved), True,
+                angle_error_deg=float(result.angle_error_deg),
+                selected_edge_length=float(result.selected_edge_length),
+                reason="ok_event_remeshed_and_equilibrated",
+                elem_parent_map=np.ascontiguousarray(composed, dtype=int),
+            )
+        except Exception as exc:
+            return self._rollback_failed_event(
+                transaction,
+                kwargs,
+                f"event_remesh_or_equilibrium_error:{type(exc).__name__}:{exc}",
+                {"physical_event_index": int(self.physical_event_counter)},
+            )
 
     def write_diagnostics(self, out_dir: str) -> None:
         super().write_diagnostics(out_dir)
@@ -325,36 +412,54 @@ class EventRemeshCZMBackend(AdaptiveCZMBackend):
             "schema": "event_remesh_czm_v914",
             "backend": self.name,
             "target_h_m": self.target_h_m,
+            "target_edge_factor": self.target_edge_factor,
             "patch_radius_m": self.patch_radius_m,
             "max_edge_splits_per_event": self.max_edge_splits_per_event,
+            "require_post_event_equilibrium": self.require_post_event_equilibrium,
             "events": self.remesh_audit,
+            "failed_event_attempts": self.failed_event_attempts,
             "n_events": len(self.remesh_audit),
+            "n_failed_event_attempts": len(self.failed_event_attempts),
             "all_parent_maps_valid": bool(
                 self.remesh_audit and all(x["parent_map_valid"] for x in self.remesh_audit)
+            ),
+            "all_patch_targets_satisfied": bool(
+                self.remesh_audit and all(x["patch_target_satisfied"] for x in self.remesh_audit)
             ),
             "all_preexisting_cohesive_states_unchanged": bool(
                 self.remesh_audit
                 and all(x["preexisting_cohesive_state_unchanged"] for x in self.remesh_audit)
             ),
-            "all_events_one_new_cohesive_increment": bool(
+            "all_events_one_physical_cohesive_event": bool(
                 self.remesh_audit
-                and all(x["one_new_cohesive_increment"] for x in self.remesh_audit)
+                and all(x["one_physical_cohesive_event"] for x in self.remesh_audit)
+            ),
+            "all_post_event_equilibria_completed": bool(
+                self.remesh_audit
+                and all(x["post_event_equilibrium_completed"] for x in self.remesh_audit)
             ),
             "max_parent_relative_area_conservation_error": max(
-                (float(x["max_parent_relative_area_conservation_error"]) for x in self.remesh_audit),
-                default=float("nan"),
+                (float(x["max_parent_relative_area_conservation_error"])
+                 for x in self.remesh_audit), default=float("nan")
             ),
             "max_relative_total_area_error": max(
-                (float(x["relative_total_area_error"]) for x in self.remesh_audit),
-                default=float("nan"),
+                (float(x["relative_total_area_error"])
+                 for x in self.remesh_audit), default=float("nan")
+            ),
+            "max_same_load_boundary_drift": max(
+                (float(x.get("equilibrium_max_relative_boundary_displacement_drift", np.nan))
+                 for x in self.remesh_audit), default=float("nan")
+            ),
+            "max_post_equilibrium_free_residual_N": max(
+                (float(x.get("equilibrium_free_residual_norm_after_N", np.nan))
+                 for x in self.remesh_audit), default=float("nan")
             ),
         }
         (out / "event_remesh_audit_v914.json").write_text(
             json.dumps(payload, indent=2, default=str)
         )
-        rows = []
-        for event in self.remesh_audit:
-            rows.append({k: v for k, v in event.items() if k != "split_rows"})
+        rows = [{k: v for k, v in event.items() if k != "split_rows"}
+                for event in self.remesh_audit]
         if rows:
             with (out / "event_remesh_audit_v914.csv").open("w", newline="") as fp:
                 writer = csv.DictWriter(fp, fieldnames=sorted({k for row in rows for k in row}))
@@ -371,6 +476,9 @@ def build_event_remesh_backend(args, geom) -> EventRemeshCZMBackend:
     patch_radius = float(getattr(args, "event_remesh_patch_radius_m", 0.0) or 0.0)
     if patch_radius <= 0.0:
         patch_radius = max(20.0 * target_h, 4.0 * da, 20.0e-6)
+    ACTIVE_CONTEXT.set_solver(__import__(
+        "arrhenius_fracture.fem", fromlist=["solve_dirichlet"]
+    ).solve_dirichlet)
     return EventRemeshCZMBackend(
         geom=geom,
         penalty_normal_Pa_per_m=float(getattr(args, "czm_penalty_normal", 1.0e18)),
@@ -394,6 +502,9 @@ def build_event_remesh_backend(args, geom) -> EventRemeshCZMBackend:
         ),
         min_remesh_triangle_quality=float(
             getattr(args, "event_remesh_min_quality", 0.02) or 0.02
+        ),
+        require_post_event_equilibrium=bool(
+            getattr(args, "event_remesh_require_equilibrium", True)
         ),
     )
 
