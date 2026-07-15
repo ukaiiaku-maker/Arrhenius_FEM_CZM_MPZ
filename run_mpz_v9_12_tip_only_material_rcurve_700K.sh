@@ -52,6 +52,7 @@ mkdir -p "$OUTROOT"
 "$PYTHON_BIN" -m pytest -q \
   tests/test_material_rcurve_audit_v912.py \
   tests/test_mpz_v9_12_runner.py \
+  tests/test_v912_paper_transfer_contract.py \
   tests/test_stochastic_kinetics_v911.py \
   tests/test_rcurve_postprocess_v911.py \
   tests/test_mode_i_first_passage_v9_11.py \
