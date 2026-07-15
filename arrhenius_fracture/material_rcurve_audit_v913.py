@@ -1,8 +1,10 @@
-"""Hardened material-transfer audit for the full 2-D v9.13 FEM/CZM gate.
+"""Hardened material-transfer audit for the full 2-D v9.13+ FEM/CZM gate.
 
 The audit deliberately separates execution/completion, field-output, protocol,
 and material-differentiation evidence.  A missing comparison, right-censored run,
-or failed subprocess can no longer pass vacuously.
+or failed subprocess can no longer pass vacuously.  Later stacked execution
+branches may supply versioned run-config and case-summary files; the newest
+recognized metadata is selected first.
 """
 from __future__ import annotations
 
@@ -174,8 +176,16 @@ def audit_case(case_dir: str | Path, material_class: str, T_K: float, completion
     casc = _read_csv(root / "R_curve_cascade_metrics.csv")
     c0 = casc.iloc[0].to_dict() if not casc.empty else {}
     run_audit = _read_json(root / "rcurve_run_audit.json")
-    config = _read_json(root / "v9_13_run_config.json") or _read_json(root / "v9_12_run_config.json")
-    summary = _read_json(root / "v9_13_case_summary.json") or _read_json(root / "v9_12_case_summary.json")
+    config = (
+        _read_json(root / "v9_14_run_config.json")
+        or _read_json(root / "v9_13_run_config.json")
+        or _read_json(root / "v9_12_run_config.json")
+    )
+    summary = (
+        _read_json(root / "v9_14_case_summary.json")
+        or _read_json(root / "v9_13_case_summary.json")
+        or _read_json(root / "v9_12_case_summary.json")
+    )
 
     kinit = _observed_kinit(fp)
     kshield = _finite(steps, "mpz_K_shield_Pa_sqrt_m", "max", 1.0e-6)
