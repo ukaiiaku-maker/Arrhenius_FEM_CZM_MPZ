@@ -41,8 +41,8 @@ def test_mpz_length_is_propagated_to_legacy_resolution_fields():
     derived, length_m = _derived_mpz_length_args(["--mpz-length-um", "100"])
     assert length_m == pytest.approx(100.0e-6)
     assert derived == [
-        "--L-pz", "9.999999999999999e-05",
-        "--mpz-length-m", "9.999999999999999e-05",
+        "--L-pz", "0.0001",
+        "--mpz-length-m", "0.0001",
     ]
 
 
