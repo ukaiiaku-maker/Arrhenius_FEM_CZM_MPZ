@@ -6,7 +6,11 @@ from arrhenius_fracture.config import make_emergent_config
 from arrhenius_fracture.event_equilibrium_v914 import EventEquilibriumContext
 from arrhenius_fracture.event_remesh_czm_v914 import EventRemeshCZMBackend
 from arrhenius_fracture.fem import assemble_mechanics, plane_strain_D, solve_dirichlet
-from arrhenius_fracture.mesh import make_boundary_data, make_tri_mesh
+from arrhenius_fracture.mesh import (
+    make_boundary_data,
+    make_tri_mesh,
+    rebuild_tri_mesh,
+)
 
 
 def test_post_event_equilibrium_preserves_load_and_conservative_state():
@@ -46,12 +50,25 @@ def test_post_event_equilibrium_preserves_load_and_conservative_state():
         penalty_tangent_Pa_per_m=1.0e18,
     )
     tip = np.array([cfg.geometry.a0, 0.0])
+
+    # Mimic the full solver: the crack backend may receive a newly constructed
+    # TriMesh object with identical coordinates/connectivity to the one used by
+    # the most recent mechanics assembly. State compatibility is structural, not
+    # Python object identity.
+    event_mesh = rebuild_tri_mesh(
+        mesh.nodes.copy(), mesh.elems.copy(), tip_centers=[tip]
+    )
+    event_bnd = make_boundary_data(event_mesh, cfg.geometry)
+    assert event_mesh is not mesh
+    assert np.array_equal(event_mesh.elems, mesh.elems)
+    assert np.allclose(event_mesh.nodes, mesh.nodes, rtol=0.0, atol=0.0)
+
     new_mesh, new_bnd, new_d, new_u, parent, _ = backend._refine_forward_patch(
-        mesh, ueq, d, tip, np.array([1.0, 0.0])
+        event_mesh, ueq, d, tip, np.array([1.0, 0.0])
     )
     u_after, record = ctx.equilibrate(
-        pre_mesh=mesh,
-        pre_boundary=bnd,
+        pre_mesh=event_mesh,
+        pre_boundary=event_bnd,
         pre_displacement=ueq,
         new_mesh=new_mesh,
         new_boundary=new_bnd,
@@ -66,6 +83,9 @@ def test_post_event_equilibrium_preserves_load_and_conservative_state():
         front_id=0,
     )
     assert u_after.shape == (new_mesh.ndof,)
+    assert record["pre_event_mesh_object_identity"] is False
+    assert record["pre_event_mesh_structural_match"] is True
+    assert record["pre_event_mesh_match_reason"] == "structurally_identical_rebuilt_mesh"
     assert record["physical_time_increment_s"] == 0.0
     assert record["hazard_action_increment"] == 0.0
     assert record["max_relative_boundary_displacement_drift"] < 1.0e-13
