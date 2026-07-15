@@ -45,17 +45,36 @@ def audit_case_v914(case_dir: str | Path, material_class: str, T_K: float) -> di
     tag = f"{int(round(T_K)):04d}K"
     remesh_path = root / f"czm_{tag}" / "event_remesh_audit_v914.json"
     equilibrium_path = root / "event_equilibrium_audit_v914.json"
+    config_path = root / "v9_14_run_config.json"
     remesh = _json(remesh_path)
     equilibrium = _json(equilibrium_path)
+    config = _json(config_path)
     steps = _csv(root / f"steps_{tag}.csv")
     cascade = _csv(root / "R_curve_cascade_metrics.csv")
     raw_events = 0
     if not cascade.empty:
         raw_events = int(cascade.iloc[0].get("n_raw_topology_events", 0) or 0)
+
     max_n_fire = 0.0
+    max_post_fire_residual_B = float("nan")
     if "n_fire" in steps.columns and not steps.empty:
-        vals = pd.to_numeric(steps["n_fire"], errors="coerce").fillna(0.0)
-        max_n_fire = float(vals.max())
+        nfire = pd.to_numeric(steps["n_fire"], errors="coerce").fillna(0.0)
+        max_n_fire = float(nfire.max())
+        if "B" in steps.columns:
+            residual = pd.to_numeric(steps.loc[nfire > 0.0, "B"], errors="coerce")
+            residual = residual[np.isfinite(residual)]
+            if not residual.empty:
+                max_post_fire_residual_B = float(residual.max())
+
+    action_coordinate = str(config.get("adaptive_event_coordinate", "unknown"))
+    action_tolerance = _finite(config.get("adaptive_event_action_tolerance"))
+    action_localization = bool(
+        action_coordinate == "absolute_integrated_hazard_action"
+        and np.isfinite(action_tolerance)
+        and action_tolerance > 0.0
+        and np.isfinite(max_post_fire_residual_B)
+        and max_post_fire_residual_B <= action_tolerance * (1.0 + 1.0e-8) + 1.0e-12
+    )
 
     n_remesh = int(remesh.get("n_events", 0) or 0)
     n_equilibrium = int(equilibrium.get("n_post_event_equilibria", 0) or 0)
@@ -97,6 +116,7 @@ def audit_case_v914(case_dir: str | Path, material_class: str, T_K: float) -> di
     )
     same_load = bool(np.isfinite(boundary_drift) and boundary_drift <= 1.0e-12)
     numerical_gate = all((
+        action_localization,
         event_count_matches,
         equilibrium_count_matches,
         one_event_per_solve,
@@ -114,6 +134,11 @@ def audit_case_v914(case_dir: str | Path, material_class: str, T_K: float) -> di
         "case_dir": str(root),
         "remesh_audit_file": str(remesh_path),
         "equilibrium_audit_file": str(equilibrium_path),
+        "run_config_file": str(config_path),
+        "adaptive_event_coordinate": action_coordinate,
+        "adaptive_event_action_tolerance": action_tolerance,
+        "max_post_fire_residual_B": max_post_fire_residual_B,
+        "event_action_localization_gate_passed": action_localization,
         "n_raw_physical_events": raw_events,
         "n_remeshed_events": n_remesh,
         "n_same_load_equilibria": n_equilibrium,
@@ -164,7 +189,7 @@ def audit_campaign(
     material_gate_v913 = bool(material.get("material_transfer_gate_passed", False))
     material_gate_v914 = bool(numerical_gate and material_gate_v913)
     if not numerical_gate:
-        interpretation = "event_remesh_or_same_load_equilibrium_failed"
+        interpretation = "event_localization_remesh_or_same_load_equilibrium_failed"
     elif not material_gate_v913:
         interpretation = "numerically_valid_remeshed_run_but_material_differentiation_not_yet_supported"
     else:
