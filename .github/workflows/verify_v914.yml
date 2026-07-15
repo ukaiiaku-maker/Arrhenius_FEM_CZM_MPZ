@@ -1,0 +1,49 @@
+name: Verify full 2-D MPZ v9.14
+
+on:
+  push:
+    branches: [v9.14-event-remesh-conservative-transfer]
+  pull_request:
+    branches: [v9.13-deterministic-transfer-hardened-gate]
+
+jobs:
+  verify-v914:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile and verify v9.14
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/event_remesh_czm_v914.py \
+            arrhenius_fracture/event_equilibrium_v914.py \
+            arrhenius_fracture/event_remesh_audit_v914.py \
+            arrhenius_fracture/mode_i_first_passage_v9_14.py \
+            run_mpz_v9_14_mode_i_rcurve.py \
+            run_mpz_v9_14_event_remesh_gate.py \
+            verify_mpz_v9_14_install.py
+          bash -n run_mpz_v9_14_event_remesh_700K.sh
+          python verify_mpz_v9_14_install.py .
+      - name: Test conservative remesh and same-load equilibrium
+        run: |
+          python -m pytest -q \
+            tests/test_event_remesh_czm_v914.py \
+            tests/test_event_equilibrium_v914.py \
+            tests/test_event_remesh_audit_v914.py \
+            tests/test_mpz_v9_14_runner.py
+      - name: Run inherited v9.13, v9.12 and v9.11 integration tests
+        run: |
+          python -m pytest -q \
+            tests/test_material_rcurve_audit_v913.py \
+            tests/test_mpz_v9_13_runner.py \
+            tests/test_field_snapshots_v913.py \
+            tests/test_material_rcurve_audit_v912.py \
+            tests/test_stochastic_kinetics_v911.py \
+            tests/test_rcurve_postprocess_v911.py \
+            tests/test_mode_i_first_passage_v9_11.py \
+            tests/test_mpz_v9_11_2d_coupling.py
