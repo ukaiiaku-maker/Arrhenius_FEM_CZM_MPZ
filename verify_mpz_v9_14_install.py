@@ -47,6 +47,15 @@ def main() -> None:
             "arrhenius_fracture/fem.py", "arrhenius_fracture/j_integral.py",
             "arrhenius_fracture/crack_backend.py", "arrhenius_fracture/sharp_front.py",
         )),
+        "absolute_hazard_action_localization": (
+            "absolute_integrated_hazard_action" in mode
+            and "_BaseEngine.predict_clock_increment_drives" in mode
+            and "dB / remaining" not in mode
+        ),
+        "absolute_action_tolerance_default": (
+            'default=0.01' in runner
+            and "maximum accepted absolute integrated-hazard increment dB" in runner
+        ),
         "one_physical_event_backend": "one_physical_cohesive_event" in remesh,
         "refinement_only_parent_map": "cumulative = cumulative[parent_map]" in remesh,
         "cohesive_edges_not_bisected": "if edge_key in cohesive_edges" in remesh,
@@ -55,6 +64,10 @@ def main() -> None:
         "zero_hazard_during_equilibrium": '"hazard_action_increment": 0.0' in eq,
         "same_load_boundary_reuse": "_boundary_values(pre_displacement, pre_boundary)" in eq,
         "post_event_J_recomputed": "J_after_event_equilibrium" in eq and "strict_equilibrate" in mode,
+        "post_event_MPZ_profile_recomputed": (
+            "mpz_profile_recomputed_after_event" in eq
+            and "all_MPZ_profiles_recomputed" in audit
+        ),
         "conservative_rho_and_ep_audit": "relative_rho_area_integral_error" in eq and "max_relative_ep_area_integral_error" in eq,
         "numerical_and_material_gates_separate": "numerical_event_remesh_gate_passed" in audit and "material_transfer_gate_passed_v914" in audit,
         "tip_only_initial_gate": '"bulk_plasticity_mode": "tip_only"' in runner,
