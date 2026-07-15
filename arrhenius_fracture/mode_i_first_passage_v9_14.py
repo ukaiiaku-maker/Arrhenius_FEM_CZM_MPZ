@@ -116,7 +116,9 @@ def _option_value(argv: list[str], name: str) -> str | None:
 def main(argv=None):
     user_args = list(sys.argv[1:] if argv is None else argv)
     _inject_once(user_args, "--crystal-aniso")
-    _inject_once(user_args, "--no-crystal-branch")
+    # Branching is disabled by the inherited parser default.  There is no
+    # ``--no-crystal-branch`` CLI option; injecting it caused argparse to exit
+    # with return code 2 before the first FEM solve in every v9.14 case.
     _inject_once(user_args, "--crack-backend", "adaptive_czm")
     _inject_once(user_args, "--adaptive-events")
     _inject_once(user_args, "--min-global-forward", "0.999999")
