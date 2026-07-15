@@ -29,7 +29,12 @@ audit = (root / required[1]).read_text() if not missing else ""
 contracts = {
     "adaptive_czm_forced": '"--crack-backend", "adaptive_czm"' in mode,
     "directional_transfer_path_forced": '"--crystal-aniso"' in mode,
-    "branching_disabled": '"--no-crystal-branch"' in mode,
+    # The inherited parser default is branch-off.  v9.14 must neither enable
+    # --crystal-branch nor inject the nonexistent --no-crystal-branch option.
+    "branching_disabled_by_default": (
+        '_inject_once(user_args, "--crystal-branch")' not in mode
+        and '_inject_once(user_args, "--no-crystal-branch")' not in mode
+    ),
     "exact_forward_plane": 'np.array([1.0, 0.0]' in mode,
     "adaptive_events_forced": '"--adaptive-events"' in mode,
     "one_event_audit": "one_topology_event_per_accepted_solve" in audit,
