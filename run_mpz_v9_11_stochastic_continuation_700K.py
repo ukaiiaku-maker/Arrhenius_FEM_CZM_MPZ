@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -46,18 +47,36 @@ def read_json(path: Path) -> dict:
         return {}
 
 
+def read_first_csv_row(path: Path) -> dict:
+    if not path.exists() or path.stat().st_size == 0:
+        return {}
+    try:
+        frame = pd.read_csv(path)
+    except (pd.errors.EmptyDataError, OSError, ValueError):
+        return {}
+    return frame.iloc[0].to_dict() if not frame.empty else {}
+
+
+def empty_continuation_metrics() -> dict:
+    return {
+        "Kload_200_500um_median": np.nan,
+        "Kload_200_500um_mean": np.nan,
+        "Kload_200_500um_p10": np.nan,
+        "Kload_200_500um_p90": np.nan,
+        "delta_Kload_median_minus_init": np.nan,
+    }
+
+
 def continuation_metrics(case_dir: Path, K_init) -> dict:
     path = case_dir / "R_curve_load_events_clustered.csv"
-    if not path.exists():
-        return {
-            "Kload_200_500um_median": np.nan,
-            "Kload_200_500um_mean": np.nan,
-            "Kload_200_500um_p10": np.nan,
-            "Kload_200_500um_p90": np.nan,
-            "delta_Kload_median_minus_init": np.nan,
-        }
-    frame = pd.read_csv(path)
-    if frame.empty:
+    if not path.exists() or path.stat().st_size == 0:
+        return empty_continuation_metrics()
+    try:
+        frame = pd.read_csv(path)
+    except (pd.errors.EmptyDataError, OSError, ValueError):
+        return empty_continuation_metrics()
+    required = {"crack_extension_um", "KJ_onset_MPa_sqrt_m"}
+    if frame.empty or not required.issubset(frame.columns):
         vals = np.asarray([], dtype=float)
     else:
         x = pd.to_numeric(frame["crack_extension_um"], errors="coerce")
@@ -85,6 +104,30 @@ def continuation_metrics(case_dir: Path, K_init) -> dict:
     }
 
 
+def summary_matches_case(row: dict, class_name: str, mode: str, T_K: float) -> bool:
+    if not row:
+        return False
+    try:
+        temp_match = int(round(float(row.get("T_K")))) == int(round(float(T_K)))
+    except (TypeError, ValueError):
+        temp_match = False
+    return (
+        str(row.get("class", "")) == class_name
+        and str(row.get("bulk_plasticity_mode", "")) == mode
+        and temp_match
+    )
+
+
+def solver_outputs_complete_enough_to_reuse(case_dir: Path, T_K: float) -> bool:
+    tag = int(round(float(T_K)))
+    return all((case_dir / name).exists() for name in (
+        f"steps_{tag:04d}K.csv",
+        "anisotropic_calibrated_tip_first_passage_summary.json",
+        "bulk_state_v9_11_summary.json",
+        "run.log",
+    ))
+
+
 def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
     class_name = normalize_class_name(cls)
     run_root = root / f"seed_{seed}" / mode
@@ -93,6 +136,7 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
     log_dir = root / "matrix_logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log = log_dir / f"{class_name}_{mode}_seed{seed}_{int(args.T_K)}K.log"
+    temp_summary_path = run_root / "rcurve_temperature_summary.csv"
 
     cmd = [
         sys.executable,
@@ -149,9 +193,23 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
         "command": cmd,
     }, indent=2))
 
+    existing_summary = read_first_csv_row(temp_summary_path)
+    reuse_solver = bool(
+        args.skip_existing
+        and summary_matches_case(existing_summary, class_name, mode, args.T_K)
+        and solver_outputs_complete_enough_to_reuse(case_dir, args.T_K)
+    )
+
     print(f"START {class_name:7s} {mode:18s} seed={seed}")
-    with log.open("w") as fp:
-        cp = subprocess.run(cmd, env=env, stdout=fp, stderr=subprocess.STDOUT, text=True)
+    if reuse_solver:
+        subprocess_returncode = int(existing_summary.get("returncode", 0) or 0)
+        solver_reused = True
+        print(f"REUSE {class_name:7s} {mode:18s} seed={seed} existing solver outputs")
+    else:
+        with log.open("w") as fp:
+            cp = subprocess.run(cmd, env=env, stdout=fp, stderr=subprocess.STDOUT, text=True)
+        subprocess_returncode = int(cp.returncode)
+        solver_reused = False
 
     cascade = write_cascade_aware_outputs(
         case_dir,
@@ -161,12 +219,7 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
     )
     fp_summary = read_json(case_dir / "anisotropic_calibrated_tip_first_passage_summary.json")
     bulk = read_json(case_dir / "bulk_state_v9_11_summary.json")
-    temp_summary_path = run_root / class_name / "rcurve_temperature_summary.csv"
-    if temp_summary_path.exists():
-        frame = pd.read_csv(temp_summary_path)
-        run_summary = frame.iloc[0].to_dict() if not frame.empty else {}
-    else:
-        run_summary = {}
+    run_summary = read_first_csv_row(temp_summary_path)
 
     # Preserve legacy metrics explicitly as serialized-topology diagnostics. They
     # are not interpreted as resistance after same-load cascades were discovered.
@@ -186,7 +239,8 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
         "event_statistics": "stochastic",
         "stochastic_emission": bool(args.stochastic_emission),
         "propagation_control": "event_reload",
-        "subprocess_returncode": int(cp.returncode),
+        "subprocess_returncode": subprocess_returncode,
+        "solver_output_reused": solver_reused,
         "case_dir": str(case_dir),
         "matrix_log": str(log),
         "B_target_final": fp_summary.get("B_target_final", fp_summary.get("B_target")),
@@ -195,12 +249,25 @@ def run_case(args, cls: str, mode: str, seed: int, root: Path) -> dict:
         **cascade,
         **load_metrics,
     }
+    (case_dir / "stochastic_continuation_case_summary.json").write_text(
+        json.dumps(row, indent=2, default=str)
+    )
+    pd.DataFrame([row]).to_csv(
+        case_dir / "stochastic_continuation_case_summary.csv", index=False
+    )
     print(
-        f"DONE  {class_name:7s} {mode:18s} seed={seed} rc={cp.returncode} "
+        f"DONE  {class_name:7s} {mode:18s} seed={seed} rc={subprocess_returncode} "
         f"status={row.get('status')} ext={row.get('final_extension_um')} "
         f"load_events={row.get('n_independent_load_events')}"
     )
     return row
+
+
+def write_campaign_summary(root: Path, rows: list[dict], final: bool = False) -> None:
+    stem = "stochastic_continuation_700K_summary" if final else "stochastic_continuation_700K_summary.partial"
+    frame = pd.DataFrame(rows)
+    frame.to_csv(root / f"{stem}.csv", index=False)
+    (root / f"{stem}.json").write_text(json.dumps(rows, indent=2, default=str))
 
 
 def main() -> None:
@@ -248,16 +315,31 @@ def main() -> None:
     root = args.outroot.resolve()
     root.mkdir(parents=True, exist_ok=True)
 
-    rows = []
+    rows: list[dict] = []
     for seed in seeds:
         for cls in classes:
             for mode in modes:
-                rows.append(run_case(args, cls, mode, seed, root))
+                try:
+                    row = run_case(args, cls, mode, seed, root)
+                except Exception as exc:
+                    error_path = root / "matrix_logs" / f"{normalize_class_name(cls)}_{mode}_seed{seed}_driver_error.log"
+                    error_path.parent.mkdir(parents=True, exist_ok=True)
+                    error_path.write_text(traceback.format_exc())
+                    row = {
+                        "class": normalize_class_name(cls),
+                        "bulk_plasticity_mode": mode,
+                        "seed": seed,
+                        "T_K": float(args.T_K),
+                        "status": "campaign_driver_error",
+                        "campaign_driver_error": f"{type(exc).__name__}: {exc}",
+                        "campaign_driver_error_log": str(error_path),
+                    }
+                    print(f"ERROR {row['class']:7s} {mode:18s} seed={seed}: {exc}", file=sys.stderr)
+                rows.append(row)
+                write_campaign_summary(root, rows, final=False)
+
     frame = pd.DataFrame(rows)
-    frame.to_csv(root / "stochastic_continuation_700K_summary.csv", index=False)
-    (root / "stochastic_continuation_700K_summary.json").write_text(
-        json.dumps(rows, indent=2, default=str)
-    )
+    write_campaign_summary(root, rows, final=True)
     print(frame.to_string(index=False))
     print("wrote", root / "stochastic_continuation_700K_summary.csv")
 
