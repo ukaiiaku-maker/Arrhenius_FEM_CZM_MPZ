@@ -36,16 +36,24 @@ def extract_raw_growth_events(case_dir: str | Path, T_K: float) -> pd.DataFrame:
         return pd.DataFrame()
 
     if "crack_extension_m" in st.columns:
-        ext_m = pd.to_numeric(st["crack_extension_m"], errors="coerce").to_numpy(float)
+        ext_m = pd.to_numeric(
+            st["crack_extension_m"], errors="coerce"
+        ).to_numpy(dtype=float, copy=True)
     else:
-        ext_m = pd.to_numeric(st["a_tip_m"], errors="coerce").to_numpy(float) - A0_M
+        ext_m = pd.to_numeric(
+            st["a_tip_m"], errors="coerce"
+        ).to_numpy(dtype=float, copy=True) - A0_M
     ext_m = np.maximum(ext_m, 0.0)
     if "da_block_m" in st.columns:
-        da_m = pd.to_numeric(st["da_block_m"], errors="coerce").fillna(0.0).to_numpy(float)
+        da_m = pd.to_numeric(
+            st["da_block_m"], errors="coerce"
+        ).fillna(0.0).to_numpy(dtype=float, copy=True)
     else:
         da_m = np.r_[0.0, np.maximum(np.diff(ext_m), 0.0)]
     n_fire = (
-        pd.to_numeric(st["n_fire"], errors="coerce").fillna(0.0).to_numpy(float)
+        pd.to_numeric(st["n_fire"], errors="coerce")
+        .fillna(0.0)
+        .to_numpy(dtype=float, copy=True)
         if "n_fire" in st.columns
         else np.zeros(len(st))
     )
@@ -55,9 +63,15 @@ def extract_raw_growth_events(case_dir: str | Path, T_K: float) -> pd.DataFrame:
 
     out = pd.DataFrame({
         "raw_event_id": np.arange(1, idx.size + 1, dtype=int),
-        "step": pd.to_numeric(st.iloc[idx].get("step", pd.Series(idx)), errors="coerce").to_numpy(),
-        "Uapp_m": pd.to_numeric(st.iloc[idx]["Uapp_m"], errors="coerce").to_numpy(float),
-        "KJ_MPa_sqrt_m": pd.to_numeric(st.iloc[idx]["KJ_Pa_sqrtm"], errors="coerce").to_numpy(float) / 1.0e6,
+        "step": pd.to_numeric(
+            st.iloc[idx].get("step", pd.Series(idx)), errors="coerce"
+        ).to_numpy(copy=True),
+        "Uapp_m": pd.to_numeric(
+            st.iloc[idx]["Uapp_m"], errors="coerce"
+        ).to_numpy(dtype=float, copy=True),
+        "KJ_MPa_sqrt_m": pd.to_numeric(
+            st.iloc[idx]["KJ_Pa_sqrtm"], errors="coerce"
+        ).to_numpy(dtype=float, copy=True) / 1.0e6,
         "crack_extension_after_um": ext_m[idx] * 1.0e6,
         "da_block_um": da_m[idx] * 1.0e6,
         "n_fire": n_fire[idx],
@@ -79,11 +93,16 @@ def extract_raw_growth_events(case_dir: str | Path, T_K: float) -> pd.DataFrame:
     }
     for name, source in optional.items():
         if source in st.columns:
-            vals = pd.to_numeric(st.iloc[idx][source], errors="coerce").to_numpy(float)
+            # pandas may expose a read-only NumPy view, especially with newer
+            # copy-on-write behavior. Unit conversion must operate on an owned
+            # array rather than mutating that view in place.
+            vals = pd.to_numeric(
+                st.iloc[idx][source], errors="coerce"
+            ).to_numpy(dtype=float, copy=True)
             if source == "sigma_tip_Pa":
-                vals *= 1.0e-9
+                vals = vals * 1.0e-9
             if source == "mpz_K_shield_Pa_sqrt_m":
-                vals *= 1.0e-6
+                vals = vals * 1.0e-6
             out[name] = vals
     return out.replace([np.inf, -np.inf], np.nan).dropna(
         subset=["Uapp_m", "KJ_MPa_sqrt_m", "crack_extension_after_um"]
