@@ -16,6 +16,66 @@ import pandas as pd
 
 A0_M = 0.5e-3
 
+RAW_EVENT_COLUMNS = [
+    "raw_event_id",
+    "step",
+    "Uapp_m",
+    "KJ_MPa_sqrt_m",
+    "crack_extension_after_um",
+    "da_block_um",
+    "n_fire",
+    "crack_extension_before_um",
+    "B_residual",
+    "N_em",
+    "sigma_tip_GPa",
+    "K_shield_MPa_sqrt_m",
+    "adaptive_frac",
+    "dt_cur_s",
+    "B_target",
+    "B_fraction_of_target",
+    "stochastic_event_index",
+]
+
+CLUSTERED_EVENT_COLUMNS = [
+    "load_event_id",
+    "classification",
+    "raw_event_start",
+    "raw_event_end",
+    "topology_event_count",
+    "step_start",
+    "step_end",
+    "crack_extension_um",
+    "crack_extension_start_um",
+    "crack_extension_end_um",
+    "jump_span_um",
+    "Uapp_onset_m",
+    "Uapp_end_m",
+    "relative_load_change",
+    "KJ_MPa_sqrt_m",
+    "KJ_onset_MPa_sqrt_m",
+    "KJ_end_MPa_sqrt_m",
+    "KJ_min_MPa_sqrt_m",
+    "KJ_max_MPa_sqrt_m",
+    "B_target_onset",
+    "B_target_end",
+    "B_fraction_of_target_onset",
+    "B_fraction_of_target_end",
+    "stochastic_event_index_onset",
+    "stochastic_event_index_end",
+    "N_em_onset",
+    "N_em_end",
+    "K_shield_MPa_sqrt_m_onset",
+    "K_shield_MPa_sqrt_m_end",
+]
+
+
+def _empty_raw_events() -> pd.DataFrame:
+    return pd.DataFrame(columns=RAW_EVENT_COLUMNS)
+
+
+def _empty_clustered_events() -> pd.DataFrame:
+    return pd.DataFrame(columns=CLUSTERED_EVENT_COLUMNS)
+
 
 def find_steps_file(case_dir: str | Path, T_K: float) -> Path | None:
     root = Path(case_dir)
@@ -29,49 +89,38 @@ def find_steps_file(case_dir: str | Path, T_K: float) -> Path | None:
 def extract_raw_growth_events(case_dir: str | Path, T_K: float) -> pd.DataFrame:
     path = find_steps_file(case_dir, T_K)
     if path is None:
-        return pd.DataFrame()
-    st = pd.read_csv(path)
+        return _empty_raw_events()
+    try:
+        st = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return _empty_raw_events()
     required = {"KJ_Pa_sqrtm", "a_tip_m", "Uapp_m"}
     if not required.issubset(st.columns):
-        return pd.DataFrame()
+        return _empty_raw_events()
 
     if "crack_extension_m" in st.columns:
-        ext_m = pd.to_numeric(
-            st["crack_extension_m"], errors="coerce"
-        ).to_numpy(dtype=float, copy=True)
+        ext_m = pd.to_numeric(st["crack_extension_m"], errors="coerce").to_numpy(float)
     else:
-        ext_m = pd.to_numeric(
-            st["a_tip_m"], errors="coerce"
-        ).to_numpy(dtype=float, copy=True) - A0_M
+        ext_m = pd.to_numeric(st["a_tip_m"], errors="coerce").to_numpy(float) - A0_M
     ext_m = np.maximum(ext_m, 0.0)
     if "da_block_m" in st.columns:
-        da_m = pd.to_numeric(
-            st["da_block_m"], errors="coerce"
-        ).fillna(0.0).to_numpy(dtype=float, copy=True)
+        da_m = pd.to_numeric(st["da_block_m"], errors="coerce").fillna(0.0).to_numpy(float)
     else:
         da_m = np.r_[0.0, np.maximum(np.diff(ext_m), 0.0)]
     n_fire = (
-        pd.to_numeric(st["n_fire"], errors="coerce")
-        .fillna(0.0)
-        .to_numpy(dtype=float, copy=True)
+        pd.to_numeric(st["n_fire"], errors="coerce").fillna(0.0).to_numpy(float)
         if "n_fire" in st.columns
         else np.zeros(len(st))
     )
     idx = np.flatnonzero((da_m > 1.0e-12) | (n_fire > 0.0))
     if idx.size == 0:
-        return pd.DataFrame()
+        return _empty_raw_events()
 
     out = pd.DataFrame({
         "raw_event_id": np.arange(1, idx.size + 1, dtype=int),
-        "step": pd.to_numeric(
-            st.iloc[idx].get("step", pd.Series(idx)), errors="coerce"
-        ).to_numpy(copy=True),
-        "Uapp_m": pd.to_numeric(
-            st.iloc[idx]["Uapp_m"], errors="coerce"
-        ).to_numpy(dtype=float, copy=True),
-        "KJ_MPa_sqrt_m": pd.to_numeric(
-            st.iloc[idx]["KJ_Pa_sqrtm"], errors="coerce"
-        ).to_numpy(dtype=float, copy=True) / 1.0e6,
+        "step": pd.to_numeric(st.iloc[idx].get("step", pd.Series(idx)), errors="coerce").to_numpy(),
+        "Uapp_m": pd.to_numeric(st.iloc[idx]["Uapp_m"], errors="coerce").to_numpy(float),
+        "KJ_MPa_sqrt_m": pd.to_numeric(st.iloc[idx]["KJ_Pa_sqrtm"], errors="coerce").to_numpy(float) / 1.0e6,
         "crack_extension_after_um": ext_m[idx] * 1.0e6,
         "da_block_um": da_m[idx] * 1.0e6,
         "n_fire": n_fire[idx],
@@ -115,7 +164,7 @@ def cluster_same_load_events(
     absolute_load_tolerance_m: float = 1.0e-12,
 ) -> pd.DataFrame:
     if raw.empty:
-        return pd.DataFrame()
+        return _empty_clustered_events()
     rel_tol = max(float(relative_load_tolerance), 0.0)
     abs_tol = max(float(absolute_load_tolerance_m), 0.0)
     groups: list[list[int]] = [[0]]
@@ -258,6 +307,8 @@ def write_cascade_aware_outputs(
 
 
 __all__ = [
+    "RAW_EVENT_COLUMNS",
+    "CLUSTERED_EVENT_COLUMNS",
     "cascade_metrics",
     "cluster_same_load_events",
     "extract_raw_growth_events",
