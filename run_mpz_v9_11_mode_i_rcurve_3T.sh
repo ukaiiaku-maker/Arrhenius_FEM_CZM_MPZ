@@ -5,8 +5,9 @@ CONDA_ENV=${CONDA_ENV:-arrhenius-fem-czm}
 PYTHON_BIN=${PYTHON_BIN:-}
 PARAMETER_ROOT=${PARAMETER_ROOT:-mpz_v9_11_parameters}
 CLASS=${CLASS:-DBTT}
+BULK_PLASTICITY_MODE=${BULK_PLASTICITY_MODE:-tip_only}
 TEMPS=${TEMPS:-"300 700 1100"}
-OUTROOT=${OUTROOT:-runs/mpz_v9_11_${CLASS}_Rcurve_3T_v1}
+OUTROOT=${OUTROOT:-runs/mpz_v9_11_${CLASS}_${BULK_PLASTICITY_MODE}_Rcurve_3T_v1}
 TARGET_EXT_UM=${TARGET_EXT_UM:-500}
 STEPS=${STEPS:-6000}
 NX=${NX:-36}
@@ -28,6 +29,14 @@ SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-50}
 MAKE_SOLVER_PLOTS=${MAKE_SOLVER_PLOTS:-0}
 SKIP_EXISTING=${SKIP_EXISTING:-1}
 
+case "$BULK_PLASTICITY_MODE" in
+  tip_only|bulk_same_pt_km) ;;
+  *)
+    echo "ERROR: BULK_PLASTICITY_MODE must be tip_only or bulk_same_pt_km" >&2
+    exit 2
+    ;;
+esac
+
 if [[ -z "$PYTHON_BIN" ]]; then
   if [[ "${CONDA_DEFAULT_ENV:-}" == "$CONDA_ENV" ]]; then
     PYTHON_BIN=$(command -v python)
@@ -47,6 +56,7 @@ mkdir -p "$OUTROOT"
 "$PYTHON_BIN" verify_mpz_v9_11_physics.py --parameter-root "$PARAMETER_ROOT"
 "$PYTHON_BIN" -m pytest -q \
   tests/test_mode_i_first_passage_v9_11.py \
+  tests/test_bulk_state_v911.py \
   tests/test_mpz_v9_11_2d_coupling.py \
   tests/test_mpz_v9_10_2_independent_shapes.py \
   tests/test_bulk_pt_plasticity.py
@@ -66,6 +76,7 @@ fi
 "$PYTHON_BIN" run_mpz_v9_11_mode_i_rcurve_3T.py \
   --parameter-root "$PARAMETER_ROOT" \
   --material-class "$CLASS" \
+  --bulk-plasticity-mode "$BULK_PLASTICITY_MODE" \
   --temperatures "$TEMPS" \
   --outroot "$OUTROOT" \
   --target-extension-um "$TARGET_EXT_UM" \
@@ -86,4 +97,4 @@ fi
   "${EXTRA_ARGS[@]}" \
   2>&1 | tee "$OUTROOT/driver.log"
 
-echo "Three-temperature Mode-I R-curve campaign complete: $OUTROOT"
+echo "Mode-I R-curve campaign complete: $OUTROOT"
