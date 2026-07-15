@@ -38,7 +38,9 @@ jobs:
             tests/test_event_remesh_audit_v914.py \
             tests/test_mpz_v9_14_runner.py
       - name: Full FEM/CZM one-event remesh smoke
+        id: full_smoke
         run: |
+          set +e
           python run_mpz_v9_14_event_remesh_gate.py \
             --classes ceramic \
             --seeds 1 \
@@ -57,16 +59,36 @@ jobs:
             --snapshot-cols 2 \
             --snapshot-by-extension-um 5 \
             --outroot runs/ci_v914_one_event \
-            --no-skip-existing
+            --no-skip-existing \
+            > runs_v914_smoke.log 2>&1
+          solver_rc=$?
+          tail -n 120 runs_v914_smoke.log
           python - <<'PY'
           import json
           from pathlib import Path
           p = Path('runs/ci_v914_one_event/event_remesh_campaign_audit_v914.json')
+          if not p.exists():
+              raise SystemExit('missing event_remesh_campaign_audit_v914.json')
           data = json.loads(p.read_text())
+          print(json.dumps(data, indent=2, default=str))
           case = data['cases'][0]
           assert case['n_remeshed_events'] >= 1, data
           assert case['numerical_event_remesh_gate_passed'], data
           PY
+          audit_rc=$?
+          if [[ $solver_rc -ne 0 || $audit_rc -ne 0 ]]; then
+            exit 1
+          fi
+      - name: Preserve event-remesh smoke outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v914-one-event-smoke-${{ github.run_id }}
+          path: |
+            runs_v914_smoke.log
+            runs/ci_v914_one_event
+          if-no-files-found: warn
+          retention-days: 7
       - name: Run inherited v9.13, v9.12 and v9.11 integration tests
         run: |
           python -m pytest -q \
