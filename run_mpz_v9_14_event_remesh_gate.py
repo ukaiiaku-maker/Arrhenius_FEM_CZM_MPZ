@@ -18,6 +18,7 @@ from arrhenius_fracture.mpz_parameterization_v911 import normalize_class_name
 from arrhenius_fracture.rcurve_postprocess_v911 import write_cascade_aware_outputs
 
 CLASSES = ("ceramic", "weakT", "DBTT")
+ADAPTIVE_EVENT_COORDINATE = "absolute_integrated_hazard_action"
 
 
 def values(text: str, cast=str):
@@ -128,6 +129,8 @@ def run_case(args, seed: int, class_name: str, root: Path) -> dict[str, Any]:
         "propagation_control": "raw",
         "bulk_plasticity_mode": "tip_only",
         "effective_crack_backend": "event_remesh_czm",
+        "adaptive_event_coordinate": ADAPTIVE_EVENT_COORDINATE,
+        "adaptive_event_action_tolerance": float(args.adaptive_event_target),
         "one_physical_event_per_renewal": True,
         "same_time_same_load_post_event_equilibrium": True,
         "event_remesh_target_h_m": float(args.event_remesh_target_h_m),
@@ -141,7 +144,11 @@ def run_case(args, seed: int, class_name: str, root: Path) -> dict[str, Any]:
     log_dir.mkdir(parents=True, exist_ok=True)
     log = log_dir / f"{class_name}_tip_only_seed{seed}_{int(args.T_K)}K.log"
 
-    print(f"START {class_name:7s} seed={seed} event-remesh target_h={args.event_remesh_target_h_m:g} m")
+    print(
+        f"START {class_name:7s} seed={seed} event-remesh "
+        f"target_h={args.event_remesh_target_h_m:g} m "
+        f"absolute_dB_tol={args.adaptive_event_target:g}"
+    )
     if not force_rerun:
         returncode, reused = 0, True
         print(f"REUSE {class_name:7s}: completion marker and v9.14 audits exist")
@@ -169,6 +176,8 @@ def run_case(args, seed: int, class_name: str, root: Path) -> dict[str, Any]:
         "stochastic_emission": bool(args.stochastic_emission),
         "propagation_control": "raw",
         "effective_crack_backend": "event_remesh_czm",
+        "adaptive_event_coordinate": ADAPTIVE_EVENT_COORDINATE,
+        "adaptive_event_action_tolerance": float(args.adaptive_event_target),
         "subprocess_returncode": returncode,
         "solver_output_reused": reused,
         "completion_marker_present": marker.exists(),
@@ -207,7 +216,12 @@ def main() -> None:
     p.add_argument("--dt", type=float, default=8.4)
     p.add_argument("--n-stagger", type=int, default=2)
     p.add_argument("--print-every", type=int, default=25)
-    p.add_argument("--adaptive-event-target", type=float, default=0.05)
+    p.add_argument(
+        "--adaptive-event-target",
+        type=float,
+        default=0.01,
+        help="maximum accepted absolute integrated-hazard increment dB",
+    )
     p.add_argument("--da-phys-um", type=float, default=5.0)
     p.add_argument("--mpz-length-um", type=float, default=100.0)
     p.add_argument("--mpz-n-bins", type=int, default=200)
