@@ -60,6 +60,14 @@ def main() -> None:
         "refinement_only_parent_map": "cumulative = cumulative[parent_map]" in remesh,
         "cohesive_edges_not_bisected": "if edge_key in cohesive_edges" in remesh,
         "transactional_rollback": "_transaction_rollback" in remesh,
+        "fail_fast_after_rollback": (
+            "fail_fast_on_event_error: bool = True" in remesh
+            and "event remesh transaction rolled back" in remesh
+        ),
+        "structural_pre_event_mesh_match": (
+            "_mesh_state_compatibility" in eq
+            and "structurally_identical_rebuilt_mesh" in eq
+        ),
         "same_time_equilibrium": '"physical_time_increment_s": 0.0' in eq,
         "zero_hazard_during_equilibrium": '"hazard_action_increment": 0.0' in eq,
         "same_load_boundary_reuse": "_boundary_values(pre_displacement, pre_boundary)" in eq,
