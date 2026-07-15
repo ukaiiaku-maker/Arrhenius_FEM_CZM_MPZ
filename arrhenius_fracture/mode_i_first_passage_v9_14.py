@@ -66,7 +66,14 @@ def _recording_j_factory(original_factory):
                 exclude_radius=exclude_radius,
             )
             ACTIVE_CONTEXT.record_j_call(
-                base, mat, ell, cfg, exclude_radius, J, KJ
+                base,
+                mat,
+                ell,
+                cfg,
+                exclude_radius,
+                J,
+                KJ,
+                coupling_context=context,
             )
             return J, KJ, info
 
@@ -124,6 +131,9 @@ def _write_equilibrium_audit(out: Path) -> None:
             records and all(float(r.get("hazard_action_increment", 1.0)) == 0.0 for r in records)
         ),
         "all_J_recomputed": bool(records and len(finite_j) == len(records)),
+        "all_MPZ_profiles_recomputed": bool(
+            records and all(bool(r.get("mpz_profile_recomputed_after_event", False)) for r in records)
+        ),
         "max_relative_boundary_displacement_drift": max(
             (float(r.get("max_relative_boundary_displacement_drift", float("nan"))) for r in records),
             default=float("nan"),
@@ -178,15 +188,22 @@ def main(argv: list[str] | None = None):
     original_equilibrate = ACTIVE_CONTEXT.equilibrate
 
     def strict_equilibrate(**kwargs):
-        ueq, record = original_equilibrate(**kwargs)
-        if str(record.get("J_after_event_status", "")) != "ok":
-            raise RuntimeError(
-                "post-event J recomputation failed: "
-                + str(record.get("J_after_event_status"))
-            )
-        if not np.isfinite(float(record.get("KJ_after_event_equilibrium_Pa_sqrt_m", np.nan))):
-            raise RuntimeError("post-event equilibrium returned non-finite KJ")
-        return ueq, record
+        record_count = len(ACTIVE_CONTEXT.records)
+        try:
+            ueq, record = original_equilibrate(**kwargs)
+            if str(record.get("J_after_event_status", "")) != "ok":
+                raise RuntimeError(
+                    "post-event J recomputation failed: "
+                    + str(record.get("J_after_event_status"))
+                )
+            if not np.isfinite(float(record.get("KJ_after_event_equilibrium_Pa_sqrt_m", np.nan))):
+                raise RuntimeError("post-event equilibrium returned non-finite KJ")
+            if not bool(record.get("mpz_profile_recomputed_after_event", False)):
+                raise RuntimeError("post-event 2-D MPZ profile was not recomputed")
+            return ueq, record
+        except Exception:
+            del ACTIVE_CONTEXT.records[record_count:]
+            raise
 
     ACTIVE_CONTEXT.equilibrate = strict_equilibrate
     original_assemble = install_mechanics_recorder(_fem)
@@ -216,6 +233,7 @@ def main(argv: list[str] | None = None):
                     "one_physical_event_per_hazard_renewal": True,
                     "conservative_parent_map_transfer": True,
                     "post_event_same_time_same_load_equilibrium": True,
+                    "post_event_mpz_profile_recomputed": True,
                     "n_post_event_equilibria": len(ACTIVE_CONTEXT.records),
                 })
                 summary.write_text(json.dumps(payload, indent=2, default=str))
