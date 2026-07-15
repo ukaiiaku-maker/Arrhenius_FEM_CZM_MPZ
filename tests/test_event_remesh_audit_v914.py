@@ -78,6 +78,7 @@ def _case(root: Path, cls: str, curve, yoffset: float = 0.0, complete: bool = Tr
         "all_same_time": True,
         "all_zero_hazard_increment": True,
         "all_J_recomputed": True,
+        "all_MPZ_profiles_recomputed": True,
         "max_relative_boundary_displacement_drift": 0.0,
         "max_relative_rho_area_integral_error": 1e-14,
         "max_relative_ep_area_integral_error": 1e-14,
@@ -94,6 +95,7 @@ def test_complete_conservative_campaign_passes_numerical_gate(tmp_path):
     assert out["numerical_event_remesh_gate_passed"]
     assert not out["failed_numerical_remesh_cases"]
     assert out["material_transfer_gate_passed_v914"]
+    assert all(case["all_MPZ_profiles_recomputed"] for case in out["cases"])
 
 
 def test_missing_same_load_equilibrium_fails_numerical_gate(tmp_path):
@@ -105,3 +107,16 @@ def test_missing_same_load_equilibrium_fails_numerical_gate(tmp_path):
     assert not out["numerical_event_remesh_gate_passed"]
     assert "weakT" in out["failed_numerical_remesh_cases"]
     assert not out["material_transfer_gate_passed_v914"]
+
+
+def test_missing_post_event_mpz_profile_fails_numerical_gate(tmp_path):
+    _case(tmp_path, "ceramic", (1.0, 1.01, 0.99), 0.0)
+    weak = _case(tmp_path, "weakT", (1.0, 1.25, 0.90), 1e-6)
+    _case(tmp_path, "DBTT", (1.0, 0.90, 1.35), 2e-6)
+    path = weak / "event_equilibrium_audit_v914.json"
+    payload = json.loads(path.read_text())
+    payload["all_MPZ_profiles_recomputed"] = False
+    path.write_text(json.dumps(payload))
+    out = audit_campaign(tmp_path, 1, 700.0)
+    assert not out["numerical_event_remesh_gate_passed"]
+    assert "weakT" in out["failed_numerical_remesh_cases"]
