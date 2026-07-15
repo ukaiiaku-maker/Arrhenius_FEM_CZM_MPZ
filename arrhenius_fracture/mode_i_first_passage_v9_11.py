@@ -1,13 +1,13 @@
 """Direct Mode-I full 2-D FEM/CZM validation for the selected v9.11 MPZ law.
 
 The ceramic, weakT, and DBTT parameterizations were calibrated in the moving
-reference-frame constitutive campaign.  A pure Mode-I validation must therefore
-not require a second mixed-mode boundary-response calibration.  This entry point
+reference-frame constitutive campaign. A pure Mode-I validation must therefore
+not require a second mixed-mode boundary-response calibration. This entry point
 uses remote opening only and preserves the calibrated scalar K drive by forcing
 the additional mixed-mode directional multipliers to unity.
 
 Crystal anisotropy remains active in the FEM equilibrium, domain integral,
-process-zone stress profile, and bulk plasticity.  Finite-radius FEM stresses are
+process-zone stress profile, and bulk plasticity. Finite-radius FEM stresses are
 retained for spatial-profile sampling and diagnostics, but they do not rescale
 the calibrated Mode-I cleavage or emission drive.
 """
@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -72,14 +73,7 @@ def _option_value(argv: list[str], name: str) -> str | None:
 
 
 def _derived_mpz_length_args(argv: list[str]) -> tuple[list[str], float]:
-    """Keep every legacy/reporting length synchronized with the v9.11 MPZ.
-
-    ``sharp_front.run_2d`` prints its resolution audit before the v9.11 engine is
-    built.  Therefore its legacy ``L_pz`` and ``mpz_length_m`` namespace values
-    must be derived from the authoritative ``--mpz-length-um`` option before the
-    solver starts.  A conflicting explicit value is rejected rather than
-    silently producing a misleading console audit or a split length scale.
-    """
+    """Keep every legacy/reporting length synchronized with the v9.11 MPZ."""
     mpz_um = float(_option_value(argv, "--mpz-length-um") or 100.0)
     if not math.isfinite(mpz_um) or mpz_um <= 0.0:
         raise SystemExit("--mpz-length-um must be finite and positive")
@@ -108,13 +102,7 @@ def _float_or_none(value: Any) -> float | None:
 
 
 def _clock_summary(out: Path, T_K: float) -> dict[str, Any]:
-    """Read the accepted solver rows and export actual clock residuals.
-
-    The generic v8 summary previously requested ``B_final`` from a compact base
-    summary that did not contain the field, producing JSON ``null`` even though
-    the accepted step CSV and console contained the finite residual clock.  The
-    step CSV is the authoritative accepted-state record.
-    """
+    """Read accepted solver rows and export clock/statistical diagnostics."""
     path = out / f"steps_{int(round(float(T_K))):04d}K.csv"
     if not path.exists():
         return {
@@ -147,6 +135,19 @@ def _clock_summary(out: Path, T_K: float) -> dict[str, Any]:
         "B_first_fire_step": (
             _float_or_none(first_fire.get("step")) if first_fire is not None else None
         ),
+        "B_target_final": _float_or_none(final.get("B_target")),
+        "B_target_first_fire": (
+            _float_or_none(first_fire.get("B_target")) if first_fire is not None else None
+        ),
+        "B_fraction_of_target_final": _float_or_none(
+            final.get("B_fraction_of_target")
+        ),
+        "stochastic_event_index_final": _float_or_none(
+            final.get("stochastic_event_index")
+        ),
+        "event_reload_gate_count_final": _float_or_none(
+            final.get("event_reload_gate_count")
+        ),
         "B_summary_source": path.name,
     }
 
@@ -156,6 +157,12 @@ def _annotate_outputs(
     results: list[dict[str, Any]],
     mpz_length_m: float,
 ) -> None:
+    event_statistics = os.environ.get(
+        "ARRHENIUS_EVENT_STATISTICS", "deterministic"
+    ).strip().lower()
+    propagation_control = os.environ.get(
+        "ARRHENIUS_PROPAGATION_CONTROL", "raw"
+    ).strip().lower()
     flags = {
         "model": MODEL_ID,
         "mode_I_direct_material_calibration": True,
@@ -168,6 +175,26 @@ def _annotate_outputs(
         "sharp_front_L_pz_synchronized_to_active_mpz": True,
         "crystal_anisotropy_role": (
             "FEM equilibrium, J integral, process-zone spatial profile, and bulk plasticity"
+        ),
+        "event_statistics": event_statistics,
+        "stochastic_first_passage_active": event_statistics == "stochastic",
+        "stochastic_emission_active": (
+            event_statistics == "stochastic"
+            and os.environ.get("ARRHENIUS_STOCHASTIC_EMISSION", "1") != "0"
+        ),
+        "stochastic_seed": int(os.environ.get("ARRHENIUS_STOCHASTIC_SEED", "1")),
+        "propagation_control": propagation_control,
+        "event_reload_relative_U": _float_or_none(
+            os.environ.get("ARRHENIUS_RELOAD_RELATIVE_U", "1e-4")
+        ),
+        "event_reload_absolute_U_m": _float_or_none(
+            os.environ.get("ARRHENIUS_RELOAD_ABSOLUTE_U_M", "1e-12")
+        ),
+        "event_reload_relative_K": _float_or_none(
+            os.environ.get("ARRHENIUS_RELOAD_RELATIVE_K", "1e-4")
+        ),
+        "event_reload_absolute_K_Pa_sqrt_m": _float_or_none(
+            os.environ.get("ARRHENIUS_RELOAD_ABSOLUTE_K_PA_SQRT_M", "1e3")
         ),
     }
     for payload in results:
@@ -185,9 +212,6 @@ def _annotate_outputs(
             writer.writeheader()
             writer.writerow(results[-1])
 
-    # Preserve every temperature when one invocation runs a multi-temperature
-    # R-curve campaign; the historical single-summary filenames remain as the
-    # last-temperature compatibility view.
     if results:
         (out / "mode_i_v9_11_temperature_summaries.json").write_text(
             json.dumps(results, indent=2, default=str)
