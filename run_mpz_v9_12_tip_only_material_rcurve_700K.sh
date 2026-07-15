@@ -53,6 +53,7 @@ mkdir -p "$OUTROOT"
   tests/test_material_rcurve_audit_v912.py \
   tests/test_mpz_v9_12_runner.py \
   tests/test_v912_paper_transfer_contract.py \
+  tests/test_field_snapshots_v912.py \
   tests/test_stochastic_kinetics_v911.py \
   tests/test_rcurve_postprocess_v911.py \
   tests/test_mode_i_first_passage_v9_11.py \
@@ -76,9 +77,9 @@ echo "  stochastic cleavage=on"
 echo "  stochastic emission=$STOCHASTIC_EMISSION"
 echo "  propagation control=$PROPAGATION_CONTROL"
 echo "  RNG coupling=$RNG_COUPLING"
-echo "  full 2-D field images=required"
+echo "  full 2-D field images and numerical arrays=required"
 
-"$PYTHON_BIN" run_mpz_v9_12_tip_only_material_rcurve.py \
+"$PYTHON_BIN" run_mpz_v9_12_tip_only_material_rcurve_fullfield.py \
   --parameter-root "$PARAMETER_ROOT" \
   --outroot "$OUTROOT" \
   --seeds "$SEEDS" \
