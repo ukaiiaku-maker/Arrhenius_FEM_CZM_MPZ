@@ -21,7 +21,11 @@ jobs:
         run: |
           python -m compileall -q \
             arrhenius_fracture/material_rcurve_audit_v912.py \
+            arrhenius_fracture/field_snapshots_v912.py \
+            arrhenius_fracture/mode_i_first_passage_v9_12.py \
+            run_mpz_v9_12_mode_i_rcurve.py \
             run_mpz_v9_12_tip_only_material_rcurve.py \
+            run_mpz_v9_12_tip_only_material_rcurve_fullfield.py \
             verify_mpz_v9_12_install.py
           bash -n run_mpz_v9_12_tip_only_material_rcurve_700K.sh
       - name: Verify full FEM and field-output contract
@@ -31,7 +35,8 @@ jobs:
           python -m pytest -q \
             tests/test_material_rcurve_audit_v912.py \
             tests/test_mpz_v9_12_runner.py \
-            tests/test_v912_paper_transfer_contract.py
+            tests/test_v912_paper_transfer_contract.py \
+            tests/test_field_snapshots_v912.py
       - name: Run inherited v9.11 integration tests
         run: |
           python -m pytest -q \
