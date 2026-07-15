@@ -117,9 +117,9 @@ def _absolute_action_predictor(self, K_cleave, K_emit, T, dt):
     v9.11 normalized ``dB`` by the action remaining to the current threshold.
     Limiting that ratio to a fixed target consumes a fixed fraction of the
     remainder and approaches the event surface geometrically without crossing it.
-    v9.14 instead limits the physical integrated-hazard increment itself.  The
-    accepted event overshoot is then bounded by ``--adaptive-event-target`` and
-    the existing threshold stream retains any residual action after firing.
+    v9.14 instead limits the physical integrated-hazard increment itself. The
+    accepted event overshoot is bounded by ``--adaptive-event-target`` and the
+    existing threshold stream retains residual action after firing.
     """
     if self._reload_gate_active(float(K_cleave)):
         return 0.0
@@ -131,6 +131,47 @@ def _absolute_action_predictor(self, K_cleave, K_emit, T, dt):
     self.adaptive_prediction_coordinate_v914 = ADAPTIVE_EVENT_COORDINATE
     self.adaptive_predicted_absolute_dB_v914 = max(dB, 0.0)
     return max(dB, 0.0)
+
+
+def _install_mechanics_history(max_entries: int = 128):
+    """Retain recent FEM states so an event can select its exact parent mesh.
+
+    The sharp-front solve may assemble several meshes within one accepted outer
+    step. The most recent assembly globally is not guaranteed to be the parent
+    of the front that fires. Every snapshot is immutable, so retaining a bounded
+    history permits a strict reverse search by topology and coordinates.
+    """
+    original_record = ACTIVE_CONTEXT.record_mechanics
+    history = []
+
+    def record_with_history(*args, **kwargs):
+        original_record(*args, **kwargs)
+        snapshot = ACTIVE_CONTEXT.latest_mechanics
+        if snapshot is not None:
+            history.append(snapshot)
+            if len(history) > int(max_entries):
+                del history[:-int(max_entries)]
+
+    ACTIVE_CONTEXT.record_mechanics = record_with_history
+    return original_record, history
+
+
+def _select_matching_mechanics_snapshot(history, pre_mesh):
+    reasons = []
+    for reverse_index, snapshot in enumerate(reversed(history)):
+        compatible, reason = ACTIVE_CONTEXT._mesh_state_compatibility(
+            snapshot, pre_mesh
+        )
+        reasons.append({
+            "reverse_index": int(reverse_index),
+            "snapshot_nn": int(snapshot.mesh.nn),
+            "snapshot_ne": int(snapshot.mesh.ne),
+            "compatible": bool(compatible),
+            "reason": str(reason),
+        })
+        if compatible:
+            return snapshot, reverse_index, reasons
+    return None, None, reasons
 
 
 def _write_equilibrium_audit(out: Path) -> None:
@@ -158,6 +199,9 @@ def _write_equilibrium_audit(out: Path) -> None:
         "all_J_recomputed": bool(records and len(finite_j) == len(records)),
         "all_MPZ_profiles_recomputed": bool(
             records and all(bool(r.get("mpz_profile_recomputed_after_event", False)) for r in records)
+        ),
+        "all_parent_mechanics_states_matched": bool(
+            records and all(bool(r.get("mechanics_history_match_found", False)) for r in records)
         ),
         "max_relative_boundary_displacement_drift": max(
             (float(r.get("max_relative_boundary_displacement_drift", float("nan"))) for r in records),
@@ -210,12 +254,28 @@ def main(argv: list[str] | None = None):
         )
 
     ACTIVE_CONTEXT.clear()
+    original_record_mechanics, mechanics_history = _install_mechanics_history()
     original_equilibrate = ACTIVE_CONTEXT.equilibrate
 
     def strict_equilibrate(**kwargs):
         record_count = len(ACTIVE_CONTEXT.records)
+        snapshot, reverse_index, search = _select_matching_mechanics_snapshot(
+            mechanics_history, kwargs["pre_mesh"]
+        )
+        if snapshot is None:
+            tail = search[:8]
+            raise RuntimeError(
+                "no recorded FEM state structurally matches the pre-event mesh "
+                f"nn={kwargs['pre_mesh'].nn} ne={kwargs['pre_mesh'].ne}; "
+                f"recent candidates={tail}"
+            )
+        ACTIVE_CONTEXT.latest_mechanics = snapshot
         try:
             ueq, record = original_equilibrate(**kwargs)
+            record["mechanics_history_match_found"] = True
+            record["mechanics_history_length"] = int(len(mechanics_history))
+            record["mechanics_history_reverse_index"] = int(reverse_index)
+            record["mechanics_history_recent_search"] = search[:8]
             if str(record.get("J_after_event_status", "")) != "ok":
                 raise RuntimeError(
                     "post-event J recomputation failed: "
@@ -251,6 +311,7 @@ def main(argv: list[str] | None = None):
         _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives = (
             original_predictor
         )
+        ACTIVE_CONTEXT.record_mechanics = original_record_mechanics
         ACTIVE_CONTEXT.equilibrate = original_equilibrate
 
     out_value = _option_value(user_args, "--out")
@@ -266,12 +327,13 @@ def main(argv: list[str] | None = None):
                     "effective_crack_backend": "event_remesh_czm",
                     "adaptive_event_coordinate_v914": ADAPTIVE_EVENT_COORDINATE,
                     "adaptive_event_action_tolerance_v914": float(
-                        _option_value(user_args, "--adaptive-event-target") or 0.35
+                        _option_value(user_args, "--adaptive-event-target") or 0.01
                     ),
                     "one_physical_event_per_hazard_renewal": True,
                     "conservative_parent_map_transfer": True,
                     "post_event_same_time_same_load_equilibrium": True,
                     "post_event_mpz_profile_recomputed": True,
+                    "mechanics_parent_state_selected_by_mesh_history": True,
                     "n_post_event_equilibria": len(ACTIVE_CONTEXT.records),
                 })
                 summary.write_text(json.dumps(payload, indent=2, default=str))
