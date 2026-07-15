@@ -21,6 +21,7 @@ REQUIRED_V911 = [
     "arrhenius_fracture/moving_process_zone_v911.py",
     "arrhenius_fracture/mpz_front_engine_v911.py",
     "arrhenius_fracture/mixed_mode_first_passage_v9_11.py",
+    "arrhenius_fracture/mode_i_first_passage_v9_11.py",
 ]
 
 
