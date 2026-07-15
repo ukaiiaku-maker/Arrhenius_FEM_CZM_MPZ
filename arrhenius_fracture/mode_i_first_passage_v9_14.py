@@ -8,6 +8,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+import numpy as np
+
 from . import crack_backend as _crack_backend
 from . import fem as _fem
 from . import mixed_mode_first_passage_v9_11 as _mm_v911
@@ -64,13 +66,7 @@ def _recording_j_factory(original_factory):
                 exclude_radius=exclude_radius,
             )
             ACTIVE_CONTEXT.record_j_call(
-                base,
-                mat,
-                ell,
-                cfg,
-                exclude_radius,
-                J,
-                KJ,
+                base, mat, ell, cfg, exclude_radius, J, KJ
             )
             return J, KJ, info
 
@@ -82,9 +78,26 @@ def _recording_j_factory(original_factory):
 def _event_backend_factory(original_factory):
     def build(args, geom):
         enabled = os.environ.get("ARRHENIUS_EVENT_REMESH_V914", "1") != "0"
-        if enabled:
-            return build_event_remesh_backend(args, geom)
-        return original_factory(args, geom)
+        if not enabled:
+            return original_factory(args, geom)
+        settings = (
+            ("ARRHENIUS_EVENT_REMESH_TARGET_H_M", "event_remesh_target_h_m", float),
+            ("ARRHENIUS_EVENT_REMESH_PATCH_RADIUS_M", "event_remesh_patch_radius_m", float),
+            ("ARRHENIUS_EVENT_REMESH_MAX_EDGE_SPLITS", "event_remesh_max_edge_splits", int),
+            ("ARRHENIUS_EVENT_REMESH_TARGET_EDGE_FACTOR", "event_remesh_target_edge_factor", float),
+            ("ARRHENIUS_EVENT_REMESH_BACK_MARGIN_M", "event_remesh_back_margin_m", float),
+            ("ARRHENIUS_EVENT_REMESH_MIN_QUALITY", "event_remesh_min_quality", float),
+        )
+        for env_name, attr, cast in settings:
+            raw = os.environ.get(env_name)
+            if raw not in (None, ""):
+                setattr(args, attr, cast(raw))
+        setattr(
+            args,
+            "event_remesh_require_equilibrium",
+            os.environ.get("ARRHENIUS_EVENT_REMESH_REQUIRE_EQUILIBRIUM", "1") != "0",
+        )
+        return build_event_remesh_backend(args, geom)
 
     return build
 
@@ -94,6 +107,7 @@ def _write_equilibrium_audit(out: Path) -> None:
     finite_j = [
         r for r in records
         if str(r.get("J_after_event_status", "")) == "ok"
+        and np.isfinite(float(r.get("KJ_after_event_equilibrium_Pa_sqrt_m", np.nan)))
     ]
     payload: dict[str, Any] = {
         "schema": "event_equilibrium_v914",
@@ -157,10 +171,24 @@ def main(argv: list[str] | None = None):
     if backend not in {"adaptive_czm", "event_remesh_czm"}:
         raise SystemExit(
             "v9.14 event-remesh entry point requires --crack-backend adaptive_czm "
-            "(the accepted parent CLI token) or event_remesh_czm"
+            "(the accepted parent CLI token)"
         )
 
     ACTIVE_CONTEXT.clear()
+    original_equilibrate = ACTIVE_CONTEXT.equilibrate
+
+    def strict_equilibrate(**kwargs):
+        ueq, record = original_equilibrate(**kwargs)
+        if str(record.get("J_after_event_status", "")) != "ok":
+            raise RuntimeError(
+                "post-event J recomputation failed: "
+                + str(record.get("J_after_event_status"))
+            )
+        if not np.isfinite(float(record.get("KJ_after_event_equilibrium_Pa_sqrt_m", np.nan))):
+            raise RuntimeError("post-event equilibrium returned non-finite KJ")
+        return ueq, record
+
+    ACTIVE_CONTEXT.equilibrate = strict_equilibrate
     original_assemble = install_mechanics_recorder(_fem)
     original_backend_factory = _crack_backend.build_crack_backend
     original_j_factory = _mm_v911._j_profile_wrapper_factory
@@ -172,6 +200,7 @@ def main(argv: list[str] | None = None):
         _mm_v911._j_profile_wrapper_factory = original_j_factory
         _crack_backend.build_crack_backend = original_backend_factory
         restore_mechanics_recorder(_fem, original_assemble)
+        ACTIVE_CONTEXT.equilibrate = original_equilibrate
 
     out_value = _option_value(user_args, "--out")
     if out_value is not None:
