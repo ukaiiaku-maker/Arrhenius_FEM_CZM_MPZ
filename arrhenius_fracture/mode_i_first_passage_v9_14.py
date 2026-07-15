@@ -14,6 +14,7 @@ from . import crack_backend as _crack_backend
 from . import fem as _fem
 from . import mixed_mode_first_passage_v9_11 as _mm_v911
 from . import mode_i_first_passage_v9_13 as _base_v913
+from . import mpz_front_engine_v911 as _engine_v911
 from .event_equilibrium_v914 import (
     ACTIVE_CONTEXT,
     install_mechanics_recorder,
@@ -22,6 +23,7 @@ from .event_equilibrium_v914 import (
 from .event_remesh_czm_v914 import build_event_remesh_backend
 
 MODEL_ID = "FEM_CZM_Mode_I_MPZ_v9_14_event_remesh_same_load_equilibrium"
+ADAPTIVE_EVENT_COORDINATE = "absolute_integrated_hazard_action"
 
 
 def _option_value(argv: list[str], name: str) -> str | None:
@@ -109,6 +111,28 @@ def _event_backend_factory(original_factory):
     return build
 
 
+def _absolute_action_predictor(self, K_cleave, K_emit, T, dt):
+    """Predict the absolute Arrhenius action increment for adaptive stepping.
+
+    v9.11 normalized ``dB`` by the action remaining to the current threshold.
+    Limiting that ratio to a fixed target consumes a fixed fraction of the
+    remainder and approaches the event surface geometrically without crossing it.
+    v9.14 instead limits the physical integrated-hazard increment itself.  The
+    accepted event overshoot is then bounded by ``--adaptive-event-target`` and
+    the existing threshold stream retains any residual action after firing.
+    """
+    if self._reload_gate_active(float(K_cleave)):
+        return 0.0
+    dB = float(
+        _engine_v911._BaseEngine.predict_clock_increment_drives(
+            self, K_cleave, K_emit, T, dt
+        )
+    )
+    self.adaptive_prediction_coordinate_v914 = ADAPTIVE_EVENT_COORDINATE
+    self.adaptive_predicted_absolute_dB_v914 = max(dB, 0.0)
+    return max(dB, 0.0)
+
+
 def _write_equilibrium_audit(out: Path) -> None:
     records = list(ACTIVE_CONTEXT.records)
     finite_j = [
@@ -119,6 +143,7 @@ def _write_equilibrium_audit(out: Path) -> None:
     payload: dict[str, Any] = {
         "schema": "event_equilibrium_v914",
         "model": MODEL_ID,
+        "adaptive_event_coordinate": ADAPTIVE_EVENT_COORDINATE,
         "same_time_same_load_protocol": True,
         "physical_time_advanced_during_equilibrium": False,
         "hazard_action_advanced_during_equilibrium": False,
@@ -206,6 +231,12 @@ def main(argv: list[str] | None = None):
             raise
 
     ACTIVE_CONTEXT.equilibrate = strict_equilibrate
+    original_predictor = (
+        _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives
+    )
+    _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives = (
+        _absolute_action_predictor
+    )
     original_assemble = install_mechanics_recorder(_fem)
     original_backend_factory = _crack_backend.build_crack_backend
     original_j_factory = _mm_v911._j_profile_wrapper_factory
@@ -217,6 +248,9 @@ def main(argv: list[str] | None = None):
         _mm_v911._j_profile_wrapper_factory = original_j_factory
         _crack_backend.build_crack_backend = original_backend_factory
         restore_mechanics_recorder(_fem, original_assemble)
+        _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives = (
+            original_predictor
+        )
         ACTIVE_CONTEXT.equilibrate = original_equilibrate
 
     out_value = _option_value(user_args, "--out")
@@ -230,6 +264,10 @@ def main(argv: list[str] | None = None):
                 payload.update({
                     "model_v914": MODEL_ID,
                     "effective_crack_backend": "event_remesh_czm",
+                    "adaptive_event_coordinate_v914": ADAPTIVE_EVENT_COORDINATE,
+                    "adaptive_event_action_tolerance_v914": float(
+                        _option_value(user_args, "--adaptive-event-target") or 0.35
+                    ),
                     "one_physical_event_per_hazard_renewal": True,
                     "conservative_parent_map_transfer": True,
                     "post_event_same_time_same_load_equilibrium": True,
