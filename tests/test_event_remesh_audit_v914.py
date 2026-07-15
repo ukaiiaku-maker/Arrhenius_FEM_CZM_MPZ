@@ -24,10 +24,16 @@ def _case(root: Path, cls: str, curve, yoffset: float = 0.0, complete: bool = Tr
         "Kc_first_existing_MPa_sqrt_m": 20.0 if complete else None,
     }))
     (case / "rcurve_run_audit.json").write_text(json.dumps({"target_extension_um": 100.0}))
-    (case / "v9_13_run_config.json").write_text(json.dumps({
-        "event_statistics": "deterministic", "stochastic_emission": False,
+    (case / "v9_14_run_config.json").write_text(json.dumps({
+        "schema": "v9.14_event_remesh_material_transfer",
+        "event_statistics": "deterministic",
+        "stochastic_emission": False,
+        "adaptive_event_coordinate": "absolute_integrated_hazard_action",
     }))
-    (case / "v9_13_case_summary.json").write_text(json.dumps({"subprocess_returncode": 0}))
+    (case / "v9_14_case_summary.json").write_text(json.dumps({
+        "schema": "v9.14_case_summary",
+        "subprocess_returncode": 0,
+    }))
     pd.DataFrame([{
         "n_raw_topology_events": 2,
         "n_independent_load_events": 3,
@@ -95,6 +101,7 @@ def test_complete_conservative_campaign_passes_numerical_gate(tmp_path):
     assert out["numerical_event_remesh_gate_passed"]
     assert not out["failed_numerical_remesh_cases"]
     assert out["material_transfer_gate_passed_v914"]
+    assert out["material_audit_v913"]["deterministic_mean_protocol_gate_passed"]
     assert all(case["all_MPZ_profiles_recomputed"] for case in out["cases"])
 
 
