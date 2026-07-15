@@ -1,0 +1,33 @@
+name: Verify full 2-D MPZ v9.14
+
+on:
+  push:
+    branches: [v9.14-event-driven-remeshed-czm]
+  pull_request:
+    branches: [v9.13-deterministic-transfer-hardened-gate]
+
+jobs:
+  verify-v914:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Verify and test v9.14
+        run: |
+          python verify_mpz_v9_14_install.py .
+          python -m pytest -q \
+            tests/test_event_driven_remesh_v914.py \
+            tests/test_event_hook_v914.py
+          bash -n run_mpz_v9_14_event_driven_remesh_700K.sh
+      - name: Inherited integration tests
+        run: |
+          python -m pytest -q \
+            tests/test_material_rcurve_audit_v913.py \
+            tests/test_mpz_v9_13_runner.py \
+            tests/test_field_snapshots_v913.py \
+            tests/test_mode_i_first_passage_v9_11.py
