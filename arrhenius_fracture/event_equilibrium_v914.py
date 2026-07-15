@@ -70,7 +70,7 @@ class EventEquilibriumContext:
         cohesive_network,
     ) -> None:
         # State is copied because the outer staggered loop may update its arrays
-        # after assembly and before the crack event is committed.  v9.14 is gated
+        # after assembly and before the crack event is committed. v9.14 is gated
         # to tip_only production use, for which these fields are unchanged by the
         # intervening plasticity call; the copies make the contract explicit.
         self.latest_mechanics = MechanicsSnapshot(
@@ -130,11 +130,49 @@ class EventEquilibriumContext:
         )
 
     @staticmethod
+    def _mesh_state_compatibility(snap: MechanicsSnapshot, pre_mesh) -> tuple[bool, str]:
+        """Validate that a rebuilt mesh object represents the recorded FEM state.
+
+        The sharp-front solver may rebuild a ``TriMesh`` object without changing
+        coordinates or connectivity.  Python object identity is therefore not a
+        valid state-transfer criterion.  This gate requires identical topology,
+        numerically identical coordinates, and correctly sized state arrays.
+        """
+        smesh = snap.mesh
+        if int(smesh.nn) != int(pre_mesh.nn) or int(smesh.ne) != int(pre_mesh.ne):
+            return False, "node_or_element_count_changed"
+        if np.asarray(smesh.elems).shape != np.asarray(pre_mesh.elems).shape:
+            return False, "connectivity_shape_changed"
+        if not np.array_equal(np.asarray(smesh.elems, int), np.asarray(pre_mesh.elems, int)):
+            return False, "connectivity_changed"
+        snodes = np.asarray(smesh.nodes, float)
+        pnodes = np.asarray(pre_mesh.nodes, float)
+        if snodes.shape != pnodes.shape:
+            return False, "node_coordinate_shape_changed"
+        coordinate_scale = max(
+            float(np.max(np.abs(snodes))) if snodes.size else 0.0,
+            float(np.max(np.abs(pnodes))) if pnodes.size else 0.0,
+            1.0,
+        )
+        coordinate_tol = max(1.0e-14, 1.0e-13 * coordinate_scale)
+        if not np.allclose(snodes, pnodes, rtol=0.0, atol=coordinate_tol):
+            return False, "node_coordinates_changed"
+        if snap.ep_gp.ndim != 2 or snap.ep_gp.shape[1] != int(pre_mesh.ne):
+            return False, "plastic_strain_state_size_mismatch"
+        if snap.rho_gp.shape != (int(pre_mesh.ne),):
+            return False, "density_state_size_mismatch"
+        if snap.displacement.shape != (int(pre_mesh.ndof),):
+            return False, "displacement_state_size_mismatch"
+        if snap.damage.shape != (int(pre_mesh.nn),):
+            return False, "damage_state_size_mismatch"
+        return True, "object_identity" if smesh is pre_mesh else "structurally_identical_rebuilt_mesh"
+
+    @staticmethod
     def _refresh_coupling_context(js: JCallSnapshot, rho_new: np.ndarray) -> None:
         """Expose transferred density to the v9.11 J/profile wrapper.
 
         The J wrapper also samples the finite-radius FEM stress/density profile
-        used by the front MPZ.  Without this update it would see the old mesh-sized
+        used by the front MPZ. Without this update it would see the old mesh-sized
         rho array during the same-load post-event J evaluation.
         """
         context = js.coupling_context
@@ -173,8 +211,12 @@ class EventEquilibriumContext:
         snap = self.latest_mechanics
         if snap is None:
             raise RuntimeError("no pre-event mechanics snapshot is available")
-        if snap.mesh is not pre_mesh:
-            raise RuntimeError("pre-event mechanics snapshot does not match crack-event mesh")
+        mesh_compatible, mesh_match_reason = self._mesh_state_compatibility(snap, pre_mesh)
+        if not mesh_compatible:
+            raise RuntimeError(
+                "pre-event mechanics snapshot does not match crack-event mesh: "
+                + mesh_match_reason
+            )
 
         pmap = np.asarray(parent_map, dtype=int)
         if pmap.shape != (new_mesh.ne,):
@@ -273,6 +315,9 @@ class EventEquilibriumContext:
         record = {
             "event_index": int(event_index),
             "front_id": int(front_id),
+            "pre_event_mesh_object_identity": bool(snap.mesh is pre_mesh),
+            "pre_event_mesh_structural_match": bool(mesh_compatible),
+            "pre_event_mesh_match_reason": mesh_match_reason,
             "same_time_equilibrium": True,
             "physical_time_increment_s": 0.0,
             "hazard_action_increment": 0.0,
