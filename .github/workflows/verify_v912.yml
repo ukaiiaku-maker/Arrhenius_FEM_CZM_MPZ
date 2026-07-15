@@ -4,7 +4,7 @@ on:
   push:
     branches: [v9.12-full-field-material-rcurve]
   pull_request:
-    branches: [main]
+    branches: [main, v9.11-full-2d-three-class-integration]
 
 jobs:
   verify-v912:
