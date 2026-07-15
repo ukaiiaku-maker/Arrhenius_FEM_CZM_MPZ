@@ -1,0 +1,66 @@
+name: Verify full 2-D MPZ v9.11
+
+on:
+  push:
+    branches: [v9.11-full-2d-three-class-integration]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-v911:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile v9.11 integration
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/mpz_parameterization_v911.py \
+            arrhenius_fracture/bulk_plasticity_v9102.py \
+            arrhenius_fracture/bulk_state_v911.py \
+            arrhenius_fracture/bulk_remesh_transfer_v911.py \
+            arrhenius_fracture/process_zone_2d_v911.py \
+            arrhenius_fracture/moving_process_zone_v911.py \
+            arrhenius_fracture/mpz_front_engine_v911.py \
+            arrhenius_fracture/stochastic_kinetics_v911.py \
+            arrhenius_fracture/rcurve_postprocess_v911.py \
+            arrhenius_fracture/mixed_mode_first_passage_v9_11.py \
+            arrhenius_fracture/mode_i_first_passage_v9_11.py \
+            run_mixed_mode_fem_czm_v9_11_campaign.py \
+            run_mpz_v9_11_mode_i_rcurve_3T.py \
+            run_mpz_v9_11_bulk_mode_matrix_700K.py \
+            run_mpz_v9_11_stochastic_continuation_700K.py \
+            postprocess_mpz_v9_11_rcurve.py \
+            verify_mpz_v9_11_install.py \
+            verify_mpz_v9_11_physics.py
+          bash -n run_mpz_v9_11_full2d_smoke.sh
+          bash -n run_mpz_v9_11_mode_i_rcurve_3T.sh
+          bash -n run_mpz_v9_11_bulk_mode_matrix_700K.sh
+          bash -n run_mpz_v9_11_stochastic_continuation_700K.sh
+      - name: Verify installed files and physics contract
+        run: |
+          python verify_mpz_v9_11_install.py .
+          python verify_mpz_v9_11_physics.py --parameter-root mpz_v9_11_parameters
+      - name: Test stochastic events and continuation
+        run: python -m pytest -q tests/test_stochastic_kinetics_v911.py
+      - name: Test cascade-aware R-curve interpretation
+        run: python -m pytest -q tests/test_rcurve_postprocess_v911.py
+      - name: Test bulk-state modes and remesh transfer
+        run: python -m pytest -q tests/test_bulk_state_v911.py tests/test_bulk_remesh_transfer_v911.py
+      - name: Test Mode-I length and clock fixes
+        run: python -m pytest -q tests/test_mode_i_first_passage_v9_11.py
+      - name: Test R-curve driver
+        run: python -m pytest -q tests/test_mpz_v9_11_rcurve_driver.py
+      - name: Run v9.11 and inherited parity tests
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_11_2d_coupling.py \
+            tests/test_mpz_v9_10_2_independent_shapes.py \
+            tests/test_bulk_pt_plasticity.py \
+            tests/test_moving_process_zone.py \
+            tests/test_moving_process_zone_v95.py
