@@ -18,7 +18,9 @@ DU=${DU:-2e-7}
 DT=${DT:-8.4}
 N_STAGGER=${N_STAGGER:-2}
 PRINT_EVERY=${PRINT_EVERY:-25}
-ADAPTIVE_EVENT_TARGET=${ADAPTIVE_EVENT_TARGET:-0.05}
+# v9.14 interprets this as an absolute integrated-hazard increment dB,
+# not a fraction of the remaining renewal threshold.
+ADAPTIVE_EVENT_TARGET=${ADAPTIVE_EVENT_TARGET:-0.01}
 DA_PHYS_UM=${DA_PHYS_UM:-5}
 MPZ_LENGTH_UM=${MPZ_LENGTH_UM:-100}
 MPZ_N_BINS=${MPZ_N_BINS:-200}
@@ -63,9 +65,11 @@ echo "v9.14 event-remeshed full FEM/CZM gate"
 echo "  classes=$CLASSES"
 echo "  event statistics=$EVENT_STATISTICS"
 echo "  stochastic emission=$STOCHASTIC_EMISSION"
+echo "  adaptive event coordinate=absolute integrated hazard action"
+echo "  maximum accepted dB=$ADAPTIVE_EVENT_TARGET"
 echo "  one physical Arrhenius event per equilibrium solve"
 echo "  conservative forward-patch remesh after every accepted event"
-echo "  same-time/same-load FEM and J re-equilibration required"
+echo "  same-time/same-load FEM, MPZ-profile and J re-equilibration required"
 
 "$PYTHON_BIN" run_mpz_v9_14_event_remesh_gate.py \
   --parameter-root "$PARAMETER_ROOT" \
