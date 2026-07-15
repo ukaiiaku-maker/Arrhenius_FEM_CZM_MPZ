@@ -15,12 +15,16 @@ from . import fem as _fem
 from . import mixed_mode_first_passage_v9_11 as _mm_v911
 from . import mode_i_first_passage_v9_13 as _base_v913
 from . import mpz_front_engine_v911 as _engine_v911
+from .crack_backend import AdaptiveCZMBackend
 from .event_equilibrium_v914 import (
     ACTIVE_CONTEXT,
     install_mechanics_recorder,
     restore_mechanics_recorder,
 )
-from .event_remesh_czm_v914 import build_event_remesh_backend
+from .event_remesh_czm_v914 import (
+    EventRemeshCZMBackend,
+    build_event_remesh_backend,
+)
 
 MODEL_ID = "FEM_CZM_Mode_I_MPZ_v9_14_event_remesh_same_load_equilibrium"
 ADAPTIVE_EVENT_COORDINATE = "absolute_integrated_hazard_action"
@@ -133,14 +137,33 @@ def _absolute_action_predictor(self, K_cleave, K_emit, T, dt):
     return max(dB, 0.0)
 
 
-def _install_mechanics_history(max_entries: int = 128):
-    """Retain recent FEM states so an event can select its exact parent mesh.
+def _install_physical_event_depth_guard():
+    """Apply v9.14 remeshing only after the complete physical CZM increment.
 
-    The sharp-front solve may assemble several meshes within one accepted outer
-    step. The most recent assembly globally is not guaranteed to be the parent
-    of the front that fires. Every snapshot is immutable, so retaining a bounded
-    history permits a strict reverse search by topology and coordinates.
+    ``AdaptiveCZMBackend._advance_impl`` recursively calls ``self.advance`` when
+    one physical increment requires several mesh-aligned subsegments. Dynamic
+    dispatch would otherwise re-enter the v9.14 remesh wrapper for each internal
+    subsegment. Nested calls execute the base topology operation only; the outer
+    call performs one remesh/equilibrium after the full physical event.
     """
+    original = EventRemeshCZMBackend.advance
+
+    def guarded(self, **kwargs):
+        depth = int(getattr(self, "_physical_event_depth_v914", 0))
+        if depth > 0:
+            return AdaptiveCZMBackend.advance(self, **kwargs)
+        self._physical_event_depth_v914 = depth + 1
+        try:
+            return original(self, **kwargs)
+        finally:
+            self._physical_event_depth_v914 = depth
+
+    EventRemeshCZMBackend.advance = guarded
+    return original
+
+
+def _install_mechanics_history(max_entries: int = 128):
+    """Retain recent FEM states so an event can select its exact parent mesh."""
     original_record = ACTIVE_CONTEXT.record_mechanics
     history = []
 
@@ -185,6 +208,7 @@ def _write_equilibrium_audit(out: Path) -> None:
         "schema": "event_equilibrium_v914",
         "model": MODEL_ID,
         "adaptive_event_coordinate": ADAPTIVE_EVENT_COORDINATE,
+        "physical_event_depth_guard": True,
         "same_time_same_load_protocol": True,
         "physical_time_advanced_during_equilibrium": False,
         "hazard_action_advanced_during_equilibrium": False,
@@ -297,6 +321,7 @@ def main(argv: list[str] | None = None):
     _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives = (
         _absolute_action_predictor
     )
+    original_event_advance = _install_physical_event_depth_guard()
     original_assemble = install_mechanics_recorder(_fem)
     original_backend_factory = _crack_backend.build_crack_backend
     original_j_factory = _mm_v911._j_profile_wrapper_factory
@@ -308,6 +333,7 @@ def main(argv: list[str] | None = None):
         _mm_v911._j_profile_wrapper_factory = original_j_factory
         _crack_backend.build_crack_backend = original_backend_factory
         restore_mechanics_recorder(_fem, original_assemble)
+        EventRemeshCZMBackend.advance = original_event_advance
         _engine_v911.MovingProcessZone2DFrontEngine.predict_clock_increment_drives = (
             original_predictor
         )
@@ -329,6 +355,7 @@ def main(argv: list[str] | None = None):
                     "adaptive_event_action_tolerance_v914": float(
                         _option_value(user_args, "--adaptive-event-target") or 0.01
                     ),
+                    "physical_event_depth_guard_v914": True,
                     "one_physical_event_per_hazard_renewal": True,
                     "conservative_parent_map_transfer": True,
                     "post_event_same_time_same_load_equilibrium": True,
