@@ -29,6 +29,8 @@ def _bounded_insert(self, mesh, displacement, p0, target, front_id):
         self._v9184_regularization_candidate_count = int(
             meta.get("regularization_candidate_count", 1) or 1
         )
+    else:
+        self._v9184_regularization_candidate_count = 0
     return result
 
 
@@ -55,7 +57,12 @@ def _bounded_advance(self, *args, **kwargs):
         self._v9184_regularization_attempt = attempt
         candidate_count = int(getattr(self, "_v9184_regularization_candidate_count", 0))
         reason = "mechanical_topology_veto:" + ";".join(issues)
-        if candidate_count > 0 and attempt >= candidate_count:
+        if candidate_count <= 0:
+            raise RuntimeError(
+                "v9.18.4 produced a mechanically invalid topology and no "
+                f"same-length alternate candidates exist: reason={reason}"
+            )
+        if attempt >= candidate_count:
             raise RuntimeError(
                 "v9.18.4 exhausted all same-length front-regularization "
                 f"candidates without a mechanically valid topology: "
@@ -127,6 +134,7 @@ def main(argv=None):
             "regularization_angles_deg": _v9184._angle_schedule_deg(),
             "mechanical_topology_validation_enabled": True,
             "candidate_retry_count_bounded": True,
+            "nonregularizable_invalid_topology_fails_immediately": True,
             "unexpected_backend_exception_rolls_back": True,
             "nonfinite_mechanics_fail_fast_enabled": True,
             "constitutive_physics_changed": False,
