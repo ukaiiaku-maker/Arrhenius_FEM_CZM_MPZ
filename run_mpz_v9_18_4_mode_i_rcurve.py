@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select the v9.18.4 mechanically valid Mode-I entry point."""
+"""Select the bounded v9.18.4 mechanically valid Mode-I entry point."""
 from __future__ import annotations
 
 import run_mpz_v9_11_mode_i_rcurve_3T as _base
@@ -10,7 +10,7 @@ _original_build_command = _base.build_command
 def _build_command_v9184(py, args, class_name, manifest, T_K, case_dir):
     cmd = _original_build_command(py, args, class_name, manifest, T_K, case_dir)
     old = "arrhenius_fracture.mode_i_first_passage_v9_11"
-    new = "arrhenius_fracture.mode_i_first_passage_v9_18_4"
+    new = "arrhenius_fracture.mode_i_first_passage_v9_18_4_bounded"
     try:
         cmd[cmd.index(old)] = new
     except ValueError as exc:
