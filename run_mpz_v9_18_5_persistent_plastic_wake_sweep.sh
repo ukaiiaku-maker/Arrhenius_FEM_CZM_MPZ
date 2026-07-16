@@ -47,6 +47,7 @@ fi
 
 "$PYTHON_BIN" -m pytest -q \
   tests/test_target_stop_quality_corridor_v9185.py \
+  tests/test_time_aware_sequence_audit_v9185.py \
   tests/test_v9185_routing.py \
   tests/test_mechanically_valid_front_regularization_v9184.py \
   tests/test_v9184_bounded_routing.py \
