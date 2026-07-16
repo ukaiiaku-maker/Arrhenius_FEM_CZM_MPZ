@@ -42,6 +42,7 @@ fi
 
 "$PYTHON_BIN" -m pytest -q \
   tests/test_mechanically_valid_front_regularization_v9184.py \
+  tests/test_v9184_bounded_routing.py \
   tests/test_edge_aware_geometry_recovery_v9183.py \
   tests/test_committed_completion_handshake_v9182.py \
   tests/test_active_event_renewal_rollback_v9181.py \
