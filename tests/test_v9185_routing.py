@@ -6,7 +6,7 @@ import run_mpz_v9_18_5_mode_i_rcurve as mode_runner
 import run_mpz_v9_18_5_persistent_plastic_wake as campaign_runner
 
 
-def test_mode_i_command_routes_to_v9185(monkeypatch, tmp_path):
+def test_mode_i_command_routes_to_bounded_v9185(monkeypatch, tmp_path):
     def fake_build(py, args, class_name, manifest, T_K, case_dir):
         return [py, "-m", "arrhenius_fracture.mode_i_first_passage_v9_11", "--out", str(case_dir)]
 
@@ -14,7 +14,8 @@ def test_mode_i_command_routes_to_v9185(monkeypatch, tmp_path):
     cmd = mode_runner._build_command_v9185(
         "python", SimpleNamespace(), "ceramic", {}, 700.0, tmp_path
     )
-    assert "arrhenius_fracture.mode_i_first_passage_v9_18_5" in cmd
+    assert "arrhenius_fracture.mode_i_first_passage_v9_18_5_bounded" in cmd
+    assert "arrhenius_fracture.mode_i_first_passage_v9_18_5" not in cmd
     assert "arrhenius_fracture.mode_i_first_passage_v9_11" not in cmd
 
 
