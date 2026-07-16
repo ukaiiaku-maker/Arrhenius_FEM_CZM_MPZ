@@ -4,17 +4,21 @@ Branch: `v9.18.1-active-event-renewal-rollback`
 
 ## Failure reproduced from v9.18
 
-A 700 K ceramic run reached nine committed 5 um topology advances before the
-inherited emission-only continuation path attempted to defer another cleavage
-renewal while a cohesive event was already active:
+A 700 K ceramic run inserted nine 5 um topology segments (45 um raw topology
+extension) before the inherited emission-only continuation path attempted to
+defer another cleavage renewal while a cohesive event was already active:
 
 ```text
 RuntimeError: cannot defer a second renewal while a trial event is active
 ```
 
+Because the exception occurred before the event payload was written, the archive
+does not establish that every inserted segment had reached physical cohesive
+commit. The raw topology count is therefore not used as committed extension.
+
 The continuation path sets the instantaneous cleavage prefactor and action to
 zero, but the first trapezoidal hazard update can still inherit the previous
-loading-step value of `_lambda_c_prev`.  That interpolated half-step can cross a
+loading-step value of `_lambda_c_prev`. That interpolated half-step can cross a
 threshold even though cleavage is supposed to be disabled during the
 emission-only continuation.
 
