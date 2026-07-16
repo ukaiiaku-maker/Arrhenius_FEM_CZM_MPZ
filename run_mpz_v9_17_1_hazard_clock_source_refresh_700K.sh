@@ -37,6 +37,7 @@ fi
 
 "$PYTHON_BIN" -m pytest -q \
   tests/test_one_fire_routing_v9171.py \
+  tests/test_matched_stress_audit_routing_v9171.py \
   tests/test_hazard_clock_source_refresh_v917.py \
   tests/test_kinetic_trial_opening_v916.py \
   tests/test_coupled_event_relaxation_v915.py \
@@ -45,7 +46,7 @@ fi
   tests/test_material_rcurve_audit_v913.py \
   tests/test_field_snapshots_v913.py
 
-"$PYTHON_BIN" audit_matched_stress_classes_v917.py \
+"$PYTHON_BIN" audit_matched_stress_classes_v9171.py \
   --parameter-root "$PARAMETER_ROOT" \
   --T-K "$T_K" \
   --classes "$CLASSES" \
