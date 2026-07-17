@@ -67,4 +67,4 @@ from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
 _mpz_base.MovingProcessZoneState = _MPZStateV95
 MovingProcessZoneState = _MPZStateV95
 
-__version__ = '0.9.6'
+__version__ = '0.9.10.4'
