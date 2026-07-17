@@ -1,19 +1,14 @@
-"""Arrhenius cohesive-interface support for the sharp-front FEM solver.
+"""Arrhenius cohesive-interface support for sharp-front and kinetic-CZM modes.
 
-The irreversible fracture criterion remains the existing FrontEngine hazard/
-renewal clock.  Cohesive interfaces are a mechanical representation of the
-surface created by a completed Arrhenius event; they do not introduce a second
-critical traction, critical opening, or Gc criterion.
-
-The first production backend uses abrupt link failure (damage=1 at insertion),
-which is the direct discrete-CZM analogue of the existing renewal event.  The
-same data structures also support partially active interfaces for future
-hazard-driven progressive opening without changing the bulk FEM assembly.
+Cohesive interfaces remain a mechanical representation of Arrhenius cleavage
+progress.  No critical traction, opening, fracture energy, or second failure
+criterion is evaluated here.  The v10 kinetic mode may create a trial interface
+with ``damage=B``; the legacy modes retain abrupt ``damage=1`` insertion.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 import numpy as np
 from scipy import sparse
@@ -21,12 +16,7 @@ from scipy import sparse
 
 @dataclass
 class CohesiveElement:
-    """Zero-thickness two-node line interface.
-
-    Node order is (plus_0, plus_1, minus_0, minus_1).  ``damage`` is the
-    irreversible broken-link fraction.  No empirical failure criterion is
-    evaluated here: damage is committed by the Arrhenius crack backend.
-    """
+    """Zero-thickness two-node line interface controlled by an Arrhenius clock."""
 
     plus_nodes: tuple[int, int]
     minus_nodes: tuple[int, int]
@@ -35,6 +25,7 @@ class CohesiveElement:
     length: float
     damage: float = 1.0
     clock: float = 0.0
+    status: str = "committed"
     front_id: int = -1
     event_index: int = 0
     barrier_kind: str = "exp_floor"
@@ -50,11 +41,28 @@ class CohesiveElement:
         self.normal /= nrm
         self.tangent /= trm
         self.damage = float(np.clip(self.damage, 0.0, 1.0))
+        self.clock = float(np.clip(self.clock, 0.0, 1.0))
         self.length = float(max(self.length, 0.0))
+        self.status = str(self.status)
 
     @property
     def nodes4(self) -> tuple[int, int, int, int]:
         return (*self.plus_nodes, *self.minus_nodes)
+
+    def set_clock_damage(self, B: float, coupling: str = "clock_linear") -> None:
+        q = float(np.clip(B, 0.0, 1.0))
+        if q + 1.0e-14 < self.clock:
+            raise ValueError("trial cohesive clock/damage must be monotonic")
+        mode = str(coupling).strip().lower()
+        if mode == "clock_linear":
+            damage = q
+        elif mode == "abrupt":
+            damage = 1.0 if q >= 1.0 - 1.0e-12 else 0.0
+        else:
+            raise ValueError("cohesive opening coupling must be abrupt or clock_linear")
+        self.clock = q
+        self.damage = float(np.clip(damage, self.damage, 1.0))
+        self.status = "committed" if self.damage >= 1.0 - 1.0e-12 else "trial"
 
 
 @dataclass
@@ -92,13 +100,46 @@ class CohesiveNetwork:
 def _jump_operator() -> np.ndarray:
     """Map 8 interface dofs to midpoint displacement jump [ux, uy]."""
     A = np.zeros((2, 8), dtype=float)
-    # plus side average
     A[0, 0] = 0.5; A[1, 1] = 0.5
     A[0, 2] = 0.5; A[1, 3] = 0.5
-    # minus side average
     A[0, 4] = -0.5; A[1, 5] = -0.5
     A[0, 6] = -0.5; A[1, 7] = -0.5
     return A
+
+
+def cohesive_element_diagnostics(
+    elem: CohesiveElement,
+    u: np.ndarray,
+    network: CohesiveNetwork,
+) -> dict[str, float | str]:
+    A = _jump_operator()
+    p0, p1 = elem.plus_nodes
+    m0, m1 = elem.minus_nodes
+    nodes = np.array([p0, p1, m0, m1], dtype=int)
+    edofs = np.empty(8, dtype=int)
+    edofs[0::2] = 2 * nodes
+    edofs[1::2] = 2 * nodes + 1
+    jump = A @ np.asarray(u, dtype=float)[edofs]
+    dn = float(elem.normal @ jump)
+    dt = float(elem.tangent @ jump)
+    intact = max(1.0 - float(elem.damage), 0.0)
+    kn = float(network.penalty_normal_Pa_per_m)
+    kt = float(network.penalty_tangent_Pa_per_m)
+    kn_eff = kn * (
+        max(float(network.compression_penalty_factor), 0.0) if dn < 0.0 else intact
+    )
+    kt_eff = kt * intact
+    tn = kn_eff * dn
+    tt = kt_eff * dt
+    return {
+        "normal_jump_m": dn,
+        "tangential_jump_m": dt,
+        "normal_traction_Pa": tn,
+        "tangential_traction_Pa": tt,
+        "damage": float(elem.damage),
+        "clock": float(elem.clock),
+        "status": str(elem.status),
+    }
 
 
 def cohesive_contribution(
@@ -106,14 +147,7 @@ def cohesive_contribution(
     u: np.ndarray,
     ndof: int,
 ) -> tuple[sparse.csr_matrix, np.ndarray]:
-    """Assemble cohesive tangent and internal force.
-
-    A constant-jump, midpoint-integrated interface is used deliberately for the
-    migration backend.  It is sufficient for abrupt Arrhenius link failure and
-    keeps the cohesive mechanics independent of the crack-hazard criterion.
-    Partially damaged links use (1-d) stiffness in tension and shear; compressive
-    normal contact retains the configured compression penalty.
-    """
+    """Assemble cohesive tangent and internal force with unilateral contact."""
     if network is None or not network.elements:
         return sparse.csr_matrix((ndof, ndof)), np.zeros(ndof)
 
@@ -140,17 +174,26 @@ def cohesive_contribution(
         n = elem.normal
         t = elem.tangent
         dn = float(n @ jump)
+        dtt = float(t @ jump)
         intact = max(1.0 - float(elem.damage), 0.0)
         kn_eff = kn * (kc_factor if dn < 0.0 else intact)
         kt_eff = kt * intact
         Kglob = kn_eff * np.outer(n, n) + kt_eff * np.outer(t, t)
 
-        # Per-unit-thickness interface: traction [Pa] * length [m] -> N/m
-        # in the 2-D plane-strain idealization used by the parent solver.
         L = max(float(elem.length), 0.0)
         Ke = A.T @ Kglob @ A * L
         Re = A.T @ (Kglob @ jump) * L
         np.add.at(R, edofs, Re)
+
+        elem.metadata.update({
+            "normal_jump_m": dn,
+            "tangential_jump_m": dtt,
+            "normal_traction_Pa": kn_eff * dn,
+            "tangential_traction_Pa": kt_eff * dtt,
+            "damage": float(elem.damage),
+            "clock": float(elem.clock),
+            "status": str(elem.status),
+        })
 
         ii = np.repeat(edofs[:, None], 8, axis=1)
         jj = np.repeat(edofs[None, :], 8, axis=0)
@@ -161,3 +204,11 @@ def cohesive_contribution(
     rr = np.concatenate(rows); cc = np.concatenate(cols); vv = np.concatenate(vals)
     K = sparse.csr_matrix((vv, (rr, cc)), shape=(ndof, ndof))
     return K, R
+
+
+__all__ = [
+    "CohesiveElement",
+    "CohesiveNetwork",
+    "cohesive_element_diagnostics",
+    "cohesive_contribution",
+]
