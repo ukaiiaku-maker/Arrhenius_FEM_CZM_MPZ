@@ -33,6 +33,5 @@ def test_v1002_smoke_runner_uses_supported_straight_mode_i_cli():
     assert "--max-fronts 1" in commands
     assert "mode_i_first_passage_v10_0_2_progressive" in commands
 
-    # Documentation must state the intentional mechanics/path split.
-    assert "anisotropic FEM/J" in full_text
-    assert "straight single-front Mode-I" in full_text
+    # The anisotropic-elastic/straight-path semantics are tested against the
+    # transformed function and runtime payload in the dedicated adapter tests.
