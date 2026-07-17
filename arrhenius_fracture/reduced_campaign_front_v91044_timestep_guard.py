@@ -1,15 +1,15 @@
 """Exact state-change-aware timestep guard for the v9.10.4.4 reduced front.
 
 The v9.10.4.3 count-aware guard estimated transport stiffness from
-``active_count * (encounter + Taylor + escape + recovery rates)``.  That is
+``active_count * (encounter + Taylor + escape + recovery rates)``. That is
 still overly restrictive when trapping/release is already close to its exact
 equilibrium partition, or when most active content is retained and therefore
-cannot escape.  In those states a very large microscopic rate can correspond
+cannot escape. In those states a very large microscopic rate can correspond
 to almost no actual state change.
 
 This guard derives a timestep from the exact exponential change used by each
 operator: finite-source emission, retained/mobile equilibration, retained
-recovery, and mobile escape.  A process imposes no restriction when its full
+recovery, and mobile escape. A process imposes no restriction when its full
 asymptotic state change is smaller than the allowed absolute count change.
 Constitutive rates and state-update equations are unchanged.
 """
@@ -29,12 +29,7 @@ def _time_for_exact_change(
     rate_s: np.ndarray | float,
     allowed_change: np.ndarray | float,
 ) -> float:
-    """Return the minimum time at which an exact exponential change hits a bound.
-
-    For ``change(t) = delta_inf * (1 - exp(-rate*t))``, no timestep limit is
-    needed if ``delta_inf <= allowed_change``.  Arrays are handled componentwise
-    and the smallest positive finite limit is returned.
-    """
+    """Return the first time an exponential state change reaches its bound."""
     delta, rate, allowed = np.broadcast_arrays(
         np.maximum(np.asarray(asymptotic_change, dtype=float), 0.0),
         np.maximum(np.asarray(rate_s, dtype=float), 0.0),
@@ -49,7 +44,10 @@ def _time_for_exact_change(
     return float(np.min(finite)) if finite.size else math.inf
 
 
-def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> dict[str, float | str]:
+def _limiter_diagnostics(
+    self: ReducedCampaignFront,
+    rates: dict[str, Any],
+) -> dict[str, float | str]:
     load_limit = self.s.max_dK_substep_MPa_sqrt_m / max(
         self.s.Kdot_MPa_sqrt_m_s, 1.0e-30
     )
@@ -77,8 +75,8 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
             available, emit_rate, emit_allowed
         )
 
-        # Emission is itself bounded during the step.  Include that maximum
-        # possible addition when estimating the subsequent exchange state.
+        # Include the largest emission permitted in this step when bounding the
+        # following exchange/recovery/escape operators.
         emitted_bound = np.minimum(available, emit_allowed)
         total_bound = mobile + retained + emitted_bound
 
@@ -95,7 +93,13 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
             out=np.zeros_like(exchange),
             where=exchange > 0.0,
         )
-        retained_eq_bound = retained_fraction_eq * total_bound
+        # The exact plastic operator leaves the current partition unchanged
+        # when exchange == 0; preserve that branch in the timestep estimate.
+        retained_eq_bound = np.where(
+            exchange > 0.0,
+            retained_fraction_eq * total_bound,
+            retained,
+        )
         exchange_delta = np.abs(retained_eq_bound - retained)
         exchange_allowed = (
             max(float(self.s.max_exchange_fraction_substep), 0.0) * capacity
@@ -104,8 +108,6 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
             exchange_delta, exchange, exchange_allowed
         )
 
-        # Recovery follows exchange in the exact plastic operator.  Bound it
-        # using the largest retained population reachable in this step.
         retained_bound = np.maximum(retained, retained_eq_bound)
         recovery_rate = max(
             float(self.p.get("retained_recovery_rate_s", 0.0)), 0.0
@@ -114,8 +116,13 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
             retained_bound, recovery_rate, exchange_allowed
         )
 
-        # Escape acts only on mobile content, not on the full active count.
-        mobile_eq_bound = np.maximum(total_bound - retained_eq_bound, 0.0)
+        # Escape acts only on content that is or can become mobile. If there is
+        # no exchange, retained content cannot be converted into mobile content.
+        mobile_eq_bound = np.where(
+            exchange > 0.0,
+            np.maximum(total_bound - retained_eq_bound, 0.0),
+            mobile + emitted_bound,
+        )
         mobile_bound = np.maximum(mobile + emitted_bound, mobile_eq_bound)
         escape_rate = np.maximum(
             np.asarray(rates["velocity_m_s"], dtype=float), 0.0
@@ -125,7 +132,9 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
         )
 
     finite_limits = {
-        name: value for name, value in limits.items() if np.isfinite(value) and value > 0.0
+        name: value
+        for name, value in limits.items()
+        if np.isfinite(value) and value > 0.0
     }
     if finite_limits:
         limiter = min(finite_limits, key=finite_limits.get)
@@ -145,7 +154,8 @@ def _limiter_diagnostics(self: ReducedCampaignFront, rates: dict[str, Any]) -> d
 
 
 def _state_change_aware_choose_dt(
-    self: ReducedCampaignFront, rates: dict[str, Any]
+    self: ReducedCampaignFront,
+    rates: dict[str, Any],
 ) -> float:
     diagnostic = _limiter_diagnostics(self, rates)
     h = float(diagnostic["dt_selected_s"])
@@ -176,10 +186,7 @@ def _diagnostic_summarize_run(
     rates = front.instantaneous_rates(front.K, float(T_K))
     diagnostics = dict(getattr(front, "_last_dt_diagnostics", {}))
     limiter_counts = dict(getattr(front, "_dt_limiter_counts", {}))
-    if limiter_counts:
-        dominant = max(limiter_counts, key=limiter_counts.get)
-    else:
-        dominant = "none"
+    dominant = max(limiter_counts, key=limiter_counts.get) if limiter_counts else "none"
 
     if len(front.events) >= target_events:
         termination = "target_events_reached"
