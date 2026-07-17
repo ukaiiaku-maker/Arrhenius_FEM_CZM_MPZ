@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - v10.0-pf-equivalent-kinetic-czm
+  pull_request:
+    branches:
+      - v9.18.5.8-state-coupled-material-differentiation
   workflow_dispatch:
 
 jobs:
