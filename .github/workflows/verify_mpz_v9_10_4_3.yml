@@ -36,6 +36,7 @@ jobs:
             tests/test_mpz_v9_10_4_2_audit_transition_guard.py \
             tests/test_mpz_v9_10_4_3_audit_probe.py \
             tests/test_mpz_v9_10_4_3_dynamic_schedule.py \
+            tests/test_mpz_v9_10_4_3_refined_metrics.py \
             tests/test_mpz_v9_10_4_3_count_timestep.py
       - name: Check package version
         run: |
