@@ -1,0 +1,36 @@
+name: v10.0.3 integration tests
+
+on:
+  push:
+    branches:
+      - v10.0.3-progressive-integration-audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest
+
+      - name: Run tests-only integration gate
+        env:
+          CONDA_DEFAULT_ENV: arrhenius-fem-czm
+          PYTHON_BIN: python
+        run: bash run_v10_0_3_integration_tests.sh
