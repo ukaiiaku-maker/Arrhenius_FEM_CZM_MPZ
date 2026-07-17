@@ -1,0 +1,47 @@
+name: Verify MPZ v9.10.4.3 dynamic DBTT refinement
+
+on:
+  push:
+    branches: [v9.10.4.3-dynamic-transition-refinement]
+  pull_request:
+    branches: [v9.10.4.2-audit-transition-guard, v9.10.4-narrow-dbtt-kinetic-search, main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Compile dynamic campaign sources
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/dbtt_temperature_schedule_v91043.py \
+            arrhenius_fracture/reduced_campaign_front_v91043_timestep_guard.py \
+            audit_mpz_v9_10_4_2_current_dbtt.py \
+            prepare_mpz_v9_10_4_3_dynamic_refinement.py \
+            refine_mpz_v9_10_4_3_first_passage.py \
+            refine_mpz_v9_10_4_3_growth.py \
+            prepare_mpz_v9_10_4_2d_validation.py
+          bash -n scripts/run_mpz_v9_10_4_3_*.sh
+      - name: Run focused dynamic campaign tests
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_10_4_reduced_front.py \
+            tests/test_mpz_v9_10_4_timestep_guard.py \
+            tests/test_mpz_v9_10_4_2_audit_transition_guard.py \
+            tests/test_mpz_v9_10_4_3_audit_probe.py \
+            tests/test_mpz_v9_10_4_3_dynamic_schedule.py \
+            tests/test_mpz_v9_10_4_3_refined_metrics.py \
+            tests/test_mpz_v9_10_4_3_count_timestep.py
+      - name: Check package version
+        run: |
+          python - <<'PY'
+          import arrhenius_fracture
+          assert arrhenius_fracture.__version__ == '0.9.10.4.3'
+          print(arrhenius_fracture.__version__)
+          PY
