@@ -28,7 +28,8 @@ jobs:
             tests/test_pf_equivalent_manifest_v10.py \
             tests/test_kinetic_campaign_czm_v10.py \
             tests/test_cohesive_trial_state_v10.py \
-            tests/test_kinetic_cohesive_stepper_v10.py
+            tests/test_kinetic_cohesive_stepper_v10.py \
+            tests/test_progressive_run_2d_transform_v10.py
       - name: Isolated prescribed-K traces
         run: |
           for material in ceramic weakT DBTT; do
