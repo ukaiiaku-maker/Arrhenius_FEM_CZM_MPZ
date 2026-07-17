@@ -6,7 +6,7 @@ PYTHON_BIN=${PYTHON_BIN:-}
 MATERIAL=${MATERIAL:-weakT}
 T_K=${T_K:-700}
 THETA_DEG=${THETA_DEG:-45}
-OUTROOT=${OUTROOT:-runs/v10_0_3_progressive_${MATERIAL}_${T_K}K_theta${THETA_DEG}_5um_v1}
+OUTROOT=${OUTROOT:-runs/v10_0_3_1_progressive_${MATERIAL}_${T_K}K_theta${THETA_DEG}_5um_v1}
 STEPS=${STEPS:-50000}
 NX=${NX:-36}
 NY=${NY:-72}
@@ -38,8 +38,6 @@ if [[ -e "$OUTROOT" ]]; then
   exit 1
 fi
 
-# The exact tests-only gate is branch-CI certified. Do not maintain a second,
-# divergent test list in this FEM runner.
 CONDA_ENV="$CONDA_ENV" PYTHON_BIN="$PYTHON_BIN" \
   bash run_v10_0_3_integration_tests.sh
 
@@ -75,12 +73,15 @@ ARRHENIUS_MAX_ACCEPTED_SUBSTEPS_PER_INTERVAL="$MAX_ACCEPTED_SUBSTEPS_PER_INTERVA
 "$PYTHON_BIN" audit_v10_0_3_progressive_integration.py \
   "$OUTROOT" --target-um 5
 
+"$PYTHON_BIN" normalize_v10_0_3_1_reporting.py "$OUTROOT"
+
 cat <<EOF
-V10.0.3 AUDITED PROGRESSIVE INTEGRATION GATE PASSED
+V10.0.3.1 AUDITED PROGRESSIVE INTEGRATION/REPORTING GATE PASSED
 material=$MATERIAL
 T_K=$T_K
 theta_deg=$THETA_DEG
 out=$OUTROOT
-v10.0.2 remains frozen and uncertified.
-Do not launch penalty convergence, longer growth, or a temperature sweep yet.
+integration_kernel=v10.0.3
+reporting_normalization=v10.0.3.1
+Do not launch longer growth or a temperature sweep yet.
 EOF
