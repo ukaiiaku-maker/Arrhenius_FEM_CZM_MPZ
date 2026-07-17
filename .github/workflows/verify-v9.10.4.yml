@@ -1,0 +1,30 @@
+name: Verify MPZ v9.10.4 narrow DBTT
+
+on:
+  push:
+    branches: [v9.10.4-narrow-dbtt-kinetic-search]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Compile v9.10.4 sources
+        run: |
+          python -m compileall -q \
+            arrhenius_fracture/reduced_campaign_front_v9104.py \
+            audit_mpz_v9_10_4_current_dbtt.py \
+            optimize_mpz_v9_10_4_narrow_dbtt.py \
+            refine_mpz_v9_10_4_growth.py \
+            prepare_mpz_v9_10_4_2d_validation.py
+          bash -n scripts/run_mpz_v9_10_4_*.sh
+      - name: Run focused v9.10.4 tests
+        run: python -m pytest -q tests/test_mpz_v9_10_4_reduced_front.py
