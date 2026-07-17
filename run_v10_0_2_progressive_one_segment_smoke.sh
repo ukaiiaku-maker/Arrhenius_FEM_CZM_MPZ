@@ -50,7 +50,8 @@ fi
   tests/test_kinetic_campaign_reset_v1001.py \
   tests/test_kinetic_event_lifecycle_v1002.py \
   tests/test_progressive_run_2d_transform_v10.py \
-  tests/test_progressive_event_lifecycle_transform_v1002.py
+  tests/test_progressive_event_lifecycle_transform_v1002.py \
+  tests/test_v1002_smoke_runner_cli_contract.py
 
 # The v10.0.2 topology-lifecycle smoke is deliberately straight single-front
 # Mode I.  Anisotropic path selection sets deflect=True in sharp_front.run_2d
