@@ -18,7 +18,7 @@ class EventLifecycleConfig:
     min_retry_dt_s: float = 1.0e-18
     max_retries_per_substep: int = 64
     max_accepted_substeps_per_interval: int = 10000
-    time_tolerance_s: float = 1.0e-15
+    time_tolerance_s: float = 0.0
 
     def validate(self) -> "EventLifecycleConfig":
         if self.min_retry_dt_s <= 0.0:
@@ -93,9 +93,10 @@ class KineticEventLifecycleController:
         committed = 0
         accepted_steps: list[AcceptedLifecycleStep] = []
         stopped_at_target = False
+        ulp_scale = requested if requested > 0.0 else 1.0
         tol = max(
             float(self.config.time_tolerance_s),
-            32.0 * math.ulp(max(requested, 1.0)),
+            32.0 * math.ulp(ulp_scale),
         )
 
         while remaining > tol:
