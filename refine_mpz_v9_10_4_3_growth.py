@@ -2,9 +2,9 @@
 """Dynamic-schedule short- and long-growth DBTT refinement.
 
 Each promoted candidate retains the 100 K coarse bracket selected during the
-broad first-passage sweep.  Four temperatures resolve that bracket, and broad
-shelf anchors remain in the objective.  Initiation and plateau transitions must
-both remain inside the candidate's bracket.
+broad first-passage sweep. Four temperatures resolve the complete bracket, and
+broad shelf anchors remain in the objective. Initiation and plateau are scored
+against that fixed bracket rather than one ~33 K refined subinterval.
 """
 from __future__ import annotations
 
@@ -21,11 +21,22 @@ import optimize_mpz_v9_10_4_narrow_dbtt as first
 import refine_mpz_v9_10_4_growth as legacy_growth
 from arrhenius_fracture.dbtt_temperature_schedule_v91043 import (
     DynamicTemperatureSchedule,
+    fixed_bracket_transition_metrics,
     schedule_from_candidate_row,
 )
 from arrhenius_fracture.reduced_campaign_front_v9104 import ReducedFrontSettings
 
 PARAMETER_NAMES = first.PARAMETER_NAMES
+
+
+def _values_at(frame: pd.DataFrame, temperatures: tuple[float, ...], column: str) -> np.ndarray:
+    values = []
+    for temperature in temperatures:
+        matches = frame.loc[np.isclose(frame.T_K, temperature, rtol=0.0, atol=1.0e-7), column]
+        if len(matches) != 1:
+            raise ValueError(f"expected one {column} value at {temperature} K; found {len(matches)}")
+        values.append(float(matches.iloc[0]))
+    return np.asarray(values, dtype=float)
 
 
 class WindowedGrowthObjective:
@@ -44,36 +55,113 @@ class WindowedGrowthObjective:
         )
         self.bounds = self.base.bounds
 
-    def _inside(self, low_value: Any, high_value: Any) -> bool:
-        try:
-            selected_low = float(low_value)
-            selected_high = float(high_value)
-        except (TypeError, ValueError):
-            return False
-        return bool(
-            np.isfinite(selected_low)
-            and np.isfinite(selected_high)
-            and selected_low >= self.schedule.transition_low_K - 1.0e-8
-            and selected_high <= self.schedule.transition_high_K + 1.0e-8
-        )
-
     def evaluate(self, x: np.ndarray, *, details: bool = False) -> dict[str, Any]:
-        result = dict(self.base.evaluate(np.asarray(x, dtype=float), details=details))
-        init_inside = self._inside(
-            result.get("init_transition_low_K"),
-            result.get("init_transition_high_K"),
+        x = np.asarray(x, dtype=float)
+        base_result = dict(self.base.evaluate(x, details=True))
+        schedule_columns = self.schedule.to_columns()
+        temperature_detail = base_result.get("temperature_detail") or []
+        parameters = base_result.get("parameters")
+
+        if not temperature_detail or parameters is None:
+            result = dict(base_result)
+            result.update(schedule_columns)
+            result["init_transition_in_coarse_bracket"] = False
+            result["plateau_transition_in_coarse_bracket"] = False
+            result["objective_mode"] = "DYNAMIC_4POINT_DBTT_GROWTH_REFINEMENT"
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        frame = pd.DataFrame(temperature_detail).sort_values("T_K")
+        required = {
+            "T_K", "completed", "K_init_proxy", "K_plateau_proxy",
+            "K_init_plasticity_off", "K_plateau_plasticity_off",
+        }
+        if not required.issubset(frame.columns) or not frame.completed.astype(bool).all():
+            result = {
+                "objective": 1.0e6,
+                "completion_loss": 1.0e5,
+                "parameters": parameters,
+                "temperature_detail": temperature_detail,
+                "event_detail": base_result.get("event_detail") or [],
+                "init_transition_in_coarse_bracket": False,
+                "plateau_transition_in_coarse_bracket": False,
+                "objective_mode": "DYNAMIC_4POINT_DBTT_GROWTH_REFINEMENT",
+                **schedule_columns,
+            }
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        init_transition = fixed_bracket_transition_metrics(
+            frame.T_K,
+            frame.K_init_proxy,
+            self.schedule,
+            plasticity_off_toughness=frame.K_init_plasticity_off,
         )
-        plateau_inside = self._inside(
-            result.get("plateau_transition_low_K"),
-            result.get("plateau_transition_high_K"),
+        plateau_transition = fixed_bracket_transition_metrics(
+            frame.T_K,
+            frame.K_plateau_proxy,
+            self.schedule,
+            plasticity_off_toughness=frame.K_plateau_plasticity_off,
         )
-        window_loss = 0.0 if init_inside and plateau_inside else 200.0
-        result["init_transition_in_coarse_bracket"] = init_inside
-        result["plateau_transition_in_coarse_bracket"] = plateau_inside
-        result["dynamic_transition_window_loss"] = float(window_loss)
-        result.update(self.schedule.to_columns())
-        result["objective"] = float(result.get("objective", 1.0e12) + window_loss)
-        result["objective_mode"] = "DYNAMIC_4POINT_DBTT_GROWTH_REFINEMENT"
+        if not bool(init_transition.get("valid", False)) or not bool(plateau_transition.get("valid", False)):
+            result = {
+                "objective": 1.0e12,
+                "completion_loss": 0.0,
+                "init_transition_reason": init_transition.get("reason", "invalid_transition"),
+                "plateau_transition_reason": plateau_transition.get("reason", "invalid_transition"),
+                "parameters": parameters,
+                "temperature_detail": temperature_detail,
+                "event_detail": base_result.get("event_detail") or [],
+                "init_transition_in_coarse_bracket": False,
+                "plateau_transition_in_coarse_bracket": False,
+                "objective_mode": "DYNAMIC_4POINT_DBTT_GROWTH_REFINEMENT",
+                **schedule_columns,
+            }
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        frame = frame.assign(growth_increment=frame.K_plateau_proxy - frame.K_init_proxy)
+        high_growth = float(np.median(_values_at(frame, self.schedule.high_anchor_temperatures_K, "growth_increment")))
+        low_growth = float(np.median(_values_at(frame, self.schedule.low_anchor_temperatures_K, "growth_increment")))
+        no_collapse_loss = max(-high_growth, 0.0) / 2.0
+        low_rcurve_loss = max(low_growth - 3.0, 0.0) / 1.5
+
+        objective = float(
+            15.0 * float(init_transition["loss"])
+            + 15.0 * float(plateau_transition["loss"])
+            + 5.0 * no_collapse_loss**2
+            + 2.0 * low_rcurve_loss**2
+        )
+        result: dict[str, Any] = {
+            "objective": objective,
+            "completion_loss": 0.0,
+            "split_mismatch": 0,
+            "high_growth_increment": high_growth,
+            "low_growth_increment": low_growth,
+            "init_transition_in_coarse_bracket": True,
+            "plateau_transition_in_coarse_bracket": True,
+            "objective_mode": "DYNAMIC_4POINT_DBTT_GROWTH_REFINEMENT",
+            **schedule_columns,
+            **{f"init_{key}": value for key, value in init_transition.items() if key != "penalties"},
+            **{f"plateau_{key}": value for key, value in plateau_transition.items() if key != "penalties"},
+        }
+        for key, value in init_transition.get("penalties", {}).items():
+            result[f"init_penalty_{key}"] = float(value)
+        for key, value in plateau_transition.get("penalties", {}).items():
+            result[f"plateau_penalty_{key}"] = float(value)
+        if details:
+            result["parameters"] = parameters
+            result["temperature_detail"] = frame.to_dict(orient="records")
+            result["event_detail"] = base_result.get("event_detail") or []
         return result
 
     def __call__(self, x: np.ndarray) -> float:
@@ -81,13 +169,21 @@ class WindowedGrowthObjective:
 
 
 def growth_acceptance(detail: dict[str, Any]) -> tuple[bool, str]:
-    passed, reason = legacy_growth.growth_acceptance(detail)
-    if not passed:
-        return False, reason
-    if not bool(detail.get("init_transition_in_coarse_bracket", False)):
-        return False, "initiation_transition_left_coarse_bracket"
-    if not bool(detail.get("plateau_transition_in_coarse_bracket", False)):
-        return False, "plateau_transition_left_coarse_bracket"
+    checks = [
+        (float(detail.get("init_shelf_ratio", 0.0)) >= 2.0, "initiation_ratio_below_two"),
+        (float(detail.get("plateau_shelf_ratio", 0.0)) >= 1.8, "plateau_ratio_too_small"),
+        (float(detail.get("init_jump_concentration", 0.0)) >= 0.75, "initiation_rise_not_in_selected_100K_bracket"),
+        (float(detail.get("plateau_jump_concentration", 0.0)) >= 0.65, "plateau_rise_not_in_selected_100K_bracket"),
+        (float(detail.get("init_transition_width_K", np.inf)) <= 100.0, "initiation_T10_T90_width_exceeds_100K"),
+        (float(detail.get("plateau_transition_width_K", np.inf)) <= 100.0, "plateau_T10_T90_width_exceeds_100K"),
+        (float(detail.get("init_transition_monotonic_fraction", 0.0)) >= 0.90, "initiation_transition_not_monotonic"),
+        (float(detail.get("plateau_transition_monotonic_fraction", 0.0)) >= 0.85, "plateau_transition_not_monotonic"),
+        (float(detail.get("high_growth_increment", -99.0)) >= 0.0, "high_temperature_branch_collapses"),
+        (float(detail.get("low_growth_increment", 99.0)) <= 3.0, "low_temperature_Rcurve_too_large"),
+    ]
+    for passed, reason in checks:
+        if not passed:
+            return False, reason
     return True, "dynamic_four_point_growth_gate_passed"
 
 
@@ -156,9 +252,9 @@ def main() -> None:
         ]
         for source_index, (_, x, source) in enumerate(sorted(candidates, key=lambda item: item[0])):
             detail = objective.evaluate(x, details=True)
-            p = detail.pop("parameters", first.decode(x))
-            tdetail = detail.pop("temperature_detail", [])
-            edetail = detail.pop("event_detail", [])
+            p = detail.pop("parameters", None) or first.decode(x)
+            tdetail = detail.pop("temperature_detail", None) or []
+            edetail = detail.pop("event_detail", None) or []
             candidate_id = f"DBTT_v91043_{args.stage}_{rank:02d}_{source_index:02d}"
             accepted, reason = growth_acceptance(detail)
             output_row = {
