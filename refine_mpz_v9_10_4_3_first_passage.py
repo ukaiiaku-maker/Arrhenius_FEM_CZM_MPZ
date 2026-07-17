@@ -2,9 +2,8 @@
 """Candidate-specific four-point first-passage refinement for narrow DBTT.
 
 Each input candidate was first evaluated on the complete 100 K coarse grid.
-The candidate's selected adjacent coarse bracket is held fixed during local
-refinement. Four points resolve that bracket, while broad shelf anchors retain
-the factor-of-two and shelf-flatness constraints.
+The selected coarse bracket is held fixed. Four points resolve the full bracket,
+while broad shelf anchors retain the factor-of-two and shelf-flatness tests.
 """
 from __future__ import annotations
 
@@ -20,6 +19,7 @@ from scipy.optimize import minimize
 import optimize_mpz_v9_10_4_narrow_dbtt as first
 from arrhenius_fracture.dbtt_temperature_schedule_v91043 import (
     DynamicTemperatureSchedule,
+    fixed_bracket_transition_metrics,
     schedule_from_candidate_row,
 )
 from arrhenius_fracture.reduced_campaign_front_v9104 import (
@@ -28,6 +28,16 @@ from arrhenius_fracture.reduced_campaign_front_v9104 import (
 )
 
 PARAMETER_NAMES = first.PARAMETER_NAMES
+
+
+def _values_at(frame: pd.DataFrame, temperatures: tuple[float, ...], column: str) -> np.ndarray:
+    values = []
+    for temperature in temperatures:
+        matches = frame.loc[np.isclose(frame.T_K, temperature, rtol=0.0, atol=1.0e-7), column]
+        if len(matches) != 1:
+            raise ValueError(f"expected one {column} value at {temperature} K; found {len(matches)}")
+        values.append(float(matches.iloc[0]))
+    return np.asarray(values, dtype=float)
 
 
 class WindowedFirstPassageObjective:
@@ -39,6 +49,7 @@ class WindowedFirstPassageObjective:
         cleavage_slope_mode: str,
     ) -> None:
         self.schedule = schedule
+        self.cleavage_slope_mode = cleavage_slope_mode
         self.base = first.NarrowDBTTObjective(
             np.asarray(schedule.evaluation_temperatures_K, dtype=float),
             settings,
@@ -48,33 +59,112 @@ class WindowedFirstPassageObjective:
         self.bounds = [self.base.bounds_dict[name] for name in PARAMETER_NAMES]
 
     def evaluate(self, x: np.ndarray, *, details: bool = False) -> dict[str, Any]:
-        result = dict(self.base.evaluate(np.asarray(x, dtype=float), details=details))
-        selected_low = float(result.get("transition_transition_low_K", np.nan))
-        selected_high = float(result.get("transition_transition_high_K", np.nan))
-        low = float(self.schedule.transition_low_K)
-        high = float(self.schedule.transition_high_K)
-        span = max(high - low, 1.0e-12)
-        finite = np.isfinite(selected_low) and np.isfinite(selected_high)
-        in_window = bool(
-            finite
-            and selected_low >= low - 1.0e-8
-            and selected_high <= high + 1.0e-8
+        x = np.asarray(x, dtype=float)
+        base_result = dict(self.base.evaluate(x, details=True))
+        schedule_columns = self.schedule.to_columns()
+        temperature_detail = base_result.get("temperature_detail") or []
+        parameters = base_result.get("parameters")
+
+        if not temperature_detail or parameters is None:
+            result = dict(base_result)
+            result.update(schedule_columns)
+            result["coarse_transition_low_T_K"] = self.schedule.transition_low_K
+            result["coarse_transition_high_T_K"] = self.schedule.transition_high_K
+            result["refined_transition_in_coarse_bracket"] = False
+            result["objective_mode"] = "DYNAMIC_4POINT_DBTT_FIRST_PASSAGE_REFINEMENT"
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        frame = pd.DataFrame(temperature_detail).sort_values("T_K")
+        required = {"T_K", "K_init_proxy", "K_init_plasticity_off", "completed"}
+        if not required.issubset(frame.columns) or not frame.completed.astype(bool).all():
+            result = {
+                "objective": 1.0e6 + 1.0e5 * int((~frame.get("completed", pd.Series(False, index=frame.index)).astype(bool)).sum()),
+                "completion_loss": 1.0e5,
+                "parameters": parameters,
+                "temperature_detail": temperature_detail,
+                "event_detail": base_result.get("event_detail") or [],
+                "refined_transition_in_coarse_bracket": False,
+                "objective_mode": "DYNAMIC_4POINT_DBTT_FIRST_PASSAGE_REFINEMENT",
+                **schedule_columns,
+            }
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        transition = fixed_bracket_transition_metrics(
+            frame.T_K,
+            frame.K_init_proxy,
+            self.schedule,
+            plasticity_off_toughness=frame.K_init_plasticity_off,
         )
-        if finite:
-            distance = (
-                max(low - selected_low, 0.0)
-                + max(selected_high - high, 0.0)
-            ) / span
-        else:
-            distance = 10.0
-        window_loss = 0.0 if in_window else 100.0 + 100.0 * distance * distance
-        result["coarse_transition_low_T_K"] = low
-        result["coarse_transition_high_T_K"] = high
-        result["refined_transition_in_coarse_bracket"] = in_window
-        result["refined_transition_window_loss"] = float(window_loss)
-        result.update(self.schedule.to_columns())
-        result["objective"] = float(result.get("objective", 1.0e12) + window_loss)
-        result["objective_mode"] = "DYNAMIC_4POINT_DBTT_FIRST_PASSAGE_REFINEMENT"
+        if not bool(transition.get("valid", False)):
+            result = {
+                "objective": 1.0e12,
+                "transition_valid": False,
+                "transition_reason": transition.get("reason", "invalid_transition"),
+                "parameters": parameters,
+                "temperature_detail": temperature_detail,
+                "event_detail": base_result.get("event_detail") or [],
+                "refined_transition_in_coarse_bracket": False,
+                "objective_mode": "DYNAMIC_4POINT_DBTT_FIRST_PASSAGE_REFINEMENT",
+                **schedule_columns,
+            }
+            if not details:
+                result.pop("temperature_detail", None)
+                result.pop("event_detail", None)
+                result.pop("parameters", None)
+            return result
+
+        plastic_increment = frame.K_init_proxy.to_numpy() - frame.K_init_plasticity_off.to_numpy()
+        frame = frame.assign(K_init_plastic_increment=plastic_increment)
+        low_plastic = float(np.median(_values_at(frame, self.schedule.low_anchor_temperatures_K, "K_init_plastic_increment")))
+        high_plastic = float(np.median(_values_at(frame, self.schedule.high_anchor_temperatures_K, "K_init_plastic_increment")))
+        total_jump = max(float(transition["high_shelf"] - transition["low_shelf"]), 1.0e-12)
+        mechanistic_fraction = (high_plastic - low_plastic) / total_jump
+        mechanism_loss = max(0.60 - mechanistic_fraction, 0.0) / 0.15
+
+        slope_regularization = 0.0
+        if self.cleavage_slope_mode == "narrow":
+            slope_regularization = (
+                float(parameters["cleave_gT_eV_per_K"]) / 5.0e-4
+            ) ** 2 + (
+                float(parameters["cleave_sT_GPa_per_K"]) / 4.0e-4
+            ) ** 2
+
+        objective = float(
+            20.0 * float(transition["loss"])
+            + 10.0 * mechanism_loss**2
+            + 2.0 * slope_regularization
+        )
+        result: dict[str, Any] = {
+            "objective": objective,
+            "completion_loss": 0.0,
+            "transition_loss": float(transition["loss"]),
+            "mechanism_loss": float(mechanism_loss**2),
+            "cleavage_slope_regularization": float(slope_regularization),
+            "mechanistic_fraction": float(mechanistic_fraction),
+            "low_plastic_increment": low_plastic,
+            "high_plastic_increment": high_plastic,
+            "barrier_order_margin_eV": float(base_result.get("barrier_order_margin_eV", np.nan)),
+            "min_raw_barrier_eV": float(base_result.get("min_raw_barrier_eV", np.nan)),
+            "objective_mode": "DYNAMIC_4POINT_DBTT_FIRST_PASSAGE_REFINEMENT",
+            "cleavage_slope_mode": self.cleavage_slope_mode,
+            "refined_transition_in_coarse_bracket": True,
+            **schedule_columns,
+            **{f"transition_{key}": value for key, value in transition.items() if key != "penalties"},
+        }
+        for key, value in transition.get("penalties", {}).items():
+            result[f"transition_penalty_{key}"] = float(value)
+        if details:
+            result["parameters"] = parameters
+            result["temperature_detail"] = frame.to_dict(orient="records")
+            result["event_detail"] = base_result.get("event_detail") or []
         return result
 
     def __call__(self, x: np.ndarray) -> float:
@@ -82,11 +172,20 @@ class WindowedFirstPassageObjective:
 
 
 def accepted(detail: dict[str, Any]) -> tuple[bool, str]:
-    base_passed, reason = first.accepted(detail)
-    if not base_passed:
-        return False, reason
-    if not bool(detail.get("refined_transition_in_coarse_bracket", False)):
-        return False, "refined_transition_left_coarse_bracket"
+    checks = [
+        (float(detail.get("transition_shelf_ratio", 0.0)) >= 2.0, "shelf_ratio_below_two"),
+        (float(detail.get("transition_robust_shelf_ratio", 0.0)) >= 1.8, "robust_ratio_too_small"),
+        (float(detail.get("transition_jump_concentration", 0.0)) >= 0.75, "rise_not_concentrated_in_selected_100K_bracket"),
+        (float(detail.get("transition_transition_width_K", np.inf)) <= 100.0, "T10_T90_width_exceeds_100K"),
+        (float(detail.get("transition_transition_monotonic_fraction", 0.0)) >= 0.90, "transition_not_monotonic"),
+        (float(detail.get("transition_low_span_fraction", 1.0)) <= 0.15, "low_shelf_not_flat"),
+        (float(detail.get("transition_high_span_fraction", 1.0)) <= 0.20, "high_shelf_not_flat"),
+        (float(detail.get("transition_plasticity_off_ratio", 99.0)) <= 1.25, "cleavage_only_temperature_cheat"),
+        (float(detail.get("mechanistic_fraction", -99.0)) >= 0.60, "plastic_mechanism_fraction_too_small"),
+    ]
+    for passed, reason in checks:
+        if not passed:
+            return False, reason
     return True, "dynamic_four_point_first_passage_gate_passed"
 
 
