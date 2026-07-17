@@ -38,29 +38,10 @@ if [[ -e "$OUTROOT" ]]; then
   exit 1
 fi
 
-"$PYTHON_BIN" -m pip install -e . --no-deps
-"$PYTHON_BIN" -m compileall -q arrhenius_fracture
-"$PYTHON_BIN" -m py_compile \
-  audit_v10_0_3_progressive_integration.py
-
-"$PYTHON_BIN" - <<'PY'
-import importlib.metadata
-version = importlib.metadata.version("arrhenius-fem-czm")
-assert version == "10.0.3", version
-print("package version:", version)
-PY
-
-"$PYTHON_BIN" -m pytest -q \
-  tests/test_pf_equivalent_manifest_v10.py \
-  tests/test_kinetic_campaign_czm_v10.py \
-  tests/test_cohesive_trial_state_v10.py \
-  tests/test_kinetic_cohesive_stepper_v10.py \
-  tests/test_kinetic_campaign_reset_v1001.py \
-  tests/test_kinetic_event_lifecycle_v1002.py \
-  tests/test_progressive_run_2d_transform_v10.py \
-  tests/test_progressive_event_lifecycle_transform_v1002.py \
-  tests/test_v1003_campaign_dispatch.py \
-  tests/test_v1003_live_binding_capture.py
+# The exact tests-only gate is branch-CI certified. Do not maintain a second,
+# divergent test list in this FEM runner.
+CONDA_ENV="$CONDA_ENV" PYTHON_BIN="$PYTHON_BIN" \
+  bash run_v10_0_3_integration_tests.sh
 
 ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM=5 \
 ARRHENIUS_PREFINED_MODE_I_CORRIDOR=1 \
