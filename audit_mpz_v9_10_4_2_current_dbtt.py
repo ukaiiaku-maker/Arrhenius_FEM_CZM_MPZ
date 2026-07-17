@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Crash-safe wrapper for the v9.10.4 historical DBTT audit.
 
-The transition feature extractor intentionally returns a compact invalid result
-when one or more temperatures have no finite toughness.  The v9.10.4/v9.10.4.1
-audit assumed a valid transition unconditionally and raised ``KeyError`` after
-all solver calls had finished.  This wrapper preserves that invalid status,
-adds NaN placeholders for optional feature fields, prints a clear diagnostic,
-and then delegates to the existing progress/checkpointing audit.
+The audit can be used either for a full transition assessment or for a small
+solver diagnostic.  Invalid/nonfinite transitions and diagnostic probes with
+fewer than four temperatures are represented by a stable NaN schema rather
+than raising after all solver calls have completed.
 
 No solver, constitutive, timestep, or transition-loss equation is changed.
 """
@@ -44,10 +42,31 @@ _OPTIONAL_TRANSITION_FIELDS = (
 _RECORDED_TRANSITIONS: list[tuple[str, dict[str, Any]]] = []
 
 
+def _invalid_transition(reason: str) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "valid": False,
+        "loss": 1.0e12,
+        "reason": str(reason),
+        "penalties": {},
+    }
+    for key in _OPTIONAL_TRANSITION_FIELDS:
+        result[key] = np.nan
+    return result
+
+
 def guarded_best_adjacent_transition(*args: Any, **kwargs: Any) -> dict[str, Any]:
-    """Return a stable transition schema even when toughness is non-finite."""
-    result = dict(_best_adjacent_transition(*args, **kwargs))
+    """Return a stable transition schema for diagnostic or failed sweeps."""
     mode = "new" if kwargs.get("plasticity_off_toughness") is not None else "old"
+    try:
+        result = dict(_best_adjacent_transition(*args, **kwargs))
+    except ValueError as exc:
+        reason = (
+            "insufficient_temperatures_for_two_shelves"
+            if "insufficient temperatures" in str(exc).lower()
+            else f"value_error:{exc}"
+        )
+        result = _invalid_transition(reason)
+
     if not bool(result.get("valid", False)):
         reason = str(result.get("reason", "invalid_transition"))
         print(
@@ -63,7 +82,6 @@ def guarded_best_adjacent_transition(*args: Any, **kwargs: Any) -> dict[str, Any
 
 
 def transition_summary_fields(prefix: str, result: dict[str, Any]) -> dict[str, Any]:
-    """Return stable validity, reason, and feature fields for one transition."""
     valid = bool(result.get("valid", False))
     return {
         f"{prefix}_transition_valid": valid,
@@ -122,7 +140,7 @@ def _augment_final_summary(out: Path) -> None:
         report = json.loads(report_path.read_text())
         report.update(
             {
-                "transition_guard_version": "v9.10.4.2",
+                "transition_guard_version": "v9.10.4.3",
                 "n_invalid_old_transitions": sum(
                     not bool(row["old_transition_valid"]) for row in augmented_rows
                 ),
@@ -139,8 +157,6 @@ def _augment_final_summary(out: Path) -> None:
 
 
 def main() -> None:
-    # The existing audit imported the transition function directly. Replace
-    # that module-local reference before delegating to its checkpointed main.
     _RECORDED_TRANSITIONS.clear()
     audit.best_adjacent_transition = guarded_best_adjacent_transition
     audit.main()
