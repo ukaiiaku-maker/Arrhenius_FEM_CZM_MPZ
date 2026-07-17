@@ -1,18 +1,22 @@
-name: v10.0.3 integration tests
+name: v10.0.3.1 integration and reporting tests
 
 on:
   push:
     branches:
       - v10.0.3-progressive-integration-audit
+      - v10.0.3.1-reporting-normalization
   pull_request:
     branches:
       - v10.0.2-pf-equivalent-event-lifecycle
+      - v10.0.3-progressive-integration-audit
     paths:
       - "arrhenius_fracture/**"
       - "tests/**"
       - "audit_v10_0_3_progressive_integration.py"
+      - "normalize_v10_0_3_1_reporting.py"
       - "run_v10_0_3_integration_tests.sh"
       - "run_v10_0_3_progressive_integration_smoke.sh"
+      - "run_v10_0_3_1_normalize_existing_output.sh"
       - "pyproject.toml"
       - ".github/workflows/v1003-integration-tests.yml"
   workflow_dispatch:
@@ -44,8 +48,9 @@ jobs:
         run: |
           bash -n run_v10_0_3_integration_tests.sh
           bash -n run_v10_0_3_progressive_integration_smoke.sh
+          bash -n run_v10_0_3_1_normalize_existing_output.sh
 
-      - name: Run tests-only integration gate
+      - name: Run tests-only integration and reporting gate
         id: integration_tests
         env:
           CONDA_DEFAULT_ENV: arrhenius-fem-czm
@@ -54,7 +59,7 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          bash run_v10_0_3_integration_tests.sh 2>&1 | tee v1003-integration-tests.log
+          bash run_v10_0_3_integration_tests.sh 2>&1 | tee v10031-integration-tests.log
           status=${PIPESTATUS[0]}
           echo "exit_status=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
@@ -63,6 +68,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v1003-integration-tests-log
-          path: v1003-integration-tests.log
+          name: v10031-integration-tests-log
+          path: v10031-integration-tests.log
           if-no-files-found: error
