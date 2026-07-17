@@ -42,6 +42,7 @@ class KineticCZMTransactionSnapshot:
     bulk_history: dict[str, Any]
     backend_state: dict[str, Any]
     cohesive_elements: list[CohesiveElement]
+    advance_log: list[dict[str, Any]]
     front_state: Any
     front_position: np.ndarray | None = None
     front_path: Any = None
@@ -76,6 +77,7 @@ class KineticCZMTransactionSnapshot:
             bulk_history=copy.deepcopy(dict(bulk_history or {})),
             backend_state=copy.deepcopy(backend._transaction_snapshot()),
             cohesive_elements=copy.deepcopy(backend.cohesive_network.elements),
+            advance_log=copy.deepcopy(list(backend.advance_log)),
             front_state=copy.deepcopy(front_state),
             front_position=(
                 None
@@ -97,7 +99,7 @@ class KineticCZMTransactionSnapshot:
             for fid, (a, b, xy) in self.backend_state["tip_nodes"].items()
         }
         backend.event_counter = int(self.backend_state["event_counter"])
-        del backend.advance_log[int(self.backend_state["n_log"]):]
+        backend.advance_log = copy.deepcopy(self.advance_log)
         if front_engine is None or self.front_state is None:
             return
         if hasattr(front_engine, "restore_kinetic_state") and isinstance(
