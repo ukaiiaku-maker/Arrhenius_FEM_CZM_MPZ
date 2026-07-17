@@ -71,4 +71,4 @@ MovingProcessZoneState = _MPZStateV95
 # only timestep selection; it does not alter any constitutive rate or state law.
 from . import reduced_campaign_front_v9104_timestep_guard as _v9104_timestep_guard
 
-__version__ = '0.9.10.4'
+__version__ = '0.9.10.4.1'
