@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - v10.0.3-progressive-integration-audit
+  pull_request:
+    branches:
+      - v10.0.2-pf-equivalent-event-lifecycle
+    paths:
+      - "arrhenius_fracture/**"
+      - "tests/**"
+      - "audit_v10_0_3_progressive_integration.py"
+      - "run_v10_0_3_integration_tests.sh"
+      - "pyproject.toml"
+      - ".github/workflows/v1003-integration-tests.yml"
   workflow_dispatch:
 
 permissions:
