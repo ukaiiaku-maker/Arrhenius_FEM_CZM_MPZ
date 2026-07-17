@@ -19,26 +19,25 @@ fi
 
 "$PYTHON_BIN" - <<'PY'
 import importlib.metadata
-import inspect
 
 from arrhenius_fracture import sharp_front
+from arrhenius_fracture.kinetic_campaign_czm_v1003 import (
+    CampaignAwareV1003TipEngineMixin,
+    STATE_MODEL,
+)
 from arrhenius_fracture.kinetic_progressive_2d_v1003_source import (
     build_progressive_run_2d_v1003_source,
 )
 
 version = importlib.metadata.version("arrhenius-fem-czm")
 assert version == "10.0.3", version
+assert STATE_MODEL == "kinetic_campaign_czm"
+assert CampaignAwareV1003TipEngineMixin.supports_progressive_kinetic_czm is True
 transformed = build_progressive_run_2d_v1003_source(sharp_front.run_2d)
 assert transformed._v1002_event_lifecycle is True
 assert transformed._v1003_source_adapter is True
 assert transformed._v1003_campaign_state_compatibility is True
 assert transformed._v1003_nondeflect_summary_accounting is True
-assert "kinetic_campaign_czm" in inspect.getsource(
-    __import__(
-        "arrhenius_fracture.kinetic_campaign_czm_v1003",
-        fromlist=["CampaignAwareV1003TipEngineMixin"],
-    ).CampaignAwareV1003TipEngineMixin
-)
 print("package version:", version)
 print("v10.0.3 source transform preflight: PASS")
 PY
