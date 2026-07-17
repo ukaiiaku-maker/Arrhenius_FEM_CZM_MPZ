@@ -102,6 +102,23 @@ def test_target_stop_preserves_remaining_interval_after_commit():
     assert out.unused_dt_s == pytest.approx(0.6)
 
 
+def test_tiny_physical_interval_is_not_discarded_by_tolerance():
+    controller = KineticEventLifecycleController(
+        EventLifecycleConfig(min_retry_dt_s=1.0e-20)
+    )
+    dt = 1.0e-18
+    out = controller.consume_interval(
+        total_dt_s=dt,
+        ensure_trial=lambda: "trial",
+        advance_trial=lambda requested: result(
+            accepted=True, consumed=requested
+        ),
+    )
+    assert len(out.accepted_steps) == 1
+    assert out.consumed_dt_s == pytest.approx(dt)
+    assert out.unused_dt_s == pytest.approx(0.0)
+
+
 def test_invalid_accepted_zero_time_is_rejected():
     controller = KineticEventLifecycleController(
         EventLifecycleConfig(max_retries_per_substep=2)
