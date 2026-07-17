@@ -1,9 +1,9 @@
 """Arrhenius hazard-based fracture and fatigue simulation package.
 
-Version 0.9 adds a conservative moving one-dimensional crack-tip process zone
-while retaining the anisotropic, multifront, branching, coalescence, cyclic
-mechanics, mixed-mode, sharp-wake, and adaptive-CZM production architecture.
-The frozen scalar v8 closure remains selectable as ``legacy_scalar``.
+Version 10.0 adds the selectable ``kinetic_campaign_czm`` front state and its
+transactional trial-cohesive infrastructure.  The existing ``legacy_scalar``
+and ``moving_pz`` implementations remain available and the package-level
+moving-PZ default is intentionally unchanged for regression compatibility.
 """
 
 from .config import (
@@ -60,11 +60,32 @@ def _exact_uncapped_pt_series_rate(rate_a, rate_b):
 _PTModelV96.series_rate = staticmethod(_exact_uncapped_pt_series_rate)
 _pt_base.EmissionDerivedPeierlsTaylorModel = _PTModelV96
 
-# v9.5 spatial local-density MPZ remains active. It now calls the v9.6 PT
-# closure through the patched base-module import above.
+# v9.5 remains the package-level moving-PZ default.  The new kinetic state is
+# selected explicitly by its v10 entry point; it never silently changes legacy
+# runs or old parameterizations.
 from . import moving_process_zone as _mpz_base
 from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
 _mpz_base.MovingProcessZoneState = _MPZStateV95
 MovingProcessZoneState = _MPZStateV95
 
-__version__ = '0.9.6'
+from .pf_equivalent_material_manifest import (
+    PFEquivalentMaterialManifest,
+    load_material_manifest as load_pf_equivalent_material_manifest,
+)
+from .kinetic_campaign_czm import (
+    KineticCampaignCZMConfig,
+    CampaignKineticMPZState,
+    CampaignCalibratedCZMFrontEngine,
+    DevelopedStateDiagnosticCZMFrontEngine,
+)
+from .cohesive_trial_state import (
+    KineticCZMTransactionSnapshot,
+    KineticTrialAdaptiveCZMBackend,
+)
+from .kinetic_cohesive_stepper import (
+    KineticCohesiveStepperConfig,
+    KineticCohesiveStepResult,
+    KineticCohesiveStepper,
+)
+
+__version__ = '10.0.0'
