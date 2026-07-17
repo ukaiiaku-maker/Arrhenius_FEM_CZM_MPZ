@@ -49,7 +49,8 @@ fi
   tests/test_kinetic_cohesive_stepper_v10.py \
   tests/test_kinetic_campaign_reset_v1001.py \
   tests/test_kinetic_event_lifecycle_v1002.py \
-  tests/test_progressive_run_2d_transform_v1002.py
+  tests/test_progressive_run_2d_transform_v10.py \
+  tests/test_progressive_event_lifecycle_transform_v1002.py
 
 ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM=5 \
 ARRHENIUS_PREFINED_MODE_I_CORRIDOR=1 \
