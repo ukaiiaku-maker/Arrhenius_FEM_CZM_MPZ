@@ -88,4 +88,4 @@ from .kinetic_cohesive_stepper import (
     KineticCohesiveStepper,
 )
 
-__version__ = '10.0.0'
+__version__ = '10.0.2'
