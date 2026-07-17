@@ -10,16 +10,16 @@ from . import mode_i_first_passage_v10_0_progressive as _base
 from .kinetic_campaign_czm_v1001 import (
     ResetSafeDevelopedStateDiagnosticCZMFrontEngine,
 )
-from .kinetic_progressive_2d_v1002 import (
-    build_progressive_run_2d_v1002,
-    progressive_runtime_payload_v1002,
-    reset_progressive_runtime_v1002,
-    write_progressive_runtime_audit_v1002,
+from .kinetic_progressive_2d_v1002_anisotropic_straight import (
+    build_progressive_run_2d_v1002_anisotropic_straight,
+    progressive_runtime_payload_v1002_anisotropic_straight,
+    reset_progressive_runtime_v1002_anisotropic_straight,
+    write_progressive_runtime_audit_v1002_anisotropic_straight,
 )
 
 MODEL_ID = (
     "FEM_CZM_Mode_I_kinetic_campaign_czm_v10_0_2_"
-    "progressive_event_lifecycle"
+    "progressive_event_lifecycle_anisotropic_elastic_straight_path"
 )
 
 
@@ -32,7 +32,7 @@ def _annotate(argv: list[str]) -> None:
     if not path.exists():
         return
     payload = json.loads(path.read_text())
-    runtime = progressive_runtime_payload_v1002()
+    runtime = progressive_runtime_payload_v1002_anisotropic_straight()
     payload.update({
         "model": MODEL_ID,
         "point_release": "10.0.2",
@@ -41,6 +41,11 @@ def _annotate(argv: list[str]) -> None:
         "unused_event_time_carry_integrated": True,
         "same_load_re_equilibration_after_commit": True,
         "dot_ep_transactionally_restored": True,
+        "anisotropic_elasticity_active": True,
+        "anisotropic_J_active": True,
+        "anisotropic_path_selection_active": False,
+        "straight_single_front_mode_I_checkpoint": True,
+        "crystal_compete_role": "v9.11_direct_mode_validation_contract_only",
         "event_lifecycle_runtime": runtime,
         "scope": "one_segment_progressive_validation_before_penalty_convergence",
         "long_progressive_runs_authorized": False,
@@ -59,10 +64,18 @@ def main(argv: list[str] | None = None):
     _foundation.DevelopedStateDiagnosticCZMFrontEngine = (
         ResetSafeDevelopedStateDiagnosticCZMFrontEngine
     )
-    _base.build_progressive_run_2d = build_progressive_run_2d_v1002
-    _base.progressive_runtime_payload = progressive_runtime_payload_v1002
-    _base.reset_progressive_runtime = reset_progressive_runtime_v1002
-    _base.write_progressive_runtime_audit = write_progressive_runtime_audit_v1002
+    _base.build_progressive_run_2d = (
+        build_progressive_run_2d_v1002_anisotropic_straight
+    )
+    _base.progressive_runtime_payload = (
+        progressive_runtime_payload_v1002_anisotropic_straight
+    )
+    _base.reset_progressive_runtime = (
+        reset_progressive_runtime_v1002_anisotropic_straight
+    )
+    _base.write_progressive_runtime_audit = (
+        write_progressive_runtime_audit_v1002_anisotropic_straight
+    )
     try:
         results = _base.main(user_args)
     finally:
