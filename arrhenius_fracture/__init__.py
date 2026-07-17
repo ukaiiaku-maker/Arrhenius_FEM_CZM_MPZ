@@ -5,7 +5,6 @@ while retaining the anisotropic, multifront, branching, coalescence, cyclic
 mechanics, mixed-mode, sharp-wake, and adaptive-CZM production architecture.
 The frozen scalar v8 closure remains selectable as ``legacy_scalar``.
 """
-
 from .config import (
     SimulationConfig, GeometryConfig, MeshConfig, ElasticProperties,
     PlasticityBarrier, FractureBarrier, LoadingConfig, PhaseFieldConfig,
@@ -71,4 +70,4 @@ MovingProcessZoneState = _MPZStateV95
 # only timestep selection; it does not alter any constitutive rate or state law.
 from . import reduced_campaign_front_v9104_timestep_guard as _v9104_timestep_guard
 
-__version__ = '0.9.10.4.1'
+__version__ = '0.9.10.4.2'
