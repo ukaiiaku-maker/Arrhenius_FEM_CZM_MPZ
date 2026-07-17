@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.3"
-description = "Arrhenius FEM/CZM solver with audited delayed-binding PF-equivalent progressive crack-tip state"
+version = "10.0.3.1"
+description = "Arrhenius FEM/CZM solver with audited v10.0.3 integration and normalized campaign reporting"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
