@@ -5,7 +5,7 @@ CONDA_ENV=${CONDA_ENV:-arrhenius-fem-czm}
 PYTHON_BIN=${PYTHON_BIN:-}
 MATERIAL=${MATERIAL:-weakT}
 T_K=${T_K:-700}
-OUTROOT=${OUTROOT:-runs/v10_0_2_progressive_${MATERIAL}_${T_K}K_5um_v1}
+OUTROOT=${OUTROOT:-runs/v10_0_2_progressive_${MATERIAL}_${T_K}K_5um_v2}
 STEPS=${STEPS:-50000}
 NX=${NX:-36}
 NY=${NY:-72}
@@ -52,6 +52,9 @@ fi
   tests/test_progressive_run_2d_transform_v10.py \
   tests/test_progressive_event_lifecycle_transform_v1002.py
 
+# The v10.0.2 topology-lifecycle smoke is deliberately straight single-front
+# Mode I.  Anisotropic path selection sets deflect=True in sharp_front.run_2d
+# and is not admitted by this first progressive transaction gate.
 ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM=5 \
 ARRHENIUS_PREFINED_MODE_I_CORRIDOR=1 \
 ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY="$MIN_TRIANGLE_QUALITY" \
@@ -70,9 +73,9 @@ ARRHENIUS_MAX_ACCEPTED_SUBSTEPS_PER_INTERVAL="$MAX_ACCEPTED_SUBSTEPS_PER_INTERVA
   --nx "$NX" --ny "$NY" \
   --tip-h-fine "$TIP_H_FINE" --tip-ratio "$TIP_RATIO" \
   --dU "$DU" --dt "$DT" \
-  --da-phys-um 5 \
+  --da-phys 5e-6 \
   --target-crack-extension-um 5 \
-  --crystal-aniso --crystal-compete --no-crystal-branch --max-fronts 1 \
+  --max-fronts 1 \
   --crack-backend adaptive_czm \
   --mpz-length-um "$MPZ_LENGTH_UM" --mpz-n-bins "$MPZ_N_BINS" \
   --save-snapshots 5 --snapshot-cols 5 \
