@@ -67,4 +67,8 @@ from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
 _mpz_base.MovingProcessZoneState = _MPZStateV95
 MovingProcessZoneState = _MPZStateV95
 
+# Install the v9.10.4 population-aware numerical timestep guard. This changes
+# only timestep selection; it does not alter any constitutive rate or state law.
+from . import reduced_campaign_front_v9104_timestep_guard as _v9104_timestep_guard
+
 __version__ = '0.9.10.4'
