@@ -5,7 +5,7 @@ CONDA_ENV=${CONDA_ENV:-arrhenius-fem-czm}
 PYTHON_BIN=${PYTHON_BIN:-}
 MATERIAL=${MATERIAL:-weakT}
 T_K=${T_K:-700}
-OUTROOT=${OUTROOT:-runs/v10_0_2_progressive_${MATERIAL}_${T_K}K_5um_v2}
+OUTROOT=${OUTROOT:-runs/v10_0_2_progressive_${MATERIAL}_${T_K}K_5um_v3}
 STEPS=${STEPS:-50000}
 NX=${NX:-36}
 NY=${NY:-72}
@@ -51,11 +51,13 @@ fi
   tests/test_kinetic_event_lifecycle_v1002.py \
   tests/test_progressive_run_2d_transform_v10.py \
   tests/test_progressive_event_lifecycle_transform_v1002.py \
+  tests/test_v1002_anisotropic_straight_transform.py \
   tests/test_v1002_smoke_runner_cli_contract.py
 
-# The v10.0.2 topology-lifecycle smoke is deliberately straight single-front
-# Mode I.  Anisotropic path selection sets deflect=True in sharp_front.run_2d
-# and is not admitted by this first progressive transaction gate.
+# The v9.11 integration contract requires cubic anisotropic elasticity and the
+# crystal-competition flag.  The versioned v10.0.2 adapter preserves anisotropic
+# FEM/J but forces only the crack-path selector to a straight single-front Mode-I
+# checkpoint.  Branching remains off because --crystal-branch is not supplied.
 ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM=5 \
 ARRHENIUS_PREFINED_MODE_I_CORRIDOR=1 \
 ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY="$MIN_TRIANGLE_QUALITY" \
@@ -76,6 +78,7 @@ ARRHENIUS_MAX_ACCEPTED_SUBSTEPS_PER_INTERVAL="$MAX_ACCEPTED_SUBSTEPS_PER_INTERVA
   --dU "$DU" --dt "$DT" \
   --da-phys 5e-6 \
   --target-crack-extension-um 5 \
+  --crystal-aniso --crystal-compete \
   --max-fronts 1 \
   --crack-backend adaptive_czm \
   --mpz-length-um "$MPZ_LENGTH_UM" --mpz-n-bins "$MPZ_N_BINS" \
