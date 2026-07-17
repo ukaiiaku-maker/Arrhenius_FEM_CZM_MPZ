@@ -12,6 +12,7 @@ on:
       - "tests/**"
       - "audit_v10_0_3_progressive_integration.py"
       - "run_v10_0_3_integration_tests.sh"
+      - "run_v10_0_3_progressive_integration_smoke.sh"
       - "pyproject.toml"
       - ".github/workflows/v1003-integration-tests.yml"
   workflow_dispatch:
@@ -38,6 +39,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
           python -m pip install pytest
+
+      - name: Check runner syntax
+        run: |
+          bash -n run_v10_0_3_integration_tests.sh
+          bash -n run_v10_0_3_progressive_integration_smoke.sh
 
       - name: Run tests-only integration gate
         id: integration_tests
