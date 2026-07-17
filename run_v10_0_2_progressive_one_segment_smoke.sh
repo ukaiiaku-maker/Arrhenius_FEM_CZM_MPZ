@@ -41,6 +41,7 @@ fi
 "$PYTHON_BIN" -m compileall -q arrhenius_fracture
 "$PYTHON_BIN" -m py_compile \
   audit_v10_0_no_artificial_controls.py \
+  audit_v10_0_2_anisotropic_straight_contract.py \
   audit_v10_0_2_progressive_smoke.py
 "$PYTHON_BIN" -m pytest -q \
   tests/test_pf_equivalent_manifest_v10.py \
@@ -88,6 +89,8 @@ ARRHENIUS_MAX_ACCEPTED_SUBSTEPS_PER_INTERVAL="$MAX_ACCEPTED_SUBSTEPS_PER_INTERVA
 
 "$PYTHON_BIN" audit_v10_0_no_artificial_controls.py \
   "$OUTROOT" --require-progressive
+"$PYTHON_BIN" audit_v10_0_2_anisotropic_straight_contract.py \
+  "$OUTROOT"
 "$PYTHON_BIN" audit_v10_0_2_progressive_smoke.py \
   "$OUTROOT" --target-um 5
 
