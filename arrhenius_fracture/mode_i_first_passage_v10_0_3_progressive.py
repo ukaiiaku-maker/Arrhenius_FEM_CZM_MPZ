@@ -92,6 +92,26 @@ def _max_column(root: Path, temperature_K: float, key: str) -> float | None:
     return max(values) if values else None
 
 
+def source_population_bound(
+    capacity: float,
+    extension_m: float,
+    refresh_length_m: float,
+) -> float:
+    """Conservative finite-source population bound including advance refresh.
+
+    At zero extension, at most one complete source inventory can have emitted.
+    During advance, the maximum possible additional refreshed inventory is
+    bounded by ``capacity * extension / refresh_length``. This deliberately
+    assumes instantaneous depletion after every refresh, making it conservative
+    for retained/mobile population checks without weakening the finite-source law.
+    """
+
+    cap = max(float(capacity), 0.0)
+    distance = max(float(extension_m), 0.0)
+    length = max(float(refresh_length_m), 1.0e-30)
+    return cap * (1.0 + distance / length)
+
+
 def main(argv: list[str] | None = None):
     user_args = list(sys.argv[1:] if argv is None else argv)
     opts, remaining = parser().parse_known_args(user_args)
@@ -232,11 +252,13 @@ def main(argv: list[str] | None = None):
             f"v10.0.3 expected exactly one campaign engine; found {len(engines)}"
         )
 
-    temperatures = [float(x) for x in (_option_value(remaining, "--temperatures") or "").split()]
-    if not temperatures:
-        temperatures = [float(getattr(results[0], "T_K", 0.0))] if results else []
-    # argparse supplies temperatures as separate tokens, so recover them from result payloads.
-    temperatures = [float(row.get("T_K", row.get("T", 0.0))) for row in (results or [])]
+    temperatures = [
+        float(row.get("T_K", row.get("T", 0.0))) for row in (results or [])
+    ]
+    if not temperatures or any(T <= 0.0 for T in temperatures):
+        raise RuntimeError(
+            f"v10.0.3 could not recover valid temperatures from results: {temperatures}"
+        )
 
     checks = []
     for T in temperatures:
@@ -245,17 +267,30 @@ def main(argv: list[str] | None = None):
         extension = _as_float(final, "crack_extension_m")
         max_N_em = _max_column(out, T, "N_em")
         budget = progressive.get("source_budget_total")
-        if max_N_em is not None and budget is not None and max_N_em > float(budget) + 1.0e-8:
+        if extension is None or max_N_em is None or budget is None:
+            raise RuntimeError(
+                f"v10.0.3 missing source/extension diagnostics at {T:g} K"
+            )
+        population_bound = source_population_bound(
+            float(budget),
+            extension,
+            float(manifest.source_refresh_length_m),
+        )
+        tolerance = max(1.0e-8, 1.0e-10 * max(population_bound, 1.0))
+        if max_N_em > population_bound + tolerance:
             raise RuntimeError(
                 f"v10.0.3 finite-source violation at {T:g} K: "
-                f"max N_em={max_N_em:.16g} > capacity={float(budget):.16g}"
+                f"max N_em={max_N_em:.16g} > refresh-aware bound="
+                f"{population_bound:.16g}"
             )
         checks.append({
             "T_K": T,
             "B_final": B_final,
             "crack_extension_m": extension,
             "max_N_em": max_N_em,
-            "source_budget_total": budget,
+            "source_budget_total": float(budget),
+            "source_refresh_length_m": float(manifest.source_refresh_length_m),
+            "source_population_bound": population_bound,
         })
 
     for row in results or []:
@@ -277,6 +312,8 @@ def main(argv: list[str] | None = None):
             row["crack_extension_final_m"] = match["crack_extension_m"]
             row["max_N_em"] = match["max_N_em"]
             row["source_budget_total"] = match["source_budget_total"]
+            row["source_refresh_length_m"] = match["source_refresh_length_m"]
+            row["source_population_bound"] = match["source_population_bound"]
 
     payload = {
         "model": MODEL_ID,
@@ -294,6 +331,12 @@ def main(argv: list[str] | None = None):
         "anisotropic_J_active": True,
         "anisotropic_path_selection_active": False,
         "straight_single_front_mode_I_checkpoint": True,
+        "stress_channels_separated": True,
+        "wake_shielding_active": False,
+        "stored_energy_cleavage_active": False,
+        "artificial_sigma_cap_active": False,
+        "artificial_emission_cap_active": False,
+        "artificial_N_sat_active": False,
         "progressive_runtime_audit": progressive_path.name,
         "runtime": progressive,
         "result_checks": checks,
