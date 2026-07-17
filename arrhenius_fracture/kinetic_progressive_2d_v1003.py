@@ -1,8 +1,8 @@
 """v10.0.3 delayed progressive transform with live-binding verification.
 
-The transform is constructed only when v9.11 calls ``sharp_front.run_2d``.  At
+The transform is constructed only when v9.11 calls ``sharp_front.run_2d``. At
 that point the active v10 engine factory and the mechanics/J/plasticity wrappers
-have already been installed.  Their live function objects are synchronized into
+have already been installed. Their live function objects are synchronized into
 the source function globals before the transformed namespace is copied.
 """
 from __future__ import annotations
@@ -37,6 +37,7 @@ def reset_progressive_runtime_v1003() -> None:
         "schema": SCHEMA,
         "delayed_transform_entered": False,
         "live_binding_capture_verified": False,
+        "opening_coupling_at_transform": None,
         "engine_factory_called": False,
         "engine_state_model": None,
         "engine_class": None,
@@ -75,6 +76,16 @@ def build_delayed_progressive_run_2d_v1003(original_run_2d, original_base_build)
 
     def delayed(args):
         _AUDIT["delayed_transform_entered"] = True
+        coupling = os.environ.get(
+            "ARRHENIUS_CZM_OPENING_COUPLING", ""
+        ).strip().lower()
+        _AUDIT["opening_coupling_at_transform"] = coupling
+        if coupling != "clock_linear":
+            raise RuntimeError(
+                "v10.0.3 delayed transform requires active clock_linear coupling; "
+                f"found {coupling!r}"
+            )
+
         saved, live_bindings = _sync_live_aliases(original_run_2d)
         active_build = live_bindings["build_engine"]
         if active_build is original_base_build:
@@ -168,13 +179,11 @@ def progressive_runtime_payload_v1003() -> dict[str, Any]:
     payload = copy.deepcopy(base)
     payload.update(copy.deepcopy(_AUDIT))
     payload["schema"] = SCHEMA
-    payload["opening_coupling_env"] = os.environ.get(
-        "ARRHENIUS_CZM_OPENING_COUPLING"
-    )
     payload["full_progressive_trial_loop_active"] = bool(
         base.get("full_progressive_trial_loop_active", False)
         and _AUDIT.get("delayed_transform_entered", False)
         and _AUDIT.get("live_binding_capture_verified", False)
+        and _AUDIT.get("opening_coupling_at_transform") == "clock_linear"
         and _AUDIT.get("engine_factory_called", False)
         and _AUDIT.get("engine_state_model") == "kinetic_campaign_czm"
         and _AUDIT.get("orientation_match", False)
