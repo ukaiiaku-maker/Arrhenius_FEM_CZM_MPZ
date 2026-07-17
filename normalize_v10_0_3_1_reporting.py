@@ -87,6 +87,10 @@ def normalize(root: str | Path) -> dict[str, Any]:
     if B_final is None:
         raise RuntimeError("certified v10.0.3 output does not contain a finite B_final")
 
+    source_population_bound = _finite_or_none(result.get("source_population_bound"))
+    if source_population_bound is None:
+        source_population_bound = _finite_or_none(runtime.get("source_population_bound"))
+
     before = {
         "model": legacy.get("model"),
         "B_final": legacy.get("B_final"),
@@ -113,7 +117,7 @@ def normalize(root: str | Path) -> dict[str, Any]:
         "source_budget_total": result.get(
             "source_budget_total", runtime.get("source_budget_total")
         ),
-        "source_population_bound": runtime.get("source_population_bound"),
+        "source_population_bound": source_population_bound,
         "progressive_runtime_audit": result.get("progressive_runtime_audit"),
         "full_progressive_trial_loop_active": bool(
             model_audit.get("full_progressive_trial_loop_active", False)
@@ -165,6 +169,7 @@ def normalize(root: str | Path) -> dict[str, Any]:
             "B_final": normalized.get("B_final"),
             "front_state_model": normalized.get("front_state_model"),
             "front_state_model_detail": normalized.get("front_state_model_detail"),
+            "source_population_bound": normalized.get("source_population_bound"),
         },
     }
     audit_path = root / "reporting_normalization_v10_0_3_1.json"
