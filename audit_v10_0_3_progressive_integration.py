@@ -9,6 +9,10 @@ import math
 from pathlib import Path
 from typing import Any
 
+from arrhenius_fracture.mode_i_first_passage_v10_0_3_progressive import (
+    source_population_bound,
+)
+
 
 def require(condition: bool, message: str) -> None:
     if not condition:
@@ -60,6 +64,8 @@ def audit(root: Path, target_um: float = 5.0) -> dict[str, Any]:
             "delayed transform was not entered")
     require(runtime.get("live_binding_capture_verified") is True,
             "live binding capture was not verified")
+    require(runtime.get("opening_coupling_at_transform") == "clock_linear",
+            f"wrong coupling at transform: {runtime.get('opening_coupling_at_transform')}")
     require(runtime.get("engine_factory_called") is True,
             "audited v10 engine factory was not called")
     require(runtime.get("engine_state_model") == "kinetic_campaign_czm",
@@ -91,18 +97,25 @@ def audit(root: Path, target_um: float = 5.0) -> dict[str, Any]:
     require(float(runtime.get("mpz_advance_on_commit_m", math.nan)) == 0.0,
             "MPZ translated twice at outer commit")
 
-    budget = float(runtime.get("source_budget_total", math.nan))
-    require(math.isfinite(budget) and budget > 0.0, "finite source budget is missing")
-    max_nem = max(f(row, "N_em") for row in steps)
-    require(max_nem <= budget + 1e-8,
-            f"finite source budget violated: max N_em={max_nem} > {budget}")
-
     final = steps[-1]
     extension = f(final, "crack_extension_m")
     require(math.isclose(extension, target_um * 1e-6, rel_tol=0.0, abs_tol=2e-12),
             f"wrong final extension: {extension * 1e6:.12g} um")
     B_final = f(final, "B")
     require(0.0 <= B_final < 1.0 + 1e-12, f"invalid residual B={B_final}")
+
+    budget = float(runtime.get("source_budget_total", math.nan))
+    require(math.isfinite(budget) and budget > 0.0, "finite source budget is missing")
+    material = model.get("material", {})
+    refresh_length = float(material.get("source_refresh_length_m", math.nan))
+    require(math.isfinite(refresh_length) and refresh_length > 0.0,
+            "source refresh length is missing")
+    population_bound = source_population_bound(budget, extension, refresh_length)
+    population_tolerance = max(1e-8, 1e-10 * max(population_bound, 1.0))
+    max_nem = max(f(row, "N_em") for row in steps)
+    require(max_nem <= population_bound + population_tolerance,
+            "finite source law violated: "
+            f"max N_em={max_nem} > refresh-aware bound={population_bound}")
 
     require(isinstance(summary, list) and len(summary) == 1, "summary must contain one case")
     require(int(summary[0].get("n_advances", -1)) == 1,
@@ -112,12 +125,16 @@ def audit(root: Path, target_um: float = 5.0) -> dict[str, Any]:
             f"summary final crack position is wrong: {summary[0].get('a_final_mm')}")
 
     require(isinstance(results, list) and len(results) == 1, "v10.0.3 results missing")
-    require(results[0].get("front_state_model") == "kinetic_campaign_czm",
+    result = results[0]
+    require(result.get("front_state_model") == "kinetic_campaign_czm",
             "result retained legacy front-state label")
-    require(results[0].get("point_release") == "10.0.3",
+    require(result.get("point_release") == "10.0.3",
             "result point release is not 10.0.3")
-    require(results[0].get("B_final") is not None,
+    require(result.get("B_final") is not None,
             "result B_final is still null")
+    require(math.isclose(float(result.get("source_population_bound")), population_bound,
+                         rel_tol=1e-12, abs_tol=1e-12),
+            "result source-population bound differs from independent audit")
 
     require(model.get("full_progressive_trial_loop_active") is True,
             "model audit did not certify progressive lifecycle")
@@ -125,8 +142,38 @@ def audit(root: Path, target_um: float = 5.0) -> dict[str, Any]:
             "model audit did not certify live bindings")
     require(model.get("campaign_dispatch_active") is True,
             "campaign dispatch is not certified")
+    require(model.get("stress_channels_separated") is True,
+            "stress channels were not certified as separated")
+    require(model.get("wake_shielding_active") is False,
+            "wake shielding was unexpectedly activated")
+    require(model.get("stored_energy_cleavage_active") is False,
+            "stored-energy cleavage was unexpectedly activated")
+    require(model.get("artificial_sigma_cap_active") is False,
+            "artificial stress cap was unexpectedly activated")
+    require(model.get("artificial_emission_cap_active") is False,
+            "artificial emission cap was unexpectedly activated")
+    require(model.get("artificial_N_sat_active") is False,
+            "artificial source saturation was unexpectedly activated")
     require(model.get("penalty_convergence_authorized") is False,
             "penalty convergence was prematurely authorized")
+    require(model.get("long_progressive_runs_authorized") is False,
+            "long progressive growth was prematurely authorized")
+
+    engine_audits = model.get("engine_audits", [])
+    require(len(engine_audits) == 1, f"expected one engine audit; found {len(engine_audits)}")
+    engine_audit = engine_audits[0]
+    require(engine_audit.get("front_state_model") == "kinetic_campaign_czm",
+            "engine audit reports the wrong front-state model")
+    require(engine_audit.get("stress_channels_separated") is True,
+            "engine audit does not certify separated stress channels")
+    require(engine_audit.get("continuous_mpz_translation") is True,
+            "continuous MPZ translation is not active")
+    require(engine_audit.get("source_refresh_from_advance_only") is True,
+            "source refresh is not advance-only")
+    require(engine_audit.get("wake_shielding_active") is False,
+            "engine audit reports wake shielding")
+    require(engine_audit.get("stored_energy_cleavage_active") is False,
+            "engine audit reports stored-energy cleavage")
 
     require(not quality.get("quality_vetoes"),
             f"geometry quality vetoes occurred: {quality.get('quality_vetoes')}")
@@ -154,6 +201,8 @@ def audit(root: Path, target_um: float = 5.0) -> dict[str, Any]:
         "B_final": B_final,
         "max_N_em": max_nem,
         "source_budget_total": budget,
+        "source_refresh_length_m": refresh_length,
+        "source_population_bound": population_bound,
         "runtime": runtime,
     }
     (root / "v10_0_3_progressive_integration_certification.json").write_text(
@@ -174,6 +223,7 @@ def main() -> None:
         "B_final": result["B_final"],
         "max_N_em": result["max_N_em"],
         "source_budget_total": result["source_budget_total"],
+        "source_population_bound": result["source_population_bound"],
     }, indent=2))
 
 
