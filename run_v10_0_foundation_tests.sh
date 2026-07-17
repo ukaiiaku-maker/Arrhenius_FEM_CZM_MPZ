@@ -19,7 +19,8 @@ fi
   tests/test_pf_equivalent_manifest_v10.py \
   tests/test_kinetic_campaign_czm_v10.py \
   tests/test_cohesive_trial_state_v10.py \
-  tests/test_kinetic_cohesive_stepper_v10.py
+  tests/test_kinetic_cohesive_stepper_v10.py \
+  tests/test_progressive_run_2d_transform_v10.py
 
 mkdir -p "$OUTROOT"
 for material in ceramic weakT DBTT; do
@@ -31,7 +32,8 @@ done
 cat <<EOF
 FOUNDATION COMPLETE
 - unit tests passed
+- actual sharp_front.run_2d progressive source transform compiled
 - isolated CZM traces written under $OUTROOT
 - PF parity is NOT certified until --reference-json traces from PF v10.1.7.1 are compared
-- progressive 2-D production remains blocked until the dedicated loop reports full_progressive_trial_loop_active=true
+- progressive 2-D production remains blocked until a one-segment smoke, rollback audit, and penalty convergence pass
 EOF
