@@ -19,6 +19,9 @@ on:
 permissions:
   contents: read
 
+actions:
+  cache: write
+
 jobs:
   tests-only:
     runs-on: ubuntu-latest
@@ -40,7 +43,23 @@ jobs:
           python -m pip install pytest
 
       - name: Run tests-only integration gate
+        id: integration_tests
         env:
           CONDA_DEFAULT_ENV: arrhenius-fem-czm
           PYTHON_BIN: python
-        run: bash run_v10_0_3_integration_tests.sh
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          bash run_v10_0_3_integration_tests.sh 2>&1 | tee v1003-integration-tests.log
+          status=${PIPESTATUS[0]}
+          echo "exit_status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Upload complete test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1003-integration-tests-log
+          path: v1003-integration-tests.log
+          if-no-files-found: error
