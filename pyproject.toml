@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "0.9.6"
-description = "Arrhenius FEM/CZM fracture-fatigue solver with a conservative moving crack-tip process zone"
+version = "10.0.0"
+description = "Arrhenius FEM/CZM solver with selectable PF-equivalent kinetic crack-tip state"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
