@@ -21,10 +21,14 @@ jobs:
         run: |
           python -m compileall -q \
             arrhenius_fracture/reduced_campaign_front_v9104.py \
+            arrhenius_fracture/reduced_campaign_front_v9104_timestep_guard.py \
             audit_mpz_v9_10_4_current_dbtt.py \
             optimize_mpz_v9_10_4_narrow_dbtt.py \
             refine_mpz_v9_10_4_growth.py \
             prepare_mpz_v9_10_4_2d_validation.py
           bash -n scripts/run_mpz_v9_10_4_*.sh
       - name: Run focused v9.10.4 tests
-        run: python -m pytest -q tests/test_mpz_v9_10_4_reduced_front.py
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_10_4_reduced_front.py \
+            tests/test_mpz_v9_10_4_timestep_guard.py
