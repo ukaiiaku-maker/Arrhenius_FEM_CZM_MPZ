@@ -19,6 +19,7 @@ def test_reporting_normalization_replaces_stale_legacy_fields(tmp_path: Path):
             "crack_extension_final_m": 5.0e-6,
             "max_N_em": 3.3,
             "source_budget_total": 4.88,
+            "source_population_bound": 5.74,
             "progressive_runtime_audit": "kinetic_campaign_czm_progressive_2d_v10_0_3.json",
         }
     ]))
@@ -27,7 +28,6 @@ def test_reporting_normalization_replaces_stale_legacy_fields(tmp_path: Path):
         "live_binding_capture_verified": True,
         "runtime": {
             "source_budget_total": 4.88,
-            "source_population_bound": 5.74,
         },
         "result_checks": [{"T_K": 700.0, "B_final": 0.0}],
     }))
@@ -47,14 +47,17 @@ def test_reporting_normalization_replaces_stale_legacy_fields(tmp_path: Path):
     assert normalized["front_state_model"] == "kinetic_campaign_czm"
     assert normalized["front_state_model_detail"].endswith("reset_safe_v1003")
     assert normalized["legacy_wrapper_model"].startswith("FEM_CZM_mixed_mode_MPZ_v9_11")
+    assert normalized["source_population_bound"] == 5.74
     assert normalized["reporting_normalization_physics_changed"] is False
     assert audit["physics_recomputed"] is False
+    assert audit["after"]["source_population_bound"] == 5.74
 
     with (tmp_path / "anisotropic_calibrated_tip_first_passage_summary.csv").open() as fp:
         rows = list(csv.DictReader(fp))
     assert len(rows) == 1
     assert rows[0]["front_state_model"] == "kinetic_campaign_czm"
     assert rows[0]["B_final"] == "0.0"
+    assert rows[0]["source_population_bound"] == "5.74"
 
     normalized_results = json.loads(
         (tmp_path / "mode_i_v10_0_3_1_results.json").read_text()
