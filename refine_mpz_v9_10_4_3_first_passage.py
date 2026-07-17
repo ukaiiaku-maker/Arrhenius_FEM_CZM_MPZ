@@ -3,7 +3,7 @@
 
 Each input candidate was first evaluated on the complete 100 K coarse grid.
 The candidate's selected adjacent coarse bracket is held fixed during local
-refinement.  Four points resolve that bracket, while broad shelf anchors retain
+refinement. Four points resolve that bracket, while broad shelf anchors retain
 the factor-of-two and shelf-flatness constraints.
 """
 from __future__ import annotations
@@ -149,9 +149,9 @@ def main() -> None:
         ]
         for source_index, (_, x, source) in enumerate(sorted(candidates, key=lambda item: item[0])):
             detail = objective.evaluate(x, details=True)
-            p = detail.pop("parameters", first.decode(x))
-            tdetail = detail.pop("temperature_detail", [])
-            edetail = detail.pop("event_detail", [])
+            p = detail.pop("parameters", None) or first.decode(x)
+            tdetail = detail.pop("temperature_detail", None) or []
+            edetail = detail.pop("event_detail", None) or []
             candidate_id = f"DBTT_v91043_refined_{rank:02d}_{source_index:02d}"
             is_accepted, reason = accepted(detail)
             output_row = {
