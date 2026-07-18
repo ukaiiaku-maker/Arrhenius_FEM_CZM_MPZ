@@ -21,22 +21,57 @@ KJ_LINEARITY_RELATIVE_TOLERANCE = 0.02
 LINEARITY_JSON = "remote_stress_KJ_linearity_v10_0_5_6.json"
 
 
+_BOOLEAN_COLUMNS = (
+    "first_passage_observed",
+    "right_censored",
+    "reached_cycle_horizon",
+    "reached_target_extension",
+)
+
+
+def _normalize_boolean_value(value, *, column: str, path: Path):
+    """Normalize audited CSV booleans after the generic reader converts numbers.
+
+    The base reader converts the text tokens ``0`` and ``1`` to floating-point
+    values before this wrapper sees them.  Accept both textual and numeric boolean
+    encodings, preserve missing values, and fail closed on any other token.
+    """
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        numeric = float(value)
+        if numeric == 0.0:
+            return False
+        if numeric == 1.0:
+            return True
+        if math.isnan(numeric):
+            return value
+        raise ValueError(
+            f"invalid numeric boolean {value!r} for column {column!r} in {path}"
+        )
+    if isinstance(value, str):
+        token = value.strip().lower()
+        if token in {"true", "1", "yes"}:
+            return True
+        if token in {"false", "0", "no", ""}:
+            return False
+        raise ValueError(
+            f"invalid textual boolean {value!r} for column {column!r} in {path}"
+        )
+    raise TypeError(
+        f"unsupported boolean value {value!r} for column {column!r} in {path}"
+    )
+
+
 def _read_csv_with_booleans(path):
     rows = _ORIGINAL_READ_CSV(path)
+    csv_path = Path(path)
     for row in rows:
-        for key in (
-            "first_passage_observed",
-            "right_censored",
-            "reached_cycle_horizon",
-            "reached_target_extension",
-        ):
-            value = row.get(key)
-            if isinstance(value, str):
-                token = value.strip().lower()
-                if token in {"true", "1", "yes"}:
-                    row[key] = True
-                elif token in {"false", "0", "no", ""}:
-                    row[key] = False
+        for key in _BOOLEAN_COLUMNS:
+            if key in row:
+                row[key] = _normalize_boolean_value(
+                    row.get(key), column=key, path=csv_path
+                )
     return rows
 
 
