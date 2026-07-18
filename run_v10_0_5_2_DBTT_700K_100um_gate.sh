@@ -92,6 +92,15 @@ ARRHENIUS_TENSOR_DRIVE_MIN_ELEMENTS="$TENSOR_DRIVE_MIN_ELEMENTS" \
   --snapshot-by-crack-extension-um "$SNAPSHOT_INTERVAL_UM" \
   --out "$OUTROOT"
 
+RUN_COMMIT=$(git rev-parse HEAD)
+"$PYTHON_BIN" audit_v10_0_5_2_mpz_binding.py \
+  "$OUTROOT" \
+  --material "$MATERIAL" \
+  --expected-length-um "$MPZ_LENGTH_UM" \
+  --expected-mpz-bins "$MPZ_N_BINS" \
+  --run-commit "$RUN_COMMIT" \
+  --guarded-runner-attested
+
 # The v10.0.3 certification script is intentionally a one-segment smoke audit:
 # it requires exactly one insertion, one commit, and a 0.505 mm final crack
 # position. It is therefore not applicable to this twenty-commit gate. The
@@ -120,6 +129,7 @@ physical_increment_um=$DA_UM
 expected_commits=20
 mpz_length_um=$MPZ_LENGTH_UM
 mpz_n_bins=$MPZ_N_BINS
+mpz_configuration_source=v9.11_outer_parser_factory_binding
 parallel_coupling=v10.0.5
 slip_trace_reporting=v10.0.5.1
 complete_channel_diagnostics=v10.0.5.2
