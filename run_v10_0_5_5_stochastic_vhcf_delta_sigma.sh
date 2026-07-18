@@ -60,7 +60,8 @@ STOCHASTIC_BLOCKS="${STOCHASTIC_BLOCKS:-1}"
 RARE_EVENT_TARGET="${RARE_EVENT_TARGET:-0.25}"
 TAU_LEAP_TARGET="${TAU_LEAP_TARGET:-3.0}"
 TAU_SWITCH_EXPECTED_EVENTS="${TAU_SWITCH_EXPECTED_EVENTS:-10.0}"
-VHCF_FEM_CACHE="${VHCF_FEM_CACHE:-1}"
+# Cache remains opt-in until a cache-on/cache-off equivalence smoke passes.
+VHCF_FEM_CACHE="${VHCF_FEM_CACHE:-0}"
 
 if [[ -e "$OUTROOT" && "${KEEP_EXISTING:-0}" != "1" ]]; then
   echo "ERROR: output path already exists: $OUTROOT" >&2
