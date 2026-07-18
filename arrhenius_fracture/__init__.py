@@ -66,9 +66,9 @@ from .moving_process_zone_v95 import MovingProcessZoneState as _MPZStateV95
 _mpz_base.MovingProcessZoneState = _MPZStateV95
 MovingProcessZoneState = _MPZStateV95
 
-# Install the v9.10.4.4 state-change-aware numerical timestep guard.  It uses
+# Install the v9.10.4.4 state-change-aware numerical timestep guard. It uses
 # the exact exponential updates to limit actual count changes, rather than raw
 # microscopic rates, and adds terminal limiter diagnostics.
 from . import reduced_campaign_front_v91044_timestep_guard as _v91044_timestep_guard
 
-__version__ = '0.9.10.4.4'
+__version__ = '0.9.10.4.5'
