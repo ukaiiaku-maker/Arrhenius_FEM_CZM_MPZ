@@ -41,10 +41,12 @@ mkdir -p "$OUTROOT"
 "$PYTHON_BIN" -m compileall -q \
   arrhenius_fracture/kj_audit_v10056.py \
   run_v10_0_5_6_stochastic_delta_sigma.py \
-  run_v10_0_5_6_kj_audit_bracket.py
+  run_v10_0_5_6_stochastic_delta_sigma_audited.py \
+  run_v10_0_5_6_kj_audit_bracket.py \
+  run_v10_0_5_6_kj_audit_bracket_audited.py
 
 CMD=(
-  "$PYTHON_BIN" run_v10_0_5_6_kj_audit_bracket.py "$ACTION"
+  "$PYTHON_BIN" run_v10_0_5_6_kj_audit_bracket_audited.py "$ACTION"
   --out "$OUTROOT"
   --material-class "$MATERIAL"
   --temperature-K "$TEMPERATURE_K"
