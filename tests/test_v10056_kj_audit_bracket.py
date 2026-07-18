@@ -1,5 +1,3 @@
-import math
-
 import pytest
 
 from arrhenius_fracture.kj_audit_v10056 import (
@@ -67,9 +65,7 @@ def test_plateau_selection_uses_only_safe_consecutive_radii():
         rows, relative_tolerance=0.03, minimum_points=3
     )
     assert selected["status"] == "plateau_selected"
-    assert selected["selected_outer_radius_m"] in pytest.approx(
-        [140e-6, 180e-6]
-    )
+    assert selected["selected_outer_radius_m"] == pytest.approx(180e-6)
     assert 450e-6 not in selected["plateau_outer_radii_m"]
 
 
