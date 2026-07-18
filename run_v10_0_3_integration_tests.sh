@@ -67,7 +67,8 @@ PY
   tests/test_v1003_live_binding_capture.py \
   tests/test_v1003_source_population_bound.py \
   tests/test_v10031_reporting_normalization.py \
-  tests/test_v1005_parallel_coupling.py
+  tests/test_v1005_parallel_coupling.py \
+  tests/test_v1005_live_stepper_capture.py
 
 cat <<'EOF'
 V10.0.5 TESTS-ONLY PARALLEL COUPLING GATE PASSED
