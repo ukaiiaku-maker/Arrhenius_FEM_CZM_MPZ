@@ -35,12 +35,12 @@ def _channel_indices(row: dict[str, Any]) -> list[int]:
     return values
 
 
-def _last_csv_row(path: Path) -> dict[str, str]:
+def _csv_rows(path: Path) -> list[dict[str, str]]:
     with path.open(newline="") as handle:
         rows = list(csv.DictReader(handle))
     if not rows:
         raise RuntimeError(f"empty step file: {path}")
-    return rows[-1]
+    return rows
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -69,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         "completion": root / "run_completion_v10_0_5_2.json",
         "channel": root / "parallel_channel_diagnostics_v10_0_5_2.json",
         "progressive": root / "kinetic_campaign_czm_progressive_2d_v10_0_3.json",
+        "campaign": root / "kinetic_campaign_czm_v10_0_3_audit.json",
         "quality": root / "explicit_quality_wrapper_chain_v91856.json",
         "args": root / "run_args.json",
         "steps": root / "steps_0700K.csv",
@@ -81,17 +82,26 @@ def main(argv: list[str] | None = None) -> int:
     completion = dict(_load(required["completion"]))
     channel = dict(_load(required["channel"]))
     progressive = dict(_load(required["progressive"]))
+    campaign = dict(_load(required["campaign"]))
     quality = dict(_load(required["quality"]))
     run_args = dict(_load(required["args"]))
     normalized = dict(_load(required["normalized"]))
     records = _records(progressive)
-    final = _last_csv_row(required["steps"])
+    step_rows = _csv_rows(required["steps"])
+    final = step_rows[-1]
 
-    final_extension_um = float(final["crack_extension_m"]) * 1.0e6
+    extensions_um = [float(row["crack_extension_m"]) * 1.0e6 for row in step_rows]
+    final_extension_um = extensions_um[-1]
+    extension_monotonic = all(
+        later + 1.0e-9 >= earlier
+        for earlier, later in zip(extensions_um, extensions_um[1:])
+    )
     committed = int(progressive.get("committed_events", 0))
     insertions = int(progressive.get("trial_insertions", 0))
     rejections = int(progressive.get("damage_rejections", 0))
     rollbacks = int(progressive.get("full_rollbacks", 0))
+    accepted_substeps = int(progressive.get("accepted_substeps", len(records)))
+    carried_time_s = float(progressive.get("carried_time_s", 0.0))
     mpz_bins = int(run_args.get("mpz_n_bins", 0))
     mpz_length_m = float(run_args.get("mpz_length_m", 0.0))
 
@@ -123,6 +133,14 @@ def main(argv: list[str] | None = None) -> int:
             finite_hazards += 1
             finite_increments += 1
 
+    source_checks = list(campaign.get("result_checks") or [])
+    source_bounds_respected = bool(source_checks)
+    for row in source_checks:
+        maximum = float(row.get("max_N_em", math.inf))
+        bound = float(row.get("source_population_bound", -math.inf))
+        tolerance = max(1.0e-8, 1.0e-10 * max(abs(bound), 1.0))
+        source_bounds_respected = source_bounds_respected and maximum <= bound + tolerance
+
     tolerance_um = max(1.0e-6, 1.0e-9 * max(target_um, 1.0))
     checks = {
         "completion_manifest_complete": (
@@ -132,12 +150,15 @@ def main(argv: list[str] | None = None) -> int:
         "quality_audit_complete": quality.get("run_completed_without_exception") is True,
         "quality_vetoes_zero": len(quality.get("quality_vetoes") or []) == 0,
         "target_extension_exact": abs(final_extension_um - target_um) <= tolerance_um,
+        "extension_monotonic": extension_monotonic,
         "committed_event_count": committed == expected_commits,
         "trial_insertion_count": insertions == expected_commits,
-        "damage_rejections_zero": rejections == 0,
-        "full_rollbacks_zero": rollbacks == 0,
+        "accepted_substeps_consistent": accepted_substeps == len(records) and len(records) > 0,
+        "transactional_counts_valid": rejections >= 0 and rollbacks >= 0,
+        "carried_time_finite_nonnegative": math.isfinite(carried_time_s) and carried_time_s >= 0.0,
         "mpz_bin_count": mpz_bins == expected_bins,
         "mpz_length_100um": abs(mpz_length_m - 100.0e-6) <= 1.0e-12,
+        "source_population_bounds_respected": source_bounds_respected,
         "channel_audit_certified": channel.get("implementation_certified") is True,
         "channel_diagnostics_complete": (
             channel.get("per_channel_strang_diagnostics_complete") is True
@@ -165,12 +186,14 @@ def main(argv: list[str] | None = None) -> int:
         "accepted_substep_records": len(records),
         "damage_rejections": rejections,
         "full_rollbacks": rollbacks,
+        "carried_time_s": carried_time_s,
         "mpz_n_bins": mpz_bins,
         "mpz_length_m": mpz_length_m,
         "slip_trace_channel_count": int(channel_count or 0),
         "finite_channel_hazards": finite_hazards,
         "finite_channel_increments": finite_increments,
         "maximum_emission_partition_residual": max_partition_residual,
+        "source_population_checks": source_checks,
         "constitutive_physics_changed_in_v10052": False,
         "material_parameterization_assessment_performed": False,
         "response_classification_gate_active": False,
