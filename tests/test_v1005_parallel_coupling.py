@@ -36,19 +36,29 @@ def make_state():
 
 
 def test_exact_emission_depletion_has_no_second_directional_multiplier():
-    state, manifest, _ = make_state()
+    state, _manifest, _ = make_state()
     factors = np.array([1.0, 0.25])
     sigma = 2.0e9
-    T = 700.0
-    dt = 1.0e-8
+    dt = 0.2
     available = state.available_sites.copy()
-    sigma_system = factors * sigma
-    rates = manifest.emission.rate(sigma_system, T)
-    probability = 1.0 - np.exp(-np.minimum(rates * dt, 700.0))
+
+    class RecordingEmission:
+        def __init__(self):
+            self.last_stress = None
+
+        def rate(self, stress, _temperature):
+            self.last_stress = np.asarray(stress, dtype=float).copy()
+            return np.array([2.0, 4.0])
+
+    recording = RecordingEmission()
+    state.manifest = SimpleNamespace(emission=recording)
+    rates = np.array([2.0, 4.0])
+    probability = 1.0 - np.exp(-rates * dt)
     expected = available * probability
 
-    result = state.emit_exact(dt, sigma, T, factors)
+    result = state.emit_exact(dt, sigma, 700.0, factors)
 
+    assert np.array_equal(recording.last_stress, factors * sigma)
     assert np.allclose(result["dN_emit_per_system"], expected, rtol=1e-12, atol=1e-14)
     assert result["directional_multiplier_applied_after_hazard"] is False
     double_weighted = expected * factors
