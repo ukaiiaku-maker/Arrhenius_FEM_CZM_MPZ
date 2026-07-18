@@ -6,6 +6,9 @@ import pytest
 
 from arrhenius_fracture.mode_i_first_passage_v10_0_5_5_stochastic_vhcf import (
     patch_run_2d_source_v10055,
+)
+from arrhenius_fracture.mode_i_first_passage_v10_0_5_5_stochastic_vhcf_audited import (
+    patch_run_2d_source_v10055_audited,
     validate_source_transform_v10055,
 )
 from arrhenius_fracture.stochastic_campaign_v10055 import (
@@ -18,10 +21,7 @@ from arrhenius_fracture import sharp_front
 
 
 def _pred(mu_emit, escape=0.0):
-    return SimpleNamespace(
-        mu_emit=mu_emit,
-        escape_per_cycle=escape,
-    )
+    return SimpleNamespace(mu_emit=mu_emit, escape_per_cycle=escape)
 
 
 def _base_choice(controller, pred, user_block_cycles=None):
@@ -127,20 +127,26 @@ def test_mean_field_predictor_flag_is_transactional():
 
 
 def test_v10055_source_transform_compiles_current_run_2d():
-    source = patch_run_2d_source_v10055(
-        __import__("inspect").getsource(sharp_front.run_2d)
-    )
+    original = __import__("inspect").getsource(sharp_front.run_2d)
+    source = patch_run_2d_source_v10055(original)
     compile(source, "<v10055_run_2d>", "exec")
     assert "vhcf_fem_cache_v10_0_5_5.json" in source
     assert "reuse_mechanics_v10055" in source
+
+    audited = patch_run_2d_source_v10055_audited(original)
+    compile(audited, "<v10055_audited_run_2d>", "exec")
+    assert "cohesive_elements" in audited
+    assert "clock_sum" in audited
 
     result = validate_source_transform_v10055()
     assert result["v10055_source_transform_preflight_passed"] is True
     assert result["stochastic_vhcf_adapter"] is True
     assert result["fem_cache_adapter"] is True
+    assert result["cohesive_element_cache_signature"] is True
 
 
-def test_shell_does_not_hard_code_1e14_as_full_default():
+def test_shell_uses_flexible_horizon_and_opt_in_cache():
     text = Path("run_v10_0_5_5_stochastic_vhcf_delta_sigma.sh").read_text()
     assert 'CYCLES_MAX="${CYCLES_MAX:-1e12}"' in text
     assert "1e14 remains supported" in text
+    assert 'VHCF_FEM_CACHE="${VHCF_FEM_CACHE:-0}"' in text
