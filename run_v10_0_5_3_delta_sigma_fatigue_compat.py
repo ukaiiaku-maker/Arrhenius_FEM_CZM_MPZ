@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""macOS/project-tree compatibility launcher for the v10.0.5.3 Δσ campaign.
+"""Audited project-tree launcher for the v10.0.5.3 Delta-sigma campaign.
 
-This launcher changes only campaign command construction and failure reporting:
-- removes the retired/undefined ``--target-da-per-block-um`` CLI option;
-- supplies ``--crystal-compete``, required by the inherited v9.11 Mode-I path;
-- prints the tail of a failed child-run log in the raised exception.
-
-No constitutive, FEM, CZM, MPZ, or fatigue kinetics are changed.
+The launcher performs a construction preflight against the exact current
+run_2d/v10.0.3/v10.0.2 source-transform chain before creating a campaign.  It
+also keeps the campaign CLI synchronized with the inherited parser and prints
+the child log tail on failure.
 """
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
 import subprocess
-import sys
+
+from arrhenius_fracture.mode_i_first_passage_v10_0_5_3_fatigue_audited import (
+    validate_source_transform_v10053,
+)
 
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "run_v10_0_5_3_delta_sigma_fatigue.py"
+OLD_ENTRY = "arrhenius_fracture.mode_i_first_passage_v10_0_5_3_fatigue"
+AUDITED_ENTRY = (
+    "arrhenius_fracture.mode_i_first_passage_v10_0_5_3_fatigue_audited"
+)
 
 
 def _load_campaign_module():
@@ -35,21 +40,36 @@ def _remove_option_pair(command: list[str], option: str) -> None:
         del command[index:index + 2]
 
 
+def _replace_entry_module(command: list[str]) -> None:
+    try:
+        index = command.index(OLD_ENTRY)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"campaign command does not contain expected entry module {OLD_ENTRY}"
+        ) from exc
+    command[index] = AUDITED_ENTRY
+
+
 def main() -> int:
+    preflight = validate_source_transform_v10053()
+    if not preflight.get("source_transform_preflight_passed", False):
+        raise RuntimeError("v10.0.5.3 source-transform preflight did not pass")
+    print("V10_0_5_3_FATIGUE_SOURCE_PREFLIGHT PASS")
+
     campaign = _load_campaign_module()
     original_base_command = campaign._base_command
 
     def compatible_base_command(args, outdir, temperature, dU_m):
         command = list(original_base_command(args, outdir, temperature, dU_m))
+        _replace_entry_module(command)
 
-        # The active sharp_front parser has --max-da-per-block-um, but no
-        # --target-da-per-block-um. Cycle-jump control remains governed by the
-        # inherited target-dB and target-dN limits.
+        # The active parser has --max-da-per-block-um but no separate target-da
+        # option. Cycle-jump resolution remains controlled by target-dB and the
+        # finite target-dN limits.
         _remove_option_pair(command, "--target-da-per-block-um")
 
-        # The inherited direct Mode-I v9.11 integration requires both anisotropic
-        # elasticity and competing crystallographic directions, even with one
-        # active crack front and branching disabled.
+        # The inherited direct Mode-I v9.11 integration requires competing
+        # crystallographic directions whenever anisotropic elasticity is active.
         if "--crystal-compete" not in command:
             try:
                 index = command.index("--crystal-aniso") + 1
@@ -72,8 +92,8 @@ def main() -> int:
         if process.returncode != 0:
             try:
                 lines = log_path.read_text(errors="replace").splitlines()
-                tail = "\n".join(lines[-80:])
-            except Exception as exc:  # diagnostic path must not mask the run error
+                tail = "\n".join(lines[-120:])
+            except Exception as exc:
                 tail = f"<could not read log tail: {type(exc).__name__}: {exc}>"
             raise RuntimeError(
                 "command failed with exit code "
