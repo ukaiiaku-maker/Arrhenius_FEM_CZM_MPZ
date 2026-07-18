@@ -26,7 +26,7 @@ def main(argv=None) -> int:
     _base.POINT_RELEASE = POINT_RELEASE
     _base.COMPLETION_MANIFEST = COMPLETION_MANIFEST
 
-    # Stochastic is the production default for this point release.  Deterministic
+    # Stochastic is the production default for this point release. Deterministic
     # mode remains an explicit regression ablation via EVENT_STATISTICS.
     os.environ.setdefault("ARRHENIUS_EVENT_STATISTICS", "stochastic")
     os.environ.setdefault("ARRHENIUS_STOCHASTIC_EMISSION", "1")
@@ -35,7 +35,9 @@ def main(argv=None) -> int:
     os.environ.setdefault("ARRHENIUS_RARE_EVENT_TARGET", "0.25")
     os.environ.setdefault("ARRHENIUS_TAU_LEAP_TARGET", "3.0")
     os.environ.setdefault("ARRHENIUS_TAU_SWITCH_EXPECTED_EVENTS", "10.0")
-    os.environ.setdefault("ARRHENIUS_VHCF_FEM_CACHE", "1")
+    # The cache implementation is present but remains opt-in until a cache-on/
+    # cache-off equivalence smoke verifies the cohesive-state signature.
+    os.environ.setdefault("ARRHENIUS_VHCF_FEM_CACHE", "0")
     try:
         return int(_base.main(argv) or 0)
     finally:
