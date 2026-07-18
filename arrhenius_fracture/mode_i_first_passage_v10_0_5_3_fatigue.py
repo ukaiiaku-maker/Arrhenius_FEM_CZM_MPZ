@@ -14,10 +14,13 @@ import sys
 import textwrap
 from typing import Any, Callable
 
+import numpy as np
+
 from . import fatigue_v1 as _fatigue_v1
 from . import kinetic_progressive_2d_v1002 as _v1002
 from . import mode_i_first_passage_v10_0_5_2_parallel as _v10052_entry
 from .kinetic_campaign_czm_v10053 import engine_factory_v10053
+from .tensor_resolved_coupling_v1005 import latest_tensor_drive
 
 POINT_RELEASE = "10.0.5.3"
 MODEL_ID = "FEM_CZM_Mode_I_progressive_cycle_block_fatigue_v10_0_5_3"
@@ -165,7 +168,16 @@ _ORIGINAL_V1002_BUILDER = _v1002.build_progressive_run_2d_v1002
 def _fatigue_predictor_dispatch(original: Callable[..., Any]) -> Callable[..., Any]:
     def integrate_one_cycle(controller, front, waveform, T_K):
         if hasattr(front, "predict_fatigue_cycle"):
-            pz = front.predict_fatigue_cycle(waveform, T_K, controller.cfg.n_phase)
+            drive = latest_tensor_drive()
+            system_weights = np.asarray(
+                drive["slip_system_drive_factors"], dtype=float
+            )
+            pz = front.predict_fatigue_cycle(
+                waveform,
+                T_K,
+                controller.cfg.n_phase,
+                system_weights=system_weights,
+            )
             return _fatigue_v1.CycleHazardResult(
                 mu_emit=float(pz.get("dN_emit_per_cycle", 0.0)),
                 mu_peierls=float(pz.get("dN_peierls_per_cycle", 0.0)),
