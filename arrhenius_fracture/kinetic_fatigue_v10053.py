@@ -1,6 +1,6 @@
 """Cycle-block loading adapter for the v10.0.5.2 kinetic-CZM front engine.
 
-This module changes only the applied loading history.  Every phase is advanced by
+This module changes only the applied loading history. Every phase is advanced by
 ``super().integrate_kinetics`` so the certified MPZ transport, source depletion,
 parallel opening/emission channels, active shielding, cleavage clock, and source
 refresh laws remain authoritative.
@@ -51,16 +51,7 @@ class FatigueLoadingConfigV10053:
 
 
 class FatigueKineticsMixinV10053:
-    """Interpret an outer physical-time interval as a cyclic K history.
-
-    The 2-D solver provides the current maximum-load directional drives.  This
-    mixin applies the prescribed normalized waveform to both opening and cleavage
-    K, while retaining the tensor-resolved slip-system weights supplied by the
-    maximum-load FEM solve.  Phase dwell is aggregated over the accepted cycle
-    block.  Adaptive block limits keep each state/action increment small; this is
-    the same cycle-jump approximation used by the retired controller, but all
-    state mutation is delegated to the v10.0.5.2 engine.
-    """
+    """Interpret an outer physical-time interval as a cyclic K history."""
 
     supports_progressive_fatigue_v10053 = True
     fatigue_loading_changes_constitutive_physics = False
@@ -109,7 +100,7 @@ class FatigueKineticsMixinV10053:
         aggregator = getattr(self, "_sum_numeric", None)
         if callable(aggregator):
             aggregator(target, source)
-        else:  # pragma: no cover - all v10.0.5.2 engines provide this
+        else:  # pragma: no cover
             self._sum_mapping(target, source)
 
     def _integrate_fatigue_interval_v10053(
@@ -192,15 +183,6 @@ class FatigueKineticsMixinV10053:
         Kmin_exact = float(cfg.R) * Kmax_exact
         if cfg.closure_clip:
             Kmin_exact = max(Kmin_exact, 0.0)
-        avg_sigma_cleave = (
-            float(np.mean(sigma_cleave_values)) if sigma_cleave_values else 0.0
-        )
-        max_sigma_cleave = (
-            float(np.max(sigma_cleave_values)) if sigma_cleave_values else 0.0
-        )
-        avg_sigma_emit = (
-            float(np.mean(sigma_emit_values)) if sigma_emit_values else 0.0
-        )
         result = {
             "fired": fired,
             "n_fire": 1 if fired else 0,
@@ -228,9 +210,15 @@ class FatigueKineticsMixinV10053:
             "fatigue_Kmax_Pa_sqrt_m": Kmax_exact,
             "fatigue_Kmin_Pa_sqrt_m": Kmin_exact,
             "fatigue_DeltaK_Pa_sqrt_m": Kmax_exact - Kmin_exact,
-            "fatigue_avg_sigma_cleave_eff_Pa": avg_sigma_cleave,
-            "fatigue_max_sigma_cleave_eff_Pa": max_sigma_cleave,
-            "fatigue_avg_sigma_emission_effective_Pa": avg_sigma_emit,
+            "fatigue_avg_sigma_cleave_eff_Pa": (
+                float(np.mean(sigma_cleave_values)) if sigma_cleave_values else 0.0
+            ),
+            "fatigue_max_sigma_cleave_eff_Pa": (
+                float(np.max(sigma_cleave_values)) if sigma_cleave_values else 0.0
+            ),
+            "fatigue_avg_sigma_emission_effective_Pa": (
+                float(np.mean(sigma_emit_values)) if sigma_emit_values else 0.0
+            ),
             "fatigue_phase_blocks_completed": phase_index + 1 if factors.size else 0,
             "fatigue_cycle_jump_operator_split": True,
         }
@@ -262,7 +250,14 @@ class FatigueKineticsMixinV10053:
             system_weights=system_weights,
         )
 
-    def predict_fatigue_cycle(self, waveform: Any, T_K: float, n_phase: int) -> dict[str, Any]:
+    def predict_fatigue_cycle(
+        self,
+        waveform: Any,
+        T_K: float,
+        n_phase: int,
+        *,
+        system_weights: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         """Transactional one-cycle predictor used only for adaptive block sizing."""
         configured = self.fatigue_config_v10053
         cfg = FatigueLoadingConfigV10053(
@@ -294,7 +289,7 @@ class FatigueKineticsMixinV10053:
                 float(getattr(waveform, "Kmax")),
                 float(T_K),
                 cfg.period_s,
-                system_weights=None,
+                system_weights=system_weights,
             )
             plastic = dict(result.get("plastic", {}))
             channels = dict(result.get("channels", {}))
