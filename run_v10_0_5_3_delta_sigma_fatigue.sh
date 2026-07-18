@@ -54,7 +54,8 @@ if [[ -e "$OUTROOT" && "${KEEP_EXISTING:-0}" != "1" ]]; then
 fi
 
 "$PYTHON_BIN" -m compileall -q arrhenius_fracture \
-  run_v10_0_5_3_delta_sigma_fatigue.py
+  run_v10_0_5_3_delta_sigma_fatigue.py \
+  run_v10_0_5_3_delta_sigma_fatigue_compat.py
 
 # Use a scalar rather than an empty array for compatibility with the macOS
 # Bash 3.2 nounset behavior under `set -u`.
@@ -63,8 +64,10 @@ if [[ "${KEEP_EXISTING:-0}" == "1" ]]; then
   KEEP_FLAG="--keep-existing"
 fi
 
+# The compatibility launcher only corrects campaign CLI plumbing; it does not
+# modify the v10.0.5.2 constitutive/FEM/CZM/MPZ physics.
 # shellcheck disable=SC2086
-"$PYTHON_BIN" run_v10_0_5_3_delta_sigma_fatigue.py \
+"$PYTHON_BIN" run_v10_0_5_3_delta_sigma_fatigue_compat.py \
   --out "$OUTROOT" \
   --material-class "$MATERIAL" \
   --temperatures $TEMPERATURES \
