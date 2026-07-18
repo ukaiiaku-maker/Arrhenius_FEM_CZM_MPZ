@@ -6,7 +6,7 @@ PYTHON_BIN=${PYTHON_BIN:-}
 MATERIAL=${MATERIAL:-weakT}
 T_K=${T_K:-700}
 THETA_DEG=${THETA_DEG:-45}
-OUTROOT=${OUTROOT:-runs/v10_0_5_parallel_${MATERIAL}_${T_K}K_theta${THETA_DEG}_5um_v1}
+OUTROOT=${OUTROOT:-runs/v10_0_5_1_parallel_${MATERIAL}_${T_K}K_theta${THETA_DEG}_5um_v1}
 STEPS=${STEPS:-50000}
 NX=${NX:-36}
 NY=${NY:-72}
@@ -103,11 +103,14 @@ print(json.dumps({
     "nonzero_drive_captures": audit["nonzero_emission_drive_capture_count"],
     "min_drive_factor": audit["min_emission_drive_factor"],
     "max_drive_factor": audit["max_emission_drive_factor"],
+    "emission_observation_required": False,
 }, indent=2))
 PY
 
+"$PYTHON_BIN" normalize_v10_0_5_1_slip_trace_reporting.py "$OUTROOT"
+
 cat <<EOF
-V10.0.5 AUDITED PARALLEL OPENING/EMISSION CHECKPOINT PASSED
+V10.0.5.1 AUDITED REDUCED 2-D SLIP-TRACE COUPLING CHECKPOINT PASSED
 material=$MATERIAL
 T_K=$T_K
 theta_deg=$THETA_DEG
@@ -115,5 +118,8 @@ out=$OUTROOT
 integration_kernel=v10.0.3
 reporting_normalization=v10.0.3.1
 parallel_coupling=v10.0.5
+slip_trace_reporting=v10.0.5.1
+The plastic channels are reduced 2-D slip-trace channels, not a complete 3-D BCC slip-system model.
+Nonzero emission is not required for implementation certification.
 No material-response classification or reparameterization criterion was applied.
 EOF
