@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.optimize import OptimizeResult
 
 import optimize_mpz_v9_10_4_5_narrow_dbtt as patched
 
@@ -44,3 +45,23 @@ def test_non_detailed_result_is_not_expanded() -> None:
     result = patched.stabilize_detailed_result(original, x, details=False)
     assert result == original
     assert "event_detail" not in result
+
+
+def test_de_checkpoint_roundtrip(tmp_path) -> None:
+    state = tmp_path / "restart_000_de_state.npz"
+    original = OptimizeResult(
+        x=np.asarray([1.0, 2.0]),
+        fun=3.5,
+        population=np.asarray([[1.0, 2.0], [3.0, 4.0]]),
+        population_energies=np.asarray([3.5, 7.5]),
+        nit=2,
+        nfev=16,
+    )
+    patched._save_de_result(state, original)
+    loaded = patched._load_de_result(state)
+    assert np.allclose(loaded.x, original.x)
+    assert np.allclose(loaded.population, original.population)
+    assert np.allclose(loaded.population_energies, original.population_energies)
+    assert loaded.fun == original.fun
+    assert loaded.nit == original.nit
+    assert loaded.nfev == original.nfev
