@@ -1,0 +1,41 @@
+name: Verify MPZ v9.10.4.9 six-candidate mechanism ablation
+
+on:
+  push:
+    branches:
+      - v9.10.4.9-six-candidate-mechanism-ablation
+  pull_request:
+    branches:
+      - v9.10.4.8-corrected-1d-gate
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package and tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile mechanism-ablation tools
+        run: |
+          python -m compileall -q \
+            select_mechanism_ablation_candidates_mpz_v9_10_4_9.py \
+            evaluate_mechanism_ablation_mpz_v9_10_4_9.py
+          bash -n scripts/run_mpz_v9_10_4_9_six_candidate_ablation.sh
+      - name: Run focused tests
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_10_4_9_mechanism_ablation.py \
+            tests/test_mpz_v9_10_4_8_corrected_gate.py \
+            tests/test_mpz_v9_10_4_4_state_change_timestep.py
+      - name: Check package version
+        run: |
+          python - <<'PY'
+          import arrhenius_fracture
+          assert arrhenius_fracture.__version__ == '0.9.10.4.9'
+          print(arrhenius_fracture.__version__)
+          PY
