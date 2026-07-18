@@ -1,4 +1,4 @@
-name: v10.0.5 parallel opening-emission coupling tests
+name: v10.0.5.1 reduced 2-D slip-trace reporting tests
 
 on:
   push:
@@ -6,19 +6,23 @@ on:
       - v10.0.3-progressive-integration-audit
       - v10.0.3.1-reporting-normalization
       - v10.0.5-parallel-opening-emission-coupling
+      - v10.0.5.1-slip-trace-reporting
   pull_request:
     branches:
       - v10.0.3-progressive-integration-audit
       - v10.0.3.1-reporting-normalization
+      - v10.0.5-parallel-opening-emission-coupling
     paths:
       - "arrhenius_fracture/**"
       - "tests/**"
       - "audit_v10_0_3_progressive_integration.py"
       - "normalize_v10_0_3_1_reporting.py"
+      - "normalize_v10_0_5_1_slip_trace_reporting.py"
       - "run_v10_0_3_integration_tests.sh"
       - "run_v10_0_3_progressive_integration_smoke.sh"
       - "run_v10_0_3_1_normalize_existing_output.sh"
       - "run_v10_0_5_parallel_opening_emission_smoke.sh"
+      - "run_v10_0_5_1_normalize_existing_output.sh"
       - "pyproject.toml"
       - ".github/workflows/v1003-integration-tests.yml"
   workflow_dispatch:
@@ -52,8 +56,9 @@ jobs:
           bash -n run_v10_0_3_progressive_integration_smoke.sh
           bash -n run_v10_0_3_1_normalize_existing_output.sh
           bash -n run_v10_0_5_parallel_opening_emission_smoke.sh
+          bash -n run_v10_0_5_1_normalize_existing_output.sh
 
-      - name: Run tests-only integration and parallel coupling gate
+      - name: Run tests-only integration and slip-trace reporting gate
         id: integration_tests
         env:
           CONDA_DEFAULT_ENV: arrhenius-fem-czm
@@ -62,7 +67,7 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          bash run_v10_0_3_integration_tests.sh 2>&1 | tee v1005-parallel-coupling-tests.log
+          bash run_v10_0_3_integration_tests.sh 2>&1 | tee v10051-slip-trace-reporting-tests.log
           status=${PIPESTATUS[0]}
           echo "exit_status=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
@@ -71,6 +76,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v1005-parallel-coupling-tests-log
-          path: v1005-parallel-coupling-tests.log
+          name: v10051-slip-trace-reporting-tests-log
+          path: v10051-slip-trace-reporting-tests.log
           if-no-files-found: error
