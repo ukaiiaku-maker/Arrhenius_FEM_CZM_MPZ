@@ -35,6 +35,18 @@ def _read_csv_with_booleans(path):
     return rows
 
 
+def _classify_without_numerical_censoring(rows):
+    materialized = [dict(row) for row in rows]
+    censored = [row for row in materialized if bool(row.get("right_censored"))]
+    if censored:
+        stresses = [float(row["delta_sigma_requested_MPa"]) for row in censored]
+        raise RuntimeError(
+            "first-passage bracket contains numerically censored cases at "
+            f"Delta-sigma={stresses} MPa; increase MAX_BLOCKS or revise block controls"
+        )
+    return _ORIGINAL_CLASSIFY(materialized)
+
+
 def _run_audit_fail_closed(args):
     payload = _ORIGINAL_RUN_AUDIT(args)
     out = Path(args.out).resolve()
@@ -70,21 +82,25 @@ def _run_audit_fail_closed(args):
 
 _ORIGINAL_READ_CSV = _base._read_csv
 _ORIGINAL_RUN_AUDIT = _base.run_audit
+_ORIGINAL_CLASSIFY = _base.classify_first_passage_rows
 
 
 def main(argv=None) -> int:
     saved_campaign = _base.CAMPAIGN
     saved_reader = _base._read_csv
     saved_audit = _base.run_audit
+    saved_classify = _base.classify_first_passage_rows
     _base.CAMPAIGN = AUDITED_CAMPAIGN
     _base._read_csv = _read_csv_with_booleans
     _base.run_audit = _run_audit_fail_closed
+    _base.classify_first_passage_rows = _classify_without_numerical_censoring
     try:
         return int(_base.main(argv) or 0)
     finally:
         _base.CAMPAIGN = saved_campaign
         _base._read_csv = saved_reader
         _base.run_audit = saved_audit
+        _base.classify_first_passage_rows = saved_classify
 
 
 if __name__ == "__main__":
