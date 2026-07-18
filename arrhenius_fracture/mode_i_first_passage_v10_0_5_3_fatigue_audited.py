@@ -1,10 +1,10 @@
 """Audited v10.0.5.3 progressive-fatigue entry point.
 
 This module replaces the original v10.0.5.3 implementation's brittle attempt to
-rewrite the Python source of ``build_progressive_run_2d_v1002`` itself.  Instead,
-it applies four fail-closed loading/accounting edits to the actual ``run_2d``
-source and then delegates to the unchanged, established v10.0.2 progressive
-trial-CZM lifecycle builder.
+rewrite the Python source of ``build_progressive_run_2d_v1002`` itself. Instead,
+it applies fail-closed loading/accounting edits to the actual ``run_2d`` source
+and then delegates to the unchanged, established v10.0.2 progressive trial-CZM
+lifecycle builder.
 
 No material parameter, barrier, FEM constitutive law, tensor projection,
 cohesive update, MPZ transport law, source-depletion law, or topology-quality
@@ -44,6 +44,15 @@ _ACCEPTED_CYCLES_ANCHOR = (
     "if fatigue_mode else 0.0\n"
 )
 
+# The inherited driver defines _diag_with_remaining only inside ``if deflect:``.
+# v10.0.3 deliberately forces deflect=False for the straight progressive Mode-I
+# path, so the single-front predictor must use an unconditionally defined helper.
+_UNCONDITIONAL_HELPER_ANCHOR = "        fronts = None\n"
+_SINGLE_DIAG_CALL_ANCHOR = (
+    "                        diag_single_trial = _diag_with_remaining(\n"
+    "                            pred_single_trial, float(getattr(args, 'block_cycles', 1.0e4) or 1.0))\n"
+)
+
 _SINGLE_FRONT_FATIGUE_ANCHOR = (
     "            else:\n"
     "                if fatigue_mode:\n"
@@ -56,7 +65,7 @@ _DENSITY_TRANSPORT_ANCHOR = (
 
 
 def patch_run_2d_source_v10053(source: str) -> str:
-    """Apply only the cyclic-loading and accepted-time plumbing edits.
+    """Apply only cyclic-loading, scope, and accepted-time plumbing edits.
 
     The established v10.0.2 builder still owns trial insertion, rollback,
     cohesive damage correction, checkpoint commit, remeshing, and time carry.
@@ -78,6 +87,51 @@ def patch_run_2d_source_v10053(source: str) -> str:
         _BACKEND_ANCHOR,
         backend_wrapped,
         "backend construction",
+    )
+
+    # Define the cycle-horizon diagnostic helper outside the legacy ``if deflect``
+    # block. The original helper remains untouched for the deflecting legacy path.
+    unconditional_helper = (
+        "        def _diag_with_remaining_v10053(pred, req):\n"
+        "            if not fatigue_mode:\n"
+        "                return fatigue_controller.choose_block_cycles_diagnostic(pred, req)\n"
+        "            cycles_max_v10053 = float(\n"
+        "                getattr(args, 'cycles_max', float('inf')) or float('inf')\n"
+        "            )\n"
+        "            remaining_v10053 = float('inf')\n"
+        "            if np.isfinite(cycles_max_v10053):\n"
+        "                remaining_v10053 = max(\n"
+        "                    cycles_max_v10053 - float(fatigue_cycles_total_accepted),\n"
+        "                    0.0,\n"
+        "                )\n"
+        "            old_max_v10053 = float(fatigue_controller.cfg.max_block_cycles)\n"
+        "            try:\n"
+        "                if np.isfinite(remaining_v10053):\n"
+        "                    if np.isfinite(old_max_v10053):\n"
+        "                        fatigue_controller.cfg.max_block_cycles = min(\n"
+        "                            old_max_v10053, remaining_v10053\n"
+        "                        )\n"
+        "                    else:\n"
+        "                        fatigue_controller.cfg.max_block_cycles = remaining_v10053\n"
+        "                return fatigue_controller.choose_block_cycles_diagnostic(pred, req)\n"
+        "            finally:\n"
+        "                fatigue_controller.cfg.max_block_cycles = old_max_v10053\n"
+        "\n"
+        + _UNCONDITIONAL_HELPER_ANCHOR
+    )
+    source = _replace_unique(
+        source,
+        _UNCONDITIONAL_HELPER_ANCHOR,
+        unconditional_helper,
+        "unconditional cycle-horizon helper",
+    )
+    source = _replace_unique(
+        source,
+        _SINGLE_DIAG_CALL_ANCHOR,
+        _SINGLE_DIAG_CALL_ANCHOR.replace(
+            "_diag_with_remaining(", "_diag_with_remaining_v10053("
+        ),
+        "single-front cycle diagnostic call",
     )
 
     # Convert the adaptive cycle block selected by the existing fatigue controller
@@ -121,7 +175,7 @@ def patch_run_2d_source_v10053(source: str) -> str:
     )
 
     # If a checkpoint occurs before the requested cycle block ends, count only the
-    # physical time consumed by the accepted lifecycle.  The unused interval is not
+    # physical time consumed by the accepted lifecycle. The unused interval is not
     # silently credited as fatigue cycles on the old geometry.
     accounting_replacement = (
         "            if kinetic_progressive and fatigue_mode:\n"
@@ -178,6 +232,7 @@ def build_progressive_run_2d_v10053_audited(original_run_2d):
     transformed._v10053_legacy_fatigue_commit_bypassed = True
     transformed._v10053_one_checkpoint_per_outer_block = True
     transformed._v10053_consumed_cycle_accounting = True
+    transformed._v10053_single_front_cycle_scope_fixed = True
     transformed._v10053_constitutive_physics_changed = False
     return transformed
 
@@ -186,7 +241,7 @@ def validate_source_transform_v10053() -> dict[str, Any]:
     """Compile the exact current run_2d/v10.0.3/v10.0.2 transform chain.
 
     This is a construction preflight only; it does not solve FEM equations or
-    mutate a material state.  It exists specifically to prevent campaign launch
+    mutate a material state. It exists specifically to prevent campaign launch
     when any source anchor or wrapper composition has drifted.
     """
 
@@ -215,6 +270,9 @@ def validate_source_transform_v10053() -> dict[str, Any]:
         ),
         "consumed_cycle_accounting": bool(
             getattr(transformed, "_v10053_consumed_cycle_accounting", False)
+        ),
+        "single_front_cycle_scope_fixed": bool(
+            getattr(transformed, "_v10053_single_front_cycle_scope_fixed", False)
         ),
         "constitutive_physics_changed": bool(
             getattr(transformed, "_v10053_constitutive_physics_changed", True)
