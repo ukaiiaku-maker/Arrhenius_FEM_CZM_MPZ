@@ -13,6 +13,9 @@ def test_v10053_patch_anchors_match_current_run_2d():
     assert "if fatigue_mode and not kinetic_progressive:" in patched
     assert "cycles_requested_v10053" in patched
     assert "checkpoint_now_v10053" in patched
+    assert "def _diag_with_remaining_v10053" in patched
+    assert "diag_single_trial = _diag_with_remaining_v10053(" in patched
+    assert "diag_single_trial = _diag_with_remaining(" not in patched
 
 
 def test_v10053_exact_wrapper_chain_compiles():
@@ -23,4 +26,5 @@ def test_v10053_exact_wrapper_chain_compiles():
     assert payload["v10053_audited_adapter"] is True
     assert payload["legacy_fatigue_commit_bypassed"] is True
     assert payload["consumed_cycle_accounting"] is True
+    assert payload["single_front_cycle_scope_fixed"] is True
     assert payload["constitutive_physics_changed"] is False
