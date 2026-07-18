@@ -10,6 +10,9 @@ import sys
 from typing import Any
 
 
+MPZ_PROVENANCE = "mpz_configuration_provenance_v10_0_5_2.json"
+
+
 def _load(path: Path) -> Any:
     return json.loads(path.read_text())
 
@@ -74,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         "args": root / "run_args.json",
         "steps": root / "steps_0700K.csv",
         "normalized": root / "slip_trace_reporting_v10_0_5_1.json",
+        "mpz_provenance": root / MPZ_PROVENANCE,
     }
     missing = [str(path) for path in required.values() if not path.is_file()]
     if missing:
@@ -86,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     quality = dict(_load(required["quality"]))
     run_args = dict(_load(required["args"]))
     normalized = dict(_load(required["normalized"]))
+    mpz_provenance = dict(_load(required["mpz_provenance"]))
     records = _records(progressive)
     step_rows = _csv_rows(required["steps"])
     final = step_rows[-1]
@@ -102,8 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     rollbacks = int(progressive.get("full_rollbacks", 0))
     accepted_substeps = int(progressive.get("accepted_substeps", len(records)))
     carried_time_s = float(progressive.get("carried_time_s", 0.0))
-    mpz_bins = int(run_args.get("mpz_n_bins", 0))
-    mpz_length_m = float(run_args.get("mpz_length_m", 0.0))
+
+    # Authoritative MPZ configuration comes from the v9.11 outer parser/factory
+    # binding. run_args.json is the inner sharp-front namespace and retains its
+    # compatibility default after the outer option has already been consumed.
+    mpz_bins = int(mpz_provenance.get("active_mpz_n_bins", 0))
+    mpz_length_m = float(mpz_provenance.get("active_mpz_length_m", 0.0))
+    mpz_dx_m = float(mpz_provenance.get("active_mpz_dx_m", math.nan))
+    inner_shadow_bins = run_args.get("mpz_n_bins")
 
     channel_count = None
     finite_hazards = 0
@@ -156,8 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         "accepted_substeps_consistent": accepted_substeps == len(records) and len(records) > 0,
         "transactional_counts_valid": rejections >= 0 and rollbacks >= 0,
         "carried_time_finite_nonnegative": math.isfinite(carried_time_s) and carried_time_s >= 0.0,
+        "mpz_binding_provenance_verified": mpz_provenance.get("provenance_verified") is True,
+        "mpz_inner_shadow_not_authoritative": (
+            mpz_provenance.get("inner_shadow_is_authoritative") is False
+        ),
         "mpz_bin_count": mpz_bins == expected_bins,
         "mpz_length_100um": abs(mpz_length_m - 100.0e-6) <= 1.0e-12,
+        "mpz_spacing_finite_positive": math.isfinite(mpz_dx_m) and mpz_dx_m > 0.0,
         "source_population_bounds_respected": source_bounds_respected,
         "channel_audit_certified": channel.get("implementation_certified") is True,
         "channel_diagnostics_complete": (
@@ -176,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     failed = [name for name, passed in checks.items() if not passed]
     payload = {
-        "schema": "v10_0_5_2_long_growth_gate_v1",
+        "schema": "v10_0_5_2_long_growth_gate_v2",
         "target_extension_um": target_um,
         "physical_increment_um": da_um,
         "expected_commits": expected_commits,
@@ -187,8 +203,15 @@ def main(argv: list[str] | None = None) -> int:
         "damage_rejections": rejections,
         "full_rollbacks": rollbacks,
         "carried_time_s": carried_time_s,
-        "mpz_n_bins": mpz_bins,
-        "mpz_length_m": mpz_length_m,
+        "active_mpz_n_bins": mpz_bins,
+        "active_mpz_length_m": mpz_length_m,
+        "active_mpz_dx_m": mpz_dx_m,
+        "mpz_configuration_source": mpz_provenance.get("provenance_method"),
+        "mpz_runtime_state_directly_serialized": mpz_provenance.get(
+            "runtime_state_directly_serialized_in_legacy_output"
+        ),
+        "inner_sharp_front_run_args_mpz_n_bins_shadow": inner_shadow_bins,
+        "inner_shadow_is_authoritative": False,
         "slip_trace_channel_count": int(channel_count or 0),
         "finite_channel_hazards": finite_hazards,
         "finite_channel_increments": finite_increments,
