@@ -1,0 +1,40 @@
+name: Verify MPZ v9.10.4.7 analytical down-selection
+
+on:
+  pull_request:
+    branches:
+      - v9.10.4.5-search-result-schema
+  push:
+    branches:
+      - v9.10.4.7-analytical-downselect
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package and tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile analytical and moving-interface stages
+        run: |
+          python -m compileall -q analytical_downselect_mpz_v9_10_4_7.py evaluate_dynamic_1d_mpz_v9_10_4_7.py
+          bash -n scripts/run_mpz_v9_10_4_7_analytical_downselect.sh
+          bash -n scripts/run_mpz_v9_10_4_7_dynamic_1d.sh
+      - name: Run focused tests
+        run: |
+          python -m pytest -q \
+            tests/test_mpz_v9_10_4_7_analytical_downselect.py \
+            tests/test_mpz_v9_10_4_4_state_change_timestep.py \
+            tests/test_mpz_v9_10_4_3_dynamic_schedule.py
+      - name: Check package version
+        run: |
+          python - <<'PY'
+          import arrhenius_fracture
+          assert arrhenius_fracture.__version__ == '0.9.10.4.7'
+          print(arrhenius_fracture.__version__)
+          PY

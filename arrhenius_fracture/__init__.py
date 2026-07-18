@@ -71,4 +71,4 @@ MovingProcessZoneState = _MPZStateV95
 # microscopic rates, and adds terminal limiter diagnostics.
 from . import reduced_campaign_front_v91044_timestep_guard as _v91044_timestep_guard
 
-__version__ = '0.9.10.4.5'
+__version__ = '0.9.10.4.7'
