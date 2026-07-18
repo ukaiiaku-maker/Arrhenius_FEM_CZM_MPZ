@@ -16,7 +16,8 @@ fi
 "$PYTHON_BIN" -m compileall -q arrhenius_fracture tests
 "$PYTHON_BIN" -m py_compile \
   audit_v10_0_3_progressive_integration.py \
-  normalize_v10_0_3_1_reporting.py
+  normalize_v10_0_3_1_reporting.py \
+  normalize_v10_0_5_1_slip_trace_reporting.py
 
 "$PYTHON_BIN" - <<'PY'
 import importlib.metadata
@@ -33,17 +34,19 @@ from arrhenius_fracture.kinetic_campaign_czm_v1005 import (
 from arrhenius_fracture.kinetic_progressive_2d_v1003_source import (
     build_progressive_run_2d_v1003_source,
 )
+from arrhenius_fracture.slip_trace_reporting_v10051 import SCHEMA
 from arrhenius_fracture.tensor_resolved_coupling_v1005 import (
     TensorResolvedKineticCohesiveStepper,
 )
 
 version = importlib.metadata.version("arrhenius-fem-czm")
-assert version == "10.0.5", version
+assert version == "10.0.5.1", version
 assert STATE_MODEL == "kinetic_campaign_czm"
 assert CampaignAwareV1003TipEngineMixin.supports_progressive_kinetic_czm is True
 assert TensorResolvedKineticCohesiveStepper.tensor_resolved_parallel_coupling is True
 assert TensorResolvedCampaignKineticMPZState.directional_multiplier_applied_after_hazard is False
 assert ParallelOpeningEmissionCZMFrontEngine.fit_derived_shielding_cap_active is False
+assert SCHEMA == "reduced_2d_slip_trace_reporting_v10_0_5_1"
 transformed = build_progressive_run_2d_v1003_source(sharp_front.run_2d)
 assert transformed._v1002_event_lifecycle is True
 assert transformed._v1003_source_adapter is True
@@ -52,6 +55,7 @@ assert transformed._v1003_nondeflect_summary_accounting is True
 print("package version:", version)
 print("v10.0.3 certified lifecycle preflight: PASS")
 print("v10.0.5 tensor-resolved parallel coupling preflight: PASS")
+print("v10.0.5.1 reduced 2-D slip-trace reporting preflight: PASS")
 PY
 
 "$PYTHON_BIN" -m pytest -q \
@@ -68,11 +72,14 @@ PY
   tests/test_v1003_source_population_bound.py \
   tests/test_v10031_reporting_normalization.py \
   tests/test_v1005_parallel_coupling.py \
-  tests/test_v1005_live_stepper_capture.py
+  tests/test_v1005_live_stepper_capture.py \
+  tests/test_v10051_slip_trace_reporting.py
 
 cat <<'EOF'
-V10.0.5 TESTS-ONLY PARALLEL COUPLING GATE PASSED
+V10.0.5.1 TESTS-ONLY SLIP-TRACE REPORTING GATE PASSED
 No FEM solve was launched.
-The v10.0.3 lifecycle and v10.0.3.1 reporting foundation remain unchanged.
+The v10.0.3 lifecycle and v10.0.5 parallel coupling remain unchanged.
+The plastic channels are reported as reduced 2-D slip-trace channels.
+Nonzero emission is not required for implementation certification.
 No material response classification or reparameterization gate is active.
 EOF
