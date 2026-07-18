@@ -18,6 +18,7 @@ on:
       - "arrhenius_fracture/**"
       - "tests/**"
       - "audit_v10_0_3_progressive_integration.py"
+      - "audit_v10_0_5_2_mpz_binding.py"
       - "audit_v10_0_5_2_long_growth.py"
       - "normalize_v10_0_3_1_reporting.py"
       - "normalize_v10_0_5_1_slip_trace_reporting.py"
