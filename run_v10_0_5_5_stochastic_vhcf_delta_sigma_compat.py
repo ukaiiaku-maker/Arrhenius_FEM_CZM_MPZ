@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 
-from arrhenius_fracture.mode_i_first_passage_v10_0_5_5_stochastic_vhcf import (
+from arrhenius_fracture.mode_i_first_passage_v10_0_5_5_stochastic_vhcf_audited import (
     validate_source_transform_v10055,
 )
 
@@ -30,6 +30,8 @@ def main() -> int:
     preflight = validate_source_transform_v10055()
     if not preflight.get("v10055_source_transform_preflight_passed", False):
         raise RuntimeError("v10.0.5.5 source-transform preflight failed")
+    if not preflight.get("cohesive_element_cache_signature", False):
+        raise RuntimeError("v10.0.5.5 cohesive cache signature is inactive")
     print("V10_0_5_5_STOCHASTIC_VHCF_SOURCE_PREFLIGHT PASS", flush=True)
     campaign = _load_campaign_module()
 
