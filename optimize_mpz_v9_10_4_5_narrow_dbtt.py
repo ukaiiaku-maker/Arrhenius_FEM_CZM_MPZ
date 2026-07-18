@@ -10,7 +10,8 @@ stabilizes that schema before delegating to the existing search driver.
 It also checkpoints the completed differential-evolution population before
 Powell refinement and detailed export. If a restart later crashes, the same
 command reloads that DE population and resumes after the expensive global
-search rather than repeating all generations.
+search rather than repeating all generations. Powell evaluations emit visible
+progress and a machine-readable status file.
 
 No objective, constitutive rate, timestep, transition gate, or optimization
 algorithm is changed.
@@ -21,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 import numpy as np
@@ -31,8 +33,10 @@ import optimize_mpz_v9_10_4_narrow_dbtt as _base
 
 _ORIGINAL_EVALUATE = _base.NarrowDBTTObjective.evaluate
 _ORIGINAL_DIFFERENTIAL_EVOLUTION = _base.differential_evolution
+_ORIGINAL_MINIMIZE = _base.minimize
 _PENDING_RESTARTS: list[int] | None = None
 _PENDING_POSITION = 0
+_CURRENT_RESTART: int | None = None
 
 
 def stabilize_detailed_result(
@@ -129,10 +133,20 @@ def _next_restart_index() -> int:
     return restart
 
 
-def _de_state_path(restart: int) -> Path:
-    path = _output_directory() / "checkpoints" / f"restart_{restart:03d}_de_state.npz"
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _checkpoint_directory() -> Path:
+    path = _output_directory() / "checkpoints"
+    path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _de_state_path(restart: int) -> Path:
+    return _checkpoint_directory() / f"restart_{restart:03d}_de_state.npz"
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(payload, indent=2, allow_nan=True))
+    os.replace(temporary, path)
 
 
 def _save_de_result(path: Path, result: OptimizeResult) -> None:
@@ -166,7 +180,9 @@ def _load_de_result(path: Path) -> OptimizeResult:
 
 
 def _checkpointing_differential_evolution(*args: Any, **kwargs: Any) -> OptimizeResult:
+    global _CURRENT_RESTART
     restart = _next_restart_index()
+    _CURRENT_RESTART = restart
     state_path = _de_state_path(restart)
     if state_path.exists():
         result = _load_de_result(state_path)
@@ -188,8 +204,67 @@ def _checkpointing_differential_evolution(*args: Any, **kwargs: Any) -> Optimize
     return result
 
 
+def _progress_minimize(fun: Any, x0: np.ndarray, *args: Any, **kwargs: Any) -> OptimizeResult:
+    restart = -1 if _CURRENT_RESTART is None else int(_CURRENT_RESTART)
+    status_path = _checkpoint_directory() / f"restart_{restart:03d}_local_status.json"
+    started = time.perf_counter()
+    last_report = started
+    evaluations = 0
+    best_objective = float("inf")
+
+    print(f"[local-start] restart={restart} method={kwargs.get('method', 'unknown')}", flush=True)
+
+    def monitored(x: np.ndarray) -> float:
+        nonlocal evaluations, best_objective, last_report
+        value = float(fun(x))
+        evaluations += 1
+        best_objective = min(best_objective, value)
+        now = time.perf_counter()
+        if evaluations == 1 or evaluations % 25 == 0 or now - last_report >= 15.0:
+            payload = {
+                "state": "running",
+                "restart": restart,
+                "evaluations": evaluations,
+                "current_objective": value,
+                "best_objective": best_objective,
+                "elapsed_s": now - started,
+            }
+            _atomic_write_json(status_path, payload)
+            print(
+                f"[local-progress] restart={restart} evaluations={evaluations} "
+                f"objective={value:.6g} best={best_objective:.6g} "
+                f"elapsed={now - started:.1f}s",
+                flush=True,
+            )
+            last_report = now
+        return value
+
+    result = _ORIGINAL_MINIMIZE(monitored, x0, *args, **kwargs)
+    elapsed = time.perf_counter() - started
+    _atomic_write_json(
+        status_path,
+        {
+            "state": "complete",
+            "restart": restart,
+            "evaluations": evaluations,
+            "objective": float(result.fun),
+            "best_observed_objective": best_objective,
+            "elapsed_s": elapsed,
+            "success": bool(getattr(result, "success", False)),
+            "message": str(getattr(result, "message", "")),
+        },
+    )
+    print(
+        f"[local-complete] restart={restart} evaluations={evaluations} "
+        f"objective={float(result.fun):.6g} elapsed={elapsed:.1f}s",
+        flush=True,
+    )
+    return result
+
+
 _base.NarrowDBTTObjective.evaluate = _stable_evaluate
 _base.differential_evolution = _checkpointing_differential_evolution
+_base.minimize = _progress_minimize
 
 
 if __name__ == "__main__":
