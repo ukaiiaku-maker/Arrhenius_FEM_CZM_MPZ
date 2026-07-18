@@ -80,7 +80,8 @@ PY
   tests/test_v1005_parallel_coupling.py \
   tests/test_v1005_live_stepper_capture.py \
   tests/test_v10051_slip_trace_reporting.py \
-  tests/test_v10052_channel_diagnostics.py
+  tests/test_v10052_channel_diagnostics.py \
+  tests/test_v10052_long_growth_runner.py
 
 cat <<'EOF'
 V10.0.5.2 TESTS-ONLY COMPLETE CHANNEL DIAGNOSTICS GATE PASSED
@@ -88,5 +89,6 @@ No FEM solve was launched.
 The v10.0.3 lifecycle and v10.0.5 mechanics/kinetics remain unchanged.
 Per-channel emitted increments are summed across Strang half-steps.
 Per-channel hazards retain the final accepted half-step rate.
+The multicommit runner excludes the one-segment-only v10.0.3 audit.
 No material response classification or reparameterization gate is active.
 EOF
