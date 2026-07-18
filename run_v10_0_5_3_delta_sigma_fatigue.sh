@@ -56,9 +56,11 @@ fi
 "$PYTHON_BIN" -m compileall -q arrhenius_fracture \
   run_v10_0_5_3_delta_sigma_fatigue.py
 
-KEEP_FLAG=()
+# Use a scalar rather than an empty array for compatibility with the macOS
+# Bash 3.2 nounset behavior under `set -u`.
+KEEP_FLAG=""
 if [[ "${KEEP_EXISTING:-0}" == "1" ]]; then
-  KEEP_FLAG+=(--keep-existing)
+  KEEP_FLAG="--keep-existing"
 fi
 
 # shellcheck disable=SC2086
@@ -74,7 +76,7 @@ fi
   --target-extension-um "$TARGET_EXTENSION_UM" \
   --nx "$NX" --ny "$NY" \
   --save-snapshots "$SAVE_SNAPSHOTS" \
-  "${KEEP_FLAG[@]}"
+  ${KEEP_FLAG:+$KEEP_FLAG}
 
 cat <<EOF
 v10.0.5.3 fatigue campaign complete
