@@ -1,5 +1,109 @@
 from __future__ import annotations
 
+import numpy as np
+import pytest
 
-def test_v10059_placeholder():
-    assert True
+from arrhenius_fracture.mode_i_first_passage_v10_0_5_9_production_j_probe import (
+    _elastic_update_plasticity,
+    validate_source_transform_v10059,
+)
+from arrhenius_fracture.production_j_parity_v10059 import (
+    analyze_production_j_parity_v10059,
+)
+
+
+def _reference():
+    return {
+        "schema": "fixed_grip_elastic_convergence_v10_0_5_8",
+        "passed": True,
+        "convergence": {"fixed_grip_G_finest_J_per_m2": 100.0},
+        "geometry_factors": {"sigma_gross_MPa": 200.0},
+    }
+
+
+def _probe(opening_um, ratio, no_exclusion_ratio=None):
+    sigma_MPa = 100.0 * opening_um
+    sigma_Pa = sigma_MPa * 1.0e6
+    ref_metric = 100.0 / (200.0e6) ** 2
+    metric = ratio * ref_metric
+    no_metric = metric if no_exclusion_ratio is None else no_exclusion_ratio * ref_metric
+    J = metric * sigma_Pa**2
+    J_no = no_metric * sigma_Pa**2
+    return {
+        "Uapp_m": opening_um * 1.0e-6,
+        "Uapp_um": opening_um,
+        "sigma_gross_MPa": sigma_MPa,
+        "elastic_energy_closure_relative_error": 1.0e-12,
+        "mesh": {"production_refinement_radius_um": 100.0, "hbar_tip_m": 2.5e-6},
+        "geometry": {"effective_killed_tip_m": 0.5e-3},
+        "contours": [{
+            "outer_radius_m": 240.0e-6,
+            "outer_radius_um": 240.0,
+            "production_path": "anisotropic_root_cluster_with_2killr_exclusion",
+            "production_exclude_radius_um": 5.0,
+            "J_full_J_per_m2": J,
+            "J_tension_filtered_J_per_m2": 1.001 * J,
+            "J_full_no_exclusion_J_per_m2": J_no,
+            "J_full_over_sigma2_m_per_Pa": metric,
+            "J_full_no_exclusion_over_sigma2_m_per_Pa": no_metric,
+        }],
+    }
+
+
+def test_parity_analysis_passes_quadratic_response():
+    result = analyze_production_j_parity_v10059(
+        reference=_reference(), probes=[_probe(1.0, 1.02), _probe(2.0, 1.02)]
+    )
+    assert result["status"] == "production_J_parity_passed"
+    assert result["passed"] is True
+    assert result["production"]["median_over_reference"] == pytest.approx(1.02)
+
+
+def test_parity_analysis_identifies_exclusion_control():
+    result = analyze_production_j_parity_v10059(
+        reference=_reference(),
+        probes=[
+            _probe(1.0, 0.65, no_exclusion_ratio=1.01),
+            _probe(2.0, 0.65, no_exclusion_ratio=1.01),
+        ],
+    )
+    assert result["status"] == "production_exclusion_disk_controls_J_mismatch"
+    assert result["no_exclusion_ablation"]["parity_passed"] is True
+
+
+def test_parity_analysis_identifies_mesh_support_mismatch():
+    result = analyze_production_j_parity_v10059(
+        reference=_reference(), probes=[_probe(1.0, 0.65), _probe(2.0, 0.65)]
+    )
+    assert result["status"] == "production_refinement_extent_or_mesh_support_mismatch"
+
+
+def test_parity_analysis_rejects_nonquadratic_scaling():
+    result = analyze_production_j_parity_v10059(
+        reference=_reference(),
+        probes=[_probe(1.0, 1.0), _probe(2.0, 1.08)],
+        elastic_scaling_relative_tolerance=0.02,
+    )
+    assert result["status"] == "production_J_not_quadratic_in_load"
+
+
+def test_elastic_update_plasticity_preserves_state():
+    ep = np.arange(12, dtype=float).reshape(3, 4)
+    rho = np.arange(4, dtype=float) + 5.0
+    ep_out, rho_out, dot = _elastic_update_plasticity(
+        ep, rho, np.zeros((3, 4)), object(), 700.0, 1.0, object(), object()
+    )
+    assert np.array_equal(ep_out, ep)
+    assert np.array_equal(rho_out, rho)
+    assert np.array_equal(dot, np.zeros_like(rho))
+    assert ep_out is not ep
+    assert rho_out is not rho
+
+
+def test_source_transform_compiles_and_preserves_stack():
+    result = validate_source_transform_v10059()
+    assert result["source_transform_preflight_passed"] is True
+    assert result["production_recorder"] is True
+    assert result["production_exclusion"] is True
+    assert result["full_audited_v10055_stack"] is True
+    assert result["constitutive_physics_changed"] is False
