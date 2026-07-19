@@ -1,0 +1,40 @@
+name: Verify MPZ v9.10.4 selector
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-selector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -q -e '.[dev]'
+      - name: Compile selector
+        run: python -m compileall -q select_mpz_v9_10_4_quality_diversity.py
+      - name: Run selector regressions
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q tests/test_mpz_v9_10_4_quality_diversity.py \
+            > selector_pytest.log 2>&1
+          status=$?
+          echo "$status" > selector_pytest.status
+          cat selector_pytest.log
+          exit 0
+      - name: Upload selector regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selector-pytest-log
+          path: |
+            selector_pytest.log
+            selector_pytest.status
+      - name: Enforce selector regressions
+        shell: bash
+        run: exit "$(cat selector_pytest.status)"

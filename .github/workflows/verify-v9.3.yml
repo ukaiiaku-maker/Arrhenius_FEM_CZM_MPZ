@@ -1,4 +1,4 @@
-name: Verify MPZ v9.6 through v9.10.3
+name: Verify MPZ v9.6 through v9.10.4
 
 on:
   push:
@@ -40,6 +40,7 @@ jobs:
             optimize_mpz_v9_10_1_shared_shape_global.py \
             optimize_mpz_v9_10_2_independent_shape_global.py \
             optimize_mpz_v9_10_3_dbtt_targeted_global.py \
+            select_mpz_v9_10_4_quality_diversity.py \
             promote_mpz_v9_10_spatial.py \
             promote_mpz_v9_10_2_spatial.py \
             fit_mpz_three_classes.py
@@ -64,7 +65,8 @@ jobs:
             tests/test_mpz_v9_10_unified_transport.py \
             tests/test_mpz_v9_10_1_shared_shape.py \
             tests/test_mpz_v9_10_2_independent_shapes.py \
-            tests/test_mpz_v9_10_3_dbtt_targeted.py
+            tests/test_mpz_v9_10_3_dbtt_targeted.py \
+            tests/test_mpz_v9_10_4_quality_diversity.py
       - name: Run joined-input Peierls-Taylor search smoke
         shell: bash
         run: |
