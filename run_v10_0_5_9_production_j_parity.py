@@ -4,7 +4,7 @@
 Two or more elastic production probes are launched at different grip openings.
 Each probe traverses the actual audited v10.0.5.5 production initialization path,
 records the post-equilibrium state, and evaluates production/full/no-exclusion J
-metrics.  The campaign then compares J/sigma^2 with the converged v10.0.5.8
+metrics. The campaign then compares J/sigma^2 with the converged v10.0.5.8
 fixed-grip reference and verifies quadratic elastic load scaling.
 """
 from __future__ import annotations
@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -21,7 +20,6 @@ from typing import Any, Iterable
 
 from arrhenius_fracture.production_j_parity_v10059 import (
     CONTOUR_CSV,
-    POINT_RELEASE,
     PROBE_CSV,
     PROBE_JSON,
     SUMMARY_JSON,
@@ -104,6 +102,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _probe_command(args, case_dir: Path, opening_m: float) -> list[str]:
+    """Build one elastic production-probe command.
+
+    v10.0.5.4 and every audited VHCF descendant require
+    ``--cycle-block-mode hazard_limited``. The probe still consumes exactly one
+    cycle because ``cycles-max``, ``block-cycles`` and ``max-block-cycles`` are
+    all one; hazard-limited is therefore a wrapper-contract requirement, not a
+    change to the elastic mechanics state being recorded.
+    """
     command = [
         args.python,
         "-m",
@@ -141,7 +147,7 @@ def _probe_command(args, case_dir: Path, opening_m: float) -> list[str]:
         "--min-block-cycles",
         "1e-9",
         "--cycle-block-mode",
-        "requested_cap",
+        "hazard_limited",
         "--target-dB",
         "0.25",
         "--target-dN-store",
