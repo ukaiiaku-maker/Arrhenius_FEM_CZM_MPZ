@@ -179,8 +179,44 @@ def _option_value(args: list[str], option: str, default: str | None = None):
     return args[index + 1] if index + 1 < len(args) else default
 
 
+def _has_option(args: list[str], option: str) -> bool:
+    return any(token == option or token.startswith(option + "=") for token in args)
+
+
+def _ensure_v911_probe_contract(args: list[str]) -> list[str]:
+    """Satisfy the complete v9.11 production-entry preflight without altering physics.
+
+    The v9.11 Mode-I path requires 2-D anisotropic crystal competition with one
+    non-branching front.  The campaign runner already supplies mode=2d and
+    max-fronts=1.  This audit entry adds the required competition switch so the
+    recorded state follows the same anisotropic root-front production semantics.
+    """
+    resolved = list(args)
+    if _has_option(resolved, "--no-crystal-aniso"):
+        raise SystemExit(
+            "v10.0.5.9 production J parity requires --crystal-aniso to match "
+            "the v10.0.5.8 anisotropic fixed-grip reference"
+        )
+    if not _has_option(resolved, "--crystal-aniso"):
+        resolved.append("--crystal-aniso")
+    if not _has_option(resolved, "--crystal-compete"):
+        resolved.append("--crystal-compete")
+    if _has_option(resolved, "--crystal-branch"):
+        raise SystemExit(
+            "v10.0.5.9 production J parity requires branching disabled"
+        )
+    max_fronts = _option_value(resolved, "--max-fronts", "1")
+    if int(max_fronts or "1") != 1:
+        raise SystemExit(
+            "v10.0.5.9 production J parity requires --max-fronts 1"
+        )
+    return resolved
+
+
 def main(argv: list[str] | None = None):
-    args = list(sys.argv[1:] if argv is None else argv)
+    args = _ensure_v911_probe_contract(
+        list(sys.argv[1:] if argv is None else argv)
+    )
     out_value = _option_value(args, "--out")
     if out_value is None:
         raise SystemExit("v10.0.5.9 production J probe requires --out")
@@ -212,6 +248,13 @@ def main(argv: list[str] | None = None):
         raise RuntimeError("production path completed without writing the v10.0.5.9 probe")
     payload = json.loads(probe_path.read_text())
     payload["source_transform"] = validate_source_transform_v10059()
+    payload["v911_probe_contract"] = {
+        "mode_2d": _option_value(args, "--mode") == "2d",
+        "crystal_anisotropic": _has_option(args, "--crystal-aniso"),
+        "crystal_competition": _has_option(args, "--crystal-compete"),
+        "crystal_branching": _has_option(args, "--crystal-branch"),
+        "max_fronts": int(_option_value(args, "--max-fronts", "1") or "1"),
+    }
     payload["base_run_returned"] = True
     probe_path.write_text(json.dumps(payload, indent=2, default=str))
     print(probe_path)
@@ -227,5 +270,6 @@ __all__ = [
     "MODEL_ID",
     "patch_run_2d_source_v10059",
     "validate_source_transform_v10059",
+    "_ensure_v911_probe_contract",
     "main",
 ]
