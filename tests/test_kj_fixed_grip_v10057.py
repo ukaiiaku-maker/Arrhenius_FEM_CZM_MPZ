@@ -7,6 +7,7 @@ import sys
 
 import pytest
 
+import arrhenius_fracture.kj_audit_v10057 as fixed_grip_module
 from arrhenius_fracture.kj_audit_v10056 import SpecimenGeometryV10056
 from arrhenius_fracture.kj_audit_v10057 import (
     build_kj_audit_row,
@@ -99,6 +100,7 @@ def test_generator_recovers_converged_factor_and_loader_preserves_evidence(tmp_p
 
 
 def test_no_default_or_missing_reference_is_accepted(tmp_path):
+    assert not hasattr(fixed_grip_module, "DEFAULT_FIXED_GRIP_REFERENCE")
     with pytest.raises(FileNotFoundError):
         load_fixed_grip_reference(tmp_path / "missing.json")
 
