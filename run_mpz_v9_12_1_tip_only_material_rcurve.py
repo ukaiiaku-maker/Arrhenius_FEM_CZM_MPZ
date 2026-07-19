@@ -2,9 +2,9 @@
 """v9.12.1 full-field material R-curve runner.
 
 This wrapper preserves the validated v9.12 FEM/CZM/MPZ solver command and fixes
-only campaign bookkeeping and publication gating.  The shared temperature
-summary written by the v9.11 subprocess is captured immediately into the case
-directory, preventing later material classes from overwriting the observables.
+only campaign bookkeeping and publication gating.  A shared temperature summary
+is accepted only when it was created or changed by the successful case
+invocation being recorded; stale output from another material class is rejected.
 """
 from __future__ import annotations
 
@@ -42,6 +42,13 @@ def _merge_observables(row: dict[str, Any], summary: dict[str, Any]) -> dict[str
     return merged
 
 
+def _file_signature(path: Path):
+    if not path.is_file():
+        return None
+    stat = path.stat()
+    return (int(stat.st_mtime_ns), int(stat.st_size))
+
+
 def audit_campaign(campaign_root, seed, T_K, classes, bulk_mode="tip_only"):
     payload = _audit_campaign_v9121(
         campaign_root,
@@ -63,7 +70,6 @@ def audit_campaign(campaign_root, seed, T_K, classes, bulk_mode="tip_only"):
 def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any]:
     global _ACTIVE_THETA_DEG
     _ACTIVE_THETA_DEG = float(args.crystal_theta_deg)
-    row = _legacy_run_case(args, base_seed, class_name, root)
     class_name = _legacy.normalize_class_name(class_name)
     run_root = root / f"seed_{base_seed}" / "tip_only"
     case_dir = (
@@ -73,16 +79,37 @@ def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any
     )
     local_summary = case_dir / "rcurve_temperature_summary.csv"
     shared_summary = run_root / "rcurve_temperature_summary.csv"
-    reused = bool(row.get("solver_output_reused", False))
-    summary_source = None
+    local_before = _file_signature(local_summary)
+    shared_before = _file_signature(shared_summary)
 
-    if local_summary.exists() and local_summary.stat().st_size > 0:
-        summary_source = local_summary
-    elif not reused and shared_summary.exists() and shared_summary.stat().st_size > 0:
-        # The v9.11 runner writes this file at --outroot. Capture it before the
-        # next class subprocess can overwrite it.
-        shutil.copy2(shared_summary, local_summary)
-        summary_source = local_summary
+    row = _legacy_run_case(args, base_seed, class_name, root)
+    reused = bool(row.get("solver_output_reused", False))
+    try:
+        subprocess_ok = int(row.get("subprocess_returncode", -999)) == 0
+    except (TypeError, ValueError):
+        subprocess_ok = False
+    local_after = _file_signature(local_summary)
+    shared_after = _file_signature(shared_summary)
+    local_changed = local_after is not None and local_after != local_before
+    shared_changed = shared_after is not None and shared_after != shared_before
+    summary_source = None
+    summary_fresh = False
+
+    if reused:
+        if local_after is not None and local_after[1] > 0:
+            summary_source = local_summary
+            summary_fresh = True
+    elif subprocess_ok:
+        if local_changed and local_after[1] > 0:
+            summary_source = local_summary
+            summary_fresh = True
+        elif shared_changed and shared_after[1] > 0:
+            # The v9.11 runner writes this file at --outroot. Capture it before
+            # the next class subprocess can overwrite it.
+            case_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(shared_summary, local_summary)
+            summary_source = local_summary
+            summary_fresh = True
 
     summary = _legacy.read_csv_row(summary_source) if summary_source else {}
     merged = _merge_observables(row, summary)
@@ -109,15 +136,22 @@ def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any
         "solver_status": str(merged.get("status", "unknown")),
         "control_state": str(fp.get("control_state", "unknown")),
         "summary_source_path": str(summary_source) if summary_source else None,
-        "shared_summary_captured_case_locally": bool(summary_source == local_summary),
+        "summary_fresh_for_this_invocation": bool(summary_fresh),
+        "local_summary_changed_during_invocation": bool(local_changed),
+        "shared_summary_changed_during_invocation": bool(shared_changed),
+        "shared_summary_captured_case_locally": bool(
+            summary_source == local_summary and shared_changed and not reused
+        ),
         "solver_output_reused": reused,
     }
+    case_dir.mkdir(parents=True, exist_ok=True)
     (case_dir / "v9_12_1_case_contract.json").write_text(
         json.dumps(contract, indent=2, default=str)
     )
     merged.update(
         {
             "v9_12_1_summary_source_path": contract["summary_source_path"],
+            "v9_12_1_summary_fresh": contract["summary_fresh_for_this_invocation"],
             "v9_12_1_shared_summary_captured": contract[
                 "shared_summary_captured_case_locally"
             ],
