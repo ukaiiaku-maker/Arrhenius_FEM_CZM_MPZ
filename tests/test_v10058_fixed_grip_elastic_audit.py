@@ -72,6 +72,18 @@ def test_config_rejects_invalid_geometry():
         FixedGripAuditConfig(crack_m=3.0e-3).validate()
 
 
+def test_unresolved_effective_crack_lengths_fail_closed():
+    with pytest.raises(ValueError, match="effective crack lengths must increase strictly"):
+        fixed_grip_release_rate(
+            a_minus_m=0.49,
+            a_zero_m=0.50,
+            a_plus_m=0.50,
+            U_minus_J_per_m=10.2,
+            U_zero_J_per_m=10.0,
+            U_plus_J_per_m=10.0,
+        )
+
+
 def test_small_elastic_audit_writes_artifacts(tmp_path: Path):
     config = FixedGripAuditConfig(
         width_m=1.0e-3,
@@ -95,7 +107,7 @@ def test_small_elastic_audit_writes_artifacts(tmp_path: Path):
     payload = run_audit(
         config,
         tip_h_fine_m=(40.0e-6, 20.0e-6),
-        crack_increment_m=(40.0e-6, 20.0e-6),
+        crack_increment_m=(80.0e-6, 40.0e-6),
         contour_outer_m=(60.0e-6, 80.0e-6, 100.0e-6),
         out=tmp_path,
     )
