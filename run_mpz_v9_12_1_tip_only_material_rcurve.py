@@ -17,9 +17,12 @@ import numpy as np
 import pandas as pd
 
 import run_mpz_v9_12_tip_only_material_rcurve as _legacy
-from arrhenius_fracture.material_rcurve_audit_v9121 import audit_campaign
+from arrhenius_fracture.material_rcurve_audit_v9121 import (
+    audit_campaign as _audit_campaign_v9121,
+)
 
 _legacy_run_case = _legacy.run_case
+_ACTIVE_THETA_DEG = 45.0
 
 
 def _finite_value(value) -> bool:
@@ -39,7 +42,27 @@ def _merge_observables(row: dict[str, Any], summary: dict[str, Any]) -> dict[str
     return merged
 
 
+def audit_campaign(campaign_root, seed, T_K, classes, bulk_mode="tip_only"):
+    payload = _audit_campaign_v9121(
+        campaign_root,
+        seed,
+        T_K,
+        classes=classes,
+        bulk_mode=bulk_mode,
+        theta_deg=_ACTIVE_THETA_DEG,
+    )
+    # Compatibility fields consumed by the inherited console reporter.
+    payload["missing_full_field_images"] = [
+        row["material_class"]
+        for row in payload["cases"]
+        if not bool(row["full_field_image_present"])
+    ]
+    return payload
+
+
 def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any]:
+    global _ACTIVE_THETA_DEG
+    _ACTIVE_THETA_DEG = float(args.crystal_theta_deg)
     row = _legacy_run_case(args, base_seed, class_name, root)
     class_name = _legacy.normalize_class_name(class_name)
     run_root = root / f"seed_{base_seed}" / "tip_only"
@@ -56,7 +79,7 @@ def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any
     if local_summary.exists() and local_summary.stat().st_size > 0:
         summary_source = local_summary
     elif not reused and shared_summary.exists() and shared_summary.stat().st_size > 0:
-        # The v9.11 runner writes this file at --outroot.  Capture it before the
+        # The v9.11 runner writes this file at --outroot. Capture it before the
         # next class subprocess can overwrite it.
         shutil.copy2(shared_summary, local_summary)
         summary_source = local_summary
@@ -78,6 +101,7 @@ def run_case(args, base_seed: int, class_name: str, root: Path) -> dict[str, Any
         "material_class": class_name,
         "base_seed": int(base_seed),
         "T_K": float(args.T_K),
+        "crystal_theta_deg": float(args.crystal_theta_deg),
         "requested_target_extension_um": float(args.target_extension_um),
         "final_extension_um": final_um,
         "target_extension_reached": bool(target_reached),
