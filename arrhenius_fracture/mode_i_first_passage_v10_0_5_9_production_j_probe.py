@@ -2,10 +2,10 @@
 
 This entry composes on top of the audited stochastic-VHCF source-transform stack.
 It inserts a read-only recorder immediately after the production maximum-load FEM
-equilibrium solve.  Plastic evolution is replaced by an elastic no-op only for
-this audit entry.  The production mesh, notch stamp, boundary constraints, crack
-backend, contour selection, line-of-sight policy and exclusion radius remain the
-ones constructed by ``sharp_front.run_2d``.
+equilibrium solve. Plastic evolution is replaced by an elastic no-op only for
+this audit entry. The production mesh, notch stamp, boundary constraints, crack
+backend, contour selection, line-of-sight policy and exclusion semantics remain
+the ones constructed by ``sharp_front.run_2d`` and its progressive adapters.
 """
 from __future__ import annotations
 
@@ -74,15 +74,22 @@ def patch_run_2d_source_v10059(source: str) -> str:
                         )
                         production_ell_v10059 = max(r_J_cluster_ell, 3.0 * h_local_v10059)
                         production_segments_v10059 = []
-                        production_exclude_v10059 = 2.0 * kill_r
+                        kill_radius_v10059 = float(kill_r)
+                        production_exclude_v10059 = 2.0 * kill_radius_v10059
                         production_path_v10059 = 'anisotropic_root_cluster_with_2killr_exclusion'
                     else:
                         tip_v10059 = np.array([a_tip, 0.0], dtype=float)
                         direction_v10059 = np.array([1.0, 0.0], dtype=float)
                         production_ell_v10059 = max(r_J_cluster_ell, 3.0 * h_local_v10059)
                         production_segments_v10059 = _backend_crack_segments()
+                        # The v10.0.3 progressive adapter preserves anisotropic FEM/J
+                        # but prescribes deflect=False for the straight single-front
+                        # checkpoint lifecycle. In this branch sharp_front never
+                        # initializes the root-front kill_r local and production J
+                        # uses no exclusion disk.
+                        kill_radius_v10059 = 0.0
                         production_exclude_v10059 = 0.0
-                        production_path_v10059 = 'straight_cluster_no_exclusion'
+                        production_path_v10059 = 'straight_progressive_cluster_no_exclusion'
                     record_production_j_probe_v10059(
                         path=probe_path_v10059,
                         mesh=mesh,
@@ -99,7 +106,7 @@ def patch_run_2d_source_v10059(source: str) -> str:
                         tip_xy=tip_v10059,
                         direction=direction_v10059,
                         half_thickness_m=half_h,
-                        kill_r_m=kill_r,
+                        kill_r_m=kill_radius_v10059,
                         production_ell_m=production_ell_v10059,
                         production_segments=production_segments_v10059,
                         production_exclude_radius_m=production_exclude_v10059,
@@ -129,7 +136,14 @@ def validate_source_transform_v10059() -> dict[str, Any]:
     compile(patched, "<v10.0.5.9-production-j-probe>", "exec")
     required = {
         "production_recorder": "record_production_j_probe_v10059(" in patched,
-        "production_exclusion": "production_exclude_v10059 = 2.0 * kill_r" in patched,
+        "root_front_production_exclusion": (
+            "production_exclude_v10059 = 2.0 * kill_radius_v10059" in patched
+        ),
+        "straight_progressive_no_exclusion": (
+            "kill_radius_v10059 = 0.0" in patched
+            and "production_path_v10059 = 'straight_progressive_cluster_no_exclusion'" in patched
+        ),
+        "no_unconditional_kill_r_read": "kill_r_m=kill_r," not in patched,
         "full_audited_v10055_stack": "cohesive_elements" in patched,
     }
     failed = [name for name, value in required.items() if not value]
@@ -186,10 +200,9 @@ def _has_option(args: list[str], option: str) -> bool:
 def _ensure_v911_probe_contract(args: list[str]) -> list[str]:
     """Satisfy the complete v9.11 production-entry preflight without altering physics.
 
-    The v9.11 Mode-I path requires 2-D anisotropic crystal competition with one
-    non-branching front.  The campaign runner already supplies mode=2d and
-    max-fronts=1.  This audit entry adds the required competition switch so the
-    recorded state follows the same anisotropic root-front production semantics.
+    The v9.11 Mode-I entry requires 2-D anisotropic crystal competition and one
+    non-branching front. The downstream v10.0.3 progressive adapter then preserves
+    anisotropic FEM/J while prescribing a straight single-front checkpoint path.
     """
     resolved = list(args)
     if _has_option(resolved, "--no-crystal-aniso"):
@@ -254,6 +267,7 @@ def main(argv: list[str] | None = None):
         "crystal_competition": _has_option(args, "--crystal-compete"),
         "crystal_branching": _has_option(args, "--crystal-branch"),
         "max_fronts": int(_option_value(args, "--max-fronts", "1") or "1"),
+        "progressive_path_selector": "straight_single_front_deflect_false",
     }
     payload["base_run_returned"] = True
     probe_path.write_text(json.dumps(payload, indent=2, default=str))
