@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.2"
-description = "Arrhenius FEM/CZM solver with tensor-resolved parallel coupling, complete per-channel diagnostics, and guarded multicommit validation"
+version = "10.0.5.7"
+description = "Arrhenius FEM/CZM solver with strict lifecycle, response-stability, and material-transfer publication audits"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
