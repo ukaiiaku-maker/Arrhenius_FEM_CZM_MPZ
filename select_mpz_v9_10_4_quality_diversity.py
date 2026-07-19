@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Quality-diversity promotion for the existing v9.10.3 isotropic MPZ search.
 
-This script does not modify constitutive physics or refit candidates. It consumes
-v9.10.3 global-search outputs and replaces objective-only shortlist truncation
-with an auditable quality-diversity selection for spatial promotion.
+The selector consumes completed v9.10.3 tables and changes only candidate
+promotion. It does not modify constitutive physics, objective values, or material
+parameters.
 """
 from __future__ import annotations
 
@@ -35,6 +35,17 @@ EXCLUDED_PARAMETER_FIELDS = {
     "acceptance_reason",
     "de_success",
     "local_success",
+    "status",
+    "search_initialization",
+    "objective_mode",
+    "barrier_order_margin_eV",
+    "min_raw_barrier_eV",
+    "min_peierls_traverse_number",
+    "plateau_temperature_rise",
+    "max_K_shield_MPa_sqrt_m",
+    "parameter_count",
+    "full_search_space",
+    "prior_shortlist_used",
 }
 
 
@@ -53,10 +64,8 @@ class SelectionConfig:
             raise ValueError("count must be at least one")
         if not 0.0 <= self.quality_reserve_fraction <= 1.0:
             raise ValueError("quality_reserve_fraction must lie in [0,1]")
-        if self.quality_weight < 0.0:
-            raise ValueError("quality_weight must be non-negative")
-        if self.parameter_weight < 0.0 or self.response_weight < 0.0:
-            raise ValueError("diversity weights must be non-negative")
+        if min(self.quality_weight, self.parameter_weight, self.response_weight) < 0.0:
+            raise ValueError("selection weights must be non-negative")
         if self.parameter_weight + self.response_weight <= 0.0:
             raise ValueError("at least one diversity weight must be positive")
         if self.pool_factor < 1:
@@ -65,8 +74,8 @@ class SelectionConfig:
 
 
 def _bool_series(values: pd.Series) -> pd.Series:
-    if values.dtype == bool:
-        return values.fillna(False)
+    if pd.api.types.is_bool_dtype(values.dtype):
+        return values.fillna(False).astype(bool)
     normalized = values.astype(str).str.strip().str.lower()
     return normalized.isin({"1", "true", "yes", "y", "pass", "passed"})
 
@@ -74,10 +83,13 @@ def _bool_series(values: pd.Series) -> pd.Series:
 def _finite_numeric(frame: pd.DataFrame, columns: Iterable[str]) -> list[str]:
     kept: list[str] = []
     for name in columns:
-        if name not in frame:
+        if name not in frame or name.startswith("_"):
             continue
-        values = pd.to_numeric(frame[name], errors="coerce")
-        if values.notna().sum() >= 2 and float(values.max() - values.min()) > 0.0:
+        if pd.api.types.is_bool_dtype(frame[name].dtype):
+            continue
+        values = pd.to_numeric(frame[name], errors="coerce").to_numpy(dtype=float)
+        finite = values[np.isfinite(values)]
+        if finite.size >= 2 and float(np.ptp(finite)) > 0.0:
             kept.append(name)
     return kept
 
@@ -86,23 +98,10 @@ def infer_parameter_columns(candidates: pd.DataFrame) -> list[str]:
     preferred = [
         name
         for name in candidates.columns
-        if name not in EXCLUDED_PARAMETER_FIELDS
+        if not name.startswith("_")
+        and name not in EXCLUDED_PARAMETER_FIELDS
         and not name.endswith("_loss")
         and not name.startswith("K_")
-        and name
-        not in {
-            "status",
-            "search_initialization",
-            "objective_mode",
-            "barrier_order_margin_eV",
-            "min_raw_barrier_eV",
-            "min_peierls_traverse_number",
-            "plateau_temperature_rise",
-            "max_K_shield_MPa_sqrt_m",
-            "parameter_count",
-            "full_search_space",
-            "prior_shortlist_used",
-        }
     ]
     return _finite_numeric(candidates, preferred)
 
@@ -117,25 +116,26 @@ def build_response_table(
     detail["candidate_id"] = detail["candidate_id"].astype(str)
     detail["T_K"] = pd.to_numeric(detail.get("T_K"), errors="coerce")
     parts = [base.set_index("candidate_id")]
-    feature_names: list[str] = []
+    names: list[str] = []
     for metric in RESPONSE_METRICS:
         if metric not in detail:
             continue
-        values = pd.to_numeric(detail[metric], errors="coerce")
-        table = detail.assign(_value=values).pivot_table(
+        table = detail.assign(
+            _value=pd.to_numeric(detail[metric], errors="coerce")
+        ).pivot_table(
             index="candidate_id", columns="T_K", values="_value", aggfunc="mean"
         )
-        renamed = {
-            temperature: f"response_{metric}_{int(round(float(temperature)))}K"
-            for temperature in table.columns
-            if math.isfinite(float(temperature))
-        }
-        table = table.rename(columns=renamed)
-        feature_names.extend(str(name) for name in table.columns)
+        table = table.rename(
+            columns={
+                temperature: f"response_{metric}_{int(round(float(temperature)))}K"
+                for temperature in table.columns
+                if math.isfinite(float(temperature))
+            }
+        )
+        names.extend(str(name) for name in table.columns)
         parts.append(table)
     joined = pd.concat(parts, axis=1).reset_index()
-    feature_names = _finite_numeric(joined, feature_names)
-    return joined, feature_names
+    return joined, _finite_numeric(joined, names)
 
 
 def _robust_scaled(frame: pd.DataFrame, columns: list[str]) -> np.ndarray:
@@ -158,11 +158,11 @@ def _robust_scaled(frame: pd.DataFrame, columns: list[str]) -> np.ndarray:
 def _pairwise_distance(values: np.ndarray) -> np.ndarray:
     if values.shape[1] == 0:
         return np.zeros((values.shape[0], values.shape[0]), dtype=float)
-    diff = values[:, None, :] - values[None, :, :]
-    distance = np.sqrt(np.mean(diff * diff, axis=2))
-    finite = distance[np.isfinite(distance) & (distance > 0.0)]
-    if finite.size:
-        distance /= float(np.median(finite))
+    difference = values[:, None, :] - values[None, :, :]
+    distance = np.sqrt(np.mean(difference * difference, axis=2))
+    positive = distance[np.isfinite(distance) & (distance > 0.0)]
+    if positive.size:
+        distance /= float(np.median(positive))
     return np.where(np.isfinite(distance), distance, 0.0)
 
 
@@ -184,39 +184,46 @@ def select_quality_diverse(
     config: SelectionConfig,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     cfg = config.validate()
-    required = {"candidate_id", "objective"}
-    missing = sorted(required.difference(candidates.columns))
+    missing = sorted({"candidate_id", "objective"}.difference(candidates.columns))
     if missing:
         raise ValueError(f"candidate table is missing {missing}")
+
     work = candidates.copy().reset_index(drop=True)
     work["candidate_id"] = work["candidate_id"].astype(str)
-    work = work.sort_values(["objective", "candidate_id"], kind="mergesort")
-    work = work.drop_duplicates("candidate_id", keep="first").reset_index(drop=True)
+    work = (
+        work.sort_values(["objective", "candidate_id"], kind="mergesort")
+        .drop_duplicates("candidate_id", keep="first")
+        .reset_index(drop=True)
+    )
     if work.empty:
         raise ValueError("candidate table is empty")
-    if "accepted_for_spatial_promotion" in work:
-        passed = _bool_series(work["accepted_for_spatial_promotion"])
-    else:
-        passed = pd.Series(False, index=work.index)
+    passed = (
+        _bool_series(work["accepted_for_spatial_promotion"])
+        if "accepted_for_spatial_promotion" in work
+        else pd.Series(False, index=work.index)
+    )
     work["_passed"] = passed.to_numpy(dtype=bool)
 
     pass_indices = list(work.index[work["_passed"]])
     fail_indices = list(work.index[~work["_passed"]])
-    ordered_indices = pass_indices + fail_indices
     pool_size = min(len(work), max(cfg.count, cfg.pool_factor * cfg.count))
-    pool_indices = ordered_indices[:pool_size]
-    pool = work.loc[pool_indices].copy().reset_index().rename(columns={"index": "_source_index"})
+    pool = (
+        work.loc[(pass_indices + fail_indices)[:pool_size]]
+        .copy()
+        .reset_index()
+        .rename(columns={"index": "_source_index"})
+    )
 
     parameter_columns = infer_parameter_columns(pool)
     response_table, response_columns = build_response_table(pool, temperature_detail)
     pool = pool.merge(response_table, on="candidate_id", how="left")
     parameter_distance = _pairwise_distance(_robust_scaled(pool, parameter_columns))
     response_distance = _pairwise_distance(_robust_scaled(pool, response_columns))
-    diversity_weight = cfg.parameter_weight + cfg.response_weight
+    diversity_sum = cfg.parameter_weight + cfg.response_weight
     combined_distance = (
         cfg.parameter_weight * parameter_distance
         + cfg.response_weight * response_distance
-    ) / diversity_weight
+    ) / diversity_sum
     quality = _quality_scores(pool["objective"])
 
     selected: list[int] = []
@@ -229,81 +236,87 @@ def select_quality_diverse(
             reasons[index] = reason
             utilities[index] = float(utility)
 
-    pool_passers = [i for i in pool.index if bool(pool.loc[i, "_passed"])]
-    pool_passers.sort(key=lambda i: (float(pool.loc[i, "objective"]), str(pool.loc[i, "candidate_id"])))
+    pool_passers = [index for index in pool.index if bool(pool.loc[index, "_passed"])]
+    pool_passers.sort(
+        key=lambda index: (
+            float(pool.loc[index, "objective"]),
+            str(pool.loc[index, "candidate_id"]),
+        )
+    )
 
-    # Hard guarantee: when all passers fit within the promotion budget, retain every
-    # one before considering any failed or near-pass candidate.
+    # Hard reserve: a diverse failed candidate may never displace a true passer
+    # when all passers fit inside the promotion budget.
     if len(pass_indices) <= cfg.count:
         for index in pool_passers:
             add(index, "all_passers_reserve", quality[index])
     else:
-        reserve_count = max(1, int(math.ceil(cfg.count * cfg.quality_reserve_fraction)))
+        reserve_count = max(
+            1, int(math.ceil(cfg.count * cfg.quality_reserve_fraction))
+        )
         for index in pool_passers[:reserve_count]:
             add(index, "quality_reserve", quality[index])
 
     if cfg.preserve_restart_lineages and len(selected) < cfg.count and "restart" in pool:
         restart_values = pd.to_numeric(pool["restart"], errors="coerce")
-        lineages = sorted({int(value) for value in restart_values if math.isfinite(value)})
-        for lineage in lineages:
-            eligible = [
-                i
-                for i in pool_passers
-                if i not in selected and int(float(pool.loc[i, "restart"])) == lineage
-            ]
+        finite_lineages = sorted(
+            {int(value) for value in restart_values.to_numpy(dtype=float) if np.isfinite(value)}
+        )
+        for lineage in finite_lineages:
+            eligible = []
+            for index in pool_passers:
+                value = pd.to_numeric(pd.Series([pool.loc[index, "restart"]]), errors="coerce").iloc[0]
+                if index not in selected and np.isfinite(value) and int(value) == lineage:
+                    eligible.append(index)
             if eligible:
-                best = min(eligible, key=lambda i: float(pool.loc[i, "objective"]))
+                best = min(eligible, key=lambda index: float(pool.loc[index, "objective"]))
                 add(best, "restart_lineage_reserve", quality[best])
             if len(selected) >= cfg.count:
                 break
 
     while len(selected) < min(cfg.count, len(pool)):
-        eligible = [i for i in pool.index if i not in selected]
+        eligible = [index for index in pool.index if index not in selected]
         if not eligible:
             break
-        if selected:
-            min_distance = np.min(combined_distance[:, selected], axis=1)
-        else:
-            min_distance = np.ones(len(pool), dtype=float)
-        best_index = None
-        best_key = None
-        for index in eligible:
-            utility = cfg.quality_weight * quality[index] + min_distance[index]
-            # Passing status is a strict tie-breaker after utility, not a substitute
-            # for the hard all-passers guarantee above.
-            key = (
-                float(utility),
+        minimum_distance = (
+            np.min(combined_distance[:, selected], axis=1)
+            if selected
+            else np.ones(len(pool), dtype=float)
+        )
+        best_index = max(
+            eligible,
+            key=lambda index: (
+                float(cfg.quality_weight * quality[index] + minimum_distance[index]),
                 int(bool(pool.loc[index, "_passed"])),
                 float(quality[index]),
                 -float(pool.loc[index, "objective"]),
                 str(pool.loc[index, "candidate_id"]),
-            )
-            if best_key is None or key > best_key:
-                best_key = key
-                best_index = index
-        assert best_index is not None
-        add(best_index, "quality_diversity_fill", best_key[0])
+            ),
+        )
+        utility = cfg.quality_weight * quality[best_index] + minimum_distance[best_index]
+        add(best_index, "quality_diversity_fill", utility)
 
     selected_rows = pool.loc[selected].copy()
     selected_rows["selection_rank"] = np.arange(1, len(selected_rows) + 1)
     selected_rows["selection_reason"] = [reasons[index] for index in selected]
     selected_rows["selection_utility"] = [utilities[index] for index in selected]
     selected_rows["selection_quality_score"] = [quality[index] for index in selected]
-    if selected:
-        selected_rows["selection_min_distance"] = [
-            0.0
-            if rank == 0
-            else float(np.min(combined_distance[index, selected[:rank]]))
-            for rank, index in enumerate(selected)
-        ]
-    else:
-        selected_rows["selection_min_distance"] = []
-    drop_columns = [name for name in selected_rows if name.startswith("response_")]
-    drop_columns += ["_source_index", "_passed"]
-    selected_rows = selected_rows.drop(columns=drop_columns, errors="ignore")
+    selected_rows["selection_min_distance"] = [
+        0.0
+        if rank == 0
+        else float(np.min(combined_distance[index, selected[:rank]]))
+        for rank, index in enumerate(selected)
+    ]
+    selected_rows = selected_rows.drop(
+        columns=[
+            *[name for name in selected_rows if name.startswith("response_")],
+            "_source_index",
+            "_passed",
+        ],
+        errors="ignore",
+    )
 
     selected_ids = set(selected_rows["candidate_id"].astype(str))
-    all_passers_retained = set(work.loc[work["_passed"], "candidate_id"].astype(str)).issubset(selected_ids)
+    passer_ids = set(work.loc[work["_passed"], "candidate_id"].astype(str))
     audit = {
         "schema": MODEL_ID,
         "config": asdict(cfg),
@@ -311,8 +324,8 @@ def select_quality_diverse(
         "n_passers": int(work["_passed"].sum()),
         "n_pool": int(len(pool)),
         "n_selected": int(len(selected_rows)),
-        "all_passers_fit_in_budget": bool(int(work["_passed"].sum()) <= cfg.count),
-        "all_passers_retained": bool(all_passers_retained),
+        "all_passers_fit_in_budget": bool(len(passer_ids) <= cfg.count),
+        "all_passers_retained": bool(passer_ids.issubset(selected_ids)),
         "parameter_columns": parameter_columns,
         "response_columns": response_columns,
         "selected": selected_rows[
