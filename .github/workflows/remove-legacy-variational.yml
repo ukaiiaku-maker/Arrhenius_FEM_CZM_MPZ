@@ -41,6 +41,15 @@ jobs:
           )
           PY
           base64 --decode /tmp/cleanup_payload.b64 | gzip --decompress > /tmp/remove_legacy_variational.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/remove_legacy_variational.py')
+          text = path.read_text()
+          old = "ROOT=Path(__file__).resolve().parents[1]"
+          if old not in text:
+              raise SystemExit('cleanup payload root anchor is missing')
+          path.write_text(text.replace(old, "ROOT=Path.cwd()", 1))
+          PY
           python /tmp/remove_legacy_variational.py
           rm -rf .cleanup
       - name: Compile and test cleaned tree
