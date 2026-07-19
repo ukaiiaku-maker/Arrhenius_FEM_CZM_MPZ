@@ -1,0 +1,21 @@
+name: Verify MPZ v9.10.4 selector
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-selector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Compile selector
+        run: python -m compileall -q select_mpz_v9_10_4_quality_diversity.py
+      - name: Run selector regressions
+        run: python -m pytest -vv tests/test_mpz_v9_10_4_quality_diversity.py
