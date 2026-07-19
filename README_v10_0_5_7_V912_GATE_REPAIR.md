@@ -46,10 +46,17 @@ At least one pairwise material comparison is required. The audit writes explicit
 case-level failure reasons and lists failed, incomplete/censored, non-first-
 passage, missing-summary, and missing-field cases separately.
 
+### 3. Full-field entry composition
+
+The publication entry point composes the bookkeeping repair with the validated
+v9.12 command substitution that selects `run_mpz_v9_12_mode_i_rcurve.py` and the
+mapped MPZ field renderer. The non-full-field repair module remains importable for
+unit testing, but it is not the publication campaign entry point.
+
 ## Entry point
 
 ```bash
-python run_mpz_v10_0_5_7_tip_only_material_rcurve.py \
+python run_mpz_v10_0_5_7_tip_only_material_rcurve_fullfield.py \
   --classes "ceramic weakT DBTT" \
   --T-K 700 \
   --seeds 1 \
@@ -65,12 +72,19 @@ material_rcurve_case_audit_v10_0_5_7.csv
 material_rcurve_pairwise_audit_v10_0_5_7.csv
 ```
 
+Each case also receives an immutable copy of the authoritative subprocess table:
+
+```text
+rcurve_temperature_summary_v9_11.csv
+```
+
 ## Validation
 
 ```bash
 python -m py_compile \
   arrhenius_fracture/material_rcurve_audit_v10057.py \
-  run_mpz_v10_0_5_7_tip_only_material_rcurve.py
+  run_mpz_v10_0_5_7_tip_only_material_rcurve.py \
+  run_mpz_v10_0_5_7_tip_only_material_rcurve_fullfield.py
 
 pytest -q \
   tests/test_material_rcurve_audit_v912.py \
