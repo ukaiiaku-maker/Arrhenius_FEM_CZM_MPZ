@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "version": "v9.11.1",
+  "default_option": "dbtt_primary",
+  "scientific_scope": {
+    "statement": "DBTT is treated as a macroscopic response class that can emerge from more than one microscopic competition, not as evidence for one unique mechanism.",
+    "interpretation_rules": [
+      "Separate initiation toughness from propagation resistance.",
+      "Do not interpret the raw median K_J over 200-500 um minus K_init as a material R-curve without a geometry/control subtraction.",
+      "Use retained MPZ population and pre-renewal K_shield to identify shielding-based mechanisms.",
+      "Use an intrinsic low-shielding control to identify first-passage and geometry-driven contributions.",
+      "Preserve nonmonotonic peak-type responses as a distinct response class rather than forcing them into the primary DBTT class."
+    ]
+  },
+  "options": {
+    "dbtt_primary": {
+      "candidate_id": "DBTT_restart04_candidate03",
+      "material_class": "DBTT",
+      "role": "production_primary",
+      "label": "Primary DBTT: sharp retained-zone onset",
+      "mechanism_summary": "Brittle/low-retention behavior through the lower-temperature branch followed by a sharp high-temperature onset of retained MPZ shielding and a positive propagation contribution beyond the common 2-D trajectory.",
+      "paper_use": "Run the bulk of production DBTT simulations with this option. Use it as the main example of a shielding-assisted DBTT.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um. Current primary as of 2026-07-19.",
+      "recommended_followup_temperatures_K": [950, 1000, 1050, 1100, 1150]
+    },
+    "peak_primary": {
+      "candidate_id": "DBTT_restart05_candidate61",
+      "material_class": "DBTT",
+      "role": "preserved_peak_class",
+      "label": "Peak type: nonmonotonic competition",
+      "mechanism_summary": "A nonmonotonic toughness response produced by competing intrinsic kinetics and transient/retained shielding. The intermediate-temperature response exceeds the high-temperature response.",
+      "paper_use": "Preserve as a distinct peak class. Use it to show that the same Arrhenius framework can produce a toughness maximum rather than a monotonic DBTT.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um. Peak response centered near the existing 900 K sample.",
+      "recommended_followup_temperatures_K": [800, 850, 900, 950, 1000, 1050, 1100]
+    },
+    "dbtt_broad_shielding": {
+      "candidate_id": "DBTT_restart01_candidate68",
+      "material_class": "DBTT",
+      "role": "mechanism_alternate",
+      "label": "Broad DBTT: sustained shielding",
+      "mechanism_summary": "A broad transition with substantial retained MPZ population and sustained shielding already active by 700 K. The macroscopic curve remains strongly influenced by intrinsic kinetics and the common 2-D trajectory.",
+      "paper_use": "Use as a short example that a DBTT-like initiation trend can coexist with broad, persistent shielding without producing a large geometry-corrected R-curve increment.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um after increasing the step ceiling to 25000.",
+      "recommended_followup_temperatures_K": [500, 600, 700, 800, 900, 1000, 1100, 1200]
+    },
+    "dbtt_intrinsic_control": {
+      "candidate_id": "DBTT_restart00_candidate103",
+      "material_class": "DBTT",
+      "role": "intrinsic_first_passage_control",
+      "label": "Intrinsic DBTT control: negligible shielding",
+      "mechanism_summary": "A strong temperature-dependent apparent toughness response with essentially no retained MPZ shielding. This option isolates intrinsic first-passage kinetics plus the evolving 2-D geometry/loading trajectory.",
+      "paper_use": "Use as the no-shielding control demonstrating that DBTT-like behavior and a large apparent raw K_J curve do not by themselves prove plastic shielding or a material R-curve.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um after increasing the step ceiling to 25000.",
+      "recommended_followup_temperatures_K": [700, 900, 1000, 1100, 1200]
+    },
+    "dbtt_moderate_shielding_reference": {
+      "candidate_id": "DBTT_restart00_candidate04",
+      "material_class": "DBTT",
+      "role": "moderate_shielding_reference",
+      "label": "Moderate shielding reference",
+      "mechanism_summary": "A smooth monotonic temperature response with moderate retained shielding over a broad temperature interval, but only a small propagation residual after the common 2-D trajectory is removed.",
+      "paper_use": "Retain as an intermediate comparison between the sharp primary DBTT and the intrinsic no-shielding control. It is not a production priority.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um.",
+      "recommended_followup_temperatures_K": []
+    },
+    "weakT_primary": {
+      "candidate_id": "weakT_restart00_candidate00",
+      "material_class": "weakT",
+      "role": "weak_temperature_primary",
+      "label": "Weak-temperature reference",
+      "mechanism_summary": "Temperature-flat reference response used to identify the common 2-D geometry/loading trajectory and to separate temperature-dependent mechanisms from specimen-level curve shape.",
+      "paper_use": "Use as the weak-temperature comparison and as one geometry-normalization reference. Do not assume it is a universal geometry baseline when initiation level or event sequence differs strongly.",
+      "validation_status": "Completed 2-D tip-only runs at 300, 700, 900, and 1200 K to approximately 500 um.",
+      "recommended_followup_temperatures_K": []
+    }
+  }
+}
