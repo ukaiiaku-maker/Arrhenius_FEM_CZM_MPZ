@@ -7,14 +7,18 @@ on:
   push:
     branches:
       - v10.0.5.7-v912-gate-fixedgrip-consistency
+  pull_request:
+    branches:
+      - v10.0.5.6-kj-audit-first-passage-bracket
 
 jobs:
   remove:
-    if: ${{ !contains(github.event.head_commit.message, '[legacy-cleanup]') }}
+    if: ${{ github.event_name == 'pull_request' || !contains(github.event.head_commit.message, '[legacy-cleanup]') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: v10.0.5.7-v912-gate-fixedgrip-consistency
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
