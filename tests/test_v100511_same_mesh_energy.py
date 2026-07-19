@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
+from arrhenius_fracture import sharp_front
+from arrhenius_fracture import (
+    mode_i_first_passage_v10_0_5_10_refinement_probe as _v100510,
+)
 from arrhenius_fracture.mode_i_first_passage_v10_0_5_11_same_mesh_probe import (
+    patch_run_2d_source_v100511,
     validate_source_transform_v100511,
 )
 from arrhenius_fracture.production_j_same_mesh_energy_v100511 import (
@@ -99,4 +106,18 @@ def test_v100511_source_transform_compiles_and_supplies_same_mesh_state():
     assert audit["fixed_grip_opening_supplied"] is True
     assert audit["v10_0_5_9_production_path_preserved"] is True
     assert audit["full_audited_v10055_stack"] is True
+    assert audit["parent_transform_frozen_before_monkeypatch"] is True
     assert audit["constitutive_physics_changed"] is False
+
+
+def test_v100511_transform_survives_parent_module_monkeypatch_lifecycle():
+    source = inspect.getsource(sharp_front.run_2d)
+    saved = _v100510.patch_run_2d_source_v100510
+    _v100510.patch_run_2d_source_v100510 = patch_run_2d_source_v100511
+    try:
+        patched = patch_run_2d_source_v100511(source)
+    finally:
+        _v100510.patch_run_2d_source_v100510 = saved
+    compile(patched, "<v10.0.5.11-monkeypatch-regression>", "exec")
+    assert "record_production_j_same_mesh_probe_v100511(" in patched
+    assert "boundary_data=bnd" in patched
