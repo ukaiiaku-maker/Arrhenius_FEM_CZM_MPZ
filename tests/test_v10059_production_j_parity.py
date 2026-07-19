@@ -12,7 +12,11 @@ from arrhenius_fracture.mode_i_first_passage_v10_0_5_9_production_j_probe import
 from arrhenius_fracture.production_j_parity_v10059 import (
     analyze_production_j_parity_v10059,
 )
-from run_v10_0_5_9_production_j_parity import _probe_command, build_parser
+from run_v10_0_5_9_production_j_parity import (
+    _log_tail,
+    _probe_command,
+    build_parser,
+)
 
 
 def _reference():
@@ -120,3 +124,26 @@ def test_probe_command_satisfies_vhcf_cycle_mode_contract(tmp_path: Path):
     assert "requested_cap" not in command
     assert command[command.index("--cycles-max") + 1] == "1"
     assert command[command.index("--max-block-cycles") + 1] == "1"
+
+
+def test_probe_command_uses_one_authoritative_mpz_length(tmp_path: Path):
+    args = build_parser().parse_args([
+        "--reference-json",
+        str(tmp_path / "reference.json"),
+        "--L-pz-um",
+        "20",
+        "--mpz-length-um",
+        "100",
+    ])
+    command = _probe_command(args, tmp_path / "case", 1.0e-6)
+    legacy_m = float(command[command.index("--L-pz") + 1])
+    modern_um = float(command[command.index("--mpz-length-um") + 1])
+    assert legacy_m == pytest.approx(100.0e-6)
+    assert modern_um == pytest.approx(100.0)
+    assert legacy_m * 1.0e6 == pytest.approx(modern_um)
+
+
+def test_log_tail_reports_only_requested_lines(tmp_path: Path):
+    path = tmp_path / "probe.log"
+    path.write_text("\n".join(f"line {index}" for index in range(10)))
+    assert _log_tail(path, max_lines=3) == "line 7\nline 8\nline 9"
