@@ -2,8 +2,9 @@
 
 The FEM specimen is driven by symmetric prescribed displacement, not uniform
 remote traction.  The legacy single-edge-tension polynomial is retained as a
-secondary diagnostic, while the publication gate uses the fixed-grip geometry
-factor for the exact 2 x 4 mm, a=0.5 mm benchmark geometry.
+secondary diagnostic.  The primary publication gate requires a geometry-
+specific fixed-grip reference artifact generated from converged elastic FEM
+rows; no built-in geometry factor or analytical surrogate is permitted.
 """
 from __future__ import annotations
 
@@ -27,15 +28,16 @@ REFERENCE_SCHEMA = "fixed_grip_edge_crack_reference_v10057"
 
 @dataclass(frozen=True)
 class FixedGripReferenceV10057:
-    width_m: float = 2.0e-3
-    height_m: float = 4.0e-3
-    initial_crack_m: float = 0.5e-3
-    geometry_factor_Y: float = 1.2003
+    width_m: float
+    height_m: float
+    initial_crack_m: float
+    geometry_factor_Y: float
     relative_geometry_tolerance: float = 1.0e-10
-    provenance: str = (
-        "fixed-grip elastic FEM convergence benchmark; regenerate with "
-        "scripts/generate_fixed_grip_reference_v10057.py"
-    )
+    provenance: str = "generated from elastic fixed-grip FEM convergence rows"
+    source_path: str | None = None
+    tail_count: int = 0
+    tail_max_relative_spread: float = math.nan
+    relative_spread_tolerance: float = math.nan
 
     def validate_geometry(
         self, geometry: SpecimenGeometryV10056
@@ -66,19 +68,32 @@ class FixedGripReferenceV10057:
         return {"schema": REFERENCE_SCHEMA, **asdict(self)}
 
 
-DEFAULT_FIXED_GRIP_REFERENCE = FixedGripReferenceV10057()
-
-
-def load_fixed_grip_reference(
-    path: str | Path | None = None,
-) -> FixedGripReferenceV10057:
-    if path is None:
-        return DEFAULT_FIXED_GRIP_REFERENCE
-    payload = json.loads(Path(path).expanduser().resolve().read_text())
+def load_fixed_grip_reference(path: str | Path) -> FixedGripReferenceV10057:
+    source = Path(path).expanduser().resolve()
+    if not source.is_file():
+        raise FileNotFoundError(f"fixed-grip reference artifact is missing: {source}")
+    payload = json.loads(source.read_text())
     if payload.get("schema") != REFERENCE_SCHEMA:
         raise ValueError(f"fixed-grip reference schema must be {REFERENCE_SCHEMA}")
+    if payload.get("boundary_condition") != "symmetric_fixed_grip_displacement":
+        raise ValueError("fixed-grip reference has the wrong boundary-condition contract")
     if not bool(payload.get("convergence_passed", False)):
         raise ValueError("fixed-grip reference has not passed convergence")
+    tail_count = int(payload.get("tail_count", 0))
+    if tail_count < 3:
+        raise ValueError("fixed-grip reference requires at least three converged tail rows")
+    spread = float(payload.get("tail_max_relative_spread", math.nan))
+    tolerance = float(payload.get("relative_spread_tolerance", math.nan))
+    if not (
+        math.isfinite(spread)
+        and math.isfinite(tolerance)
+        and tolerance > 0.0
+        and spread <= tolerance
+    ):
+        raise ValueError("fixed-grip convergence spread is missing or exceeds tolerance")
+    rows = payload.get("convergence_rows", [])
+    if not isinstance(rows, list) or len(rows) < tail_count:
+        raise ValueError("fixed-grip reference does not retain its convergence rows")
     return FixedGripReferenceV10057(
         width_m=float(payload["width_m"]),
         height_m=float(payload["height_m"]),
@@ -88,13 +103,17 @@ def load_fixed_grip_reference(
             payload.get("relative_geometry_tolerance", 1.0e-10)
         ),
         provenance=str(payload.get("provenance", "generated fixed-grip reference")),
+        source_path=str(source),
+        tail_count=tail_count,
+        tail_max_relative_spread=spread,
+        relative_spread_tolerance=tolerance,
     )
 
 
 def fixed_grip_reference_K_Pa_sqrt_m(
     sigma_gross_Pa: float,
     geometry: SpecimenGeometryV10056,
-    reference: FixedGripReferenceV10057 = DEFAULT_FIXED_GRIP_REFERENCE,
+    reference: FixedGripReferenceV10057,
 ) -> float:
     reference.validate_geometry(geometry)
     return (
@@ -110,9 +129,9 @@ def build_kj_audit_row(
     KJ_Pa_sqrt_m: float,
     outer_radius_m: float,
     geometry: SpecimenGeometryV10056,
+    fixed_grip_reference: FixedGripReferenceV10057,
     n_active_elements: int | None = None,
     safety_fraction: float = 0.80,
-    fixed_grip_reference: FixedGripReferenceV10057 = DEFAULT_FIXED_GRIP_REFERENCE,
 ) -> dict[str, Any]:
     row = _legacy_build_row(
         Ftop_N_per_thickness=Ftop_N_per_thickness,
@@ -134,6 +153,11 @@ def build_kj_audit_row(
         {
             "K_reference_boundary_condition": "symmetric_fixed_grip_displacement",
             "fixed_grip_reference_schema": REFERENCE_SCHEMA,
+            "fixed_grip_reference_source_path": fixed_grip_reference.source_path,
+            "fixed_grip_reference_tail_count": fixed_grip_reference.tail_count,
+            "fixed_grip_reference_tail_max_relative_spread": (
+                fixed_grip_reference.tail_max_relative_spread
+            ),
             "fixed_grip_geometry_factor_Y": float(
                 fixed_grip_reference.geometry_factor_Y
             ),
@@ -214,7 +238,6 @@ __all__ = [
     "POINT_RELEASE",
     "REFERENCE_SCHEMA",
     "FixedGripReferenceV10057",
-    "DEFAULT_FIXED_GRIP_REFERENCE",
     "load_fixed_grip_reference",
     "fixed_grip_reference_K_Pa_sqrt_m",
     "build_kj_audit_row",
