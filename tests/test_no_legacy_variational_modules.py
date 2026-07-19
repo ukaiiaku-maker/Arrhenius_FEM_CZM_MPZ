@@ -27,7 +27,7 @@ def test_duplicated_legacy_source_tree_is_absent():
 def test_removed_model_labels_are_absent_from_repository_text():
     token = "a" + "t"
     pattern = re.compile(
-        rf"(?i)(?<![A-Za-z0-9_]){token}[-_ ]?[12](?![A-Za-z0-9_])"
+        rf"(?i)(?<![A-Za-z0-9_]){token}[-_]?[12](?![A-Za-z0-9_])"
     )
     binary_suffixes = {
         ".7z", ".gif", ".gz", ".jpeg", ".jpg", ".npz", ".pdf", ".png",
