@@ -9,42 +9,17 @@ import pytest
 
 from arrhenius_fracture.kj_audit_v10056 import SpecimenGeometryV10056
 from arrhenius_fracture.kj_audit_v10057 import (
-    DEFAULT_FIXED_GRIP_REFERENCE,
     build_kj_audit_row,
     fixed_grip_reference_K_Pa_sqrt_m,
+    load_fixed_grip_reference,
 )
 
 
-def test_fixed_grip_reference_is_primary_and_uniform_tension_is_retained():
-    geometry = SpecimenGeometryV10056()
-    sigma = 100.0e6
-    K = fixed_grip_reference_K_Pa_sqrt_m(sigma, geometry)
-    assert K == pytest.approx(
-        sigma * math.sqrt(math.pi * geometry.initial_crack_m) * 1.2003
-    )
-    row = build_kj_audit_row(
-        Ftop_N_per_thickness=sigma * geometry.width_m,
-        KJ_Pa_sqrt_m=K,
-        outer_radius_m=100.0e-6,
-        geometry=geometry,
-    )
-    assert row["K_reference_boundary_condition"] == "symmetric_fixed_grip_displacement"
-    assert row["KJ_over_K_LEFM_gross"] == pytest.approx(1.0)
-    assert row["KJ_over_K_fixed_grip_reference"] == pytest.approx(1.0)
-    assert row["uniform_tension_edge_geometry_factor_Y"] > row["fixed_grip_geometry_factor_Y"]
-
-
-def test_fixed_grip_reference_fails_closed_for_other_geometry():
-    geometry = SpecimenGeometryV10056(width_m=3.0e-3)
-    with pytest.raises(ValueError, match="geometry specific"):
-        fixed_grip_reference_K_Pa_sqrt_m(100.0e6, geometry)
-
-
-def test_generator_recovers_converged_factor(tmp_path):
+def _generate_reference(tmp_path, factors=None):
     rows = tmp_path / "fixed_grip_rows.csv"
     out = tmp_path / "reference.json"
     a = 0.5e-3
-    factors = [1.18, 1.195, 1.2000, 1.2004, 1.2003]
+    factors = factors or [1.18, 1.195, 1.2000, 1.2004, 1.2003]
     with rows.open("w", newline="") as handle:
         writer = csv.DictWriter(
             handle,
@@ -60,16 +35,92 @@ def test_generator_recovers_converged_factor(tmp_path):
                     "KJ_Pa_sqrt_m": sigma * math.sqrt(math.pi * a) * factor,
                 }
             )
-    script = Path(__file__).resolve().parents[1] / "scripts" / "generate_fixed_grip_reference_v10057.py"
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "generate_fixed_grip_reference_v10057.py"
+    )
     completed = subprocess.run(
         [sys.executable, str(script), "--rows", str(rows), "--out", str(out)],
         capture_output=True,
         text=True,
         check=False,
     )
+    return completed, out
+
+
+def test_fixed_grip_reference_is_primary_and_uniform_tension_is_retained(tmp_path):
+    completed, artifact = _generate_reference(tmp_path)
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    reference = load_fixed_grip_reference(artifact)
+    geometry = SpecimenGeometryV10056()
+    sigma = 100.0e6
+    K = fixed_grip_reference_K_Pa_sqrt_m(sigma, geometry, reference)
+    assert K == pytest.approx(
+        sigma
+        * math.sqrt(math.pi * geometry.initial_crack_m)
+        * reference.geometry_factor_Y
+    )
+    row = build_kj_audit_row(
+        Ftop_N_per_thickness=sigma * geometry.width_m,
+        KJ_Pa_sqrt_m=K,
+        outer_radius_m=100.0e-6,
+        geometry=geometry,
+        fixed_grip_reference=reference,
+    )
+    assert row["K_reference_boundary_condition"] == "symmetric_fixed_grip_displacement"
+    assert row["KJ_over_K_LEFM_gross"] == pytest.approx(1.0)
+    assert row["KJ_over_K_fixed_grip_reference"] == pytest.approx(1.0)
+    assert row["fixed_grip_reference_source_path"] == str(artifact.resolve())
+    assert row["uniform_tension_edge_geometry_factor_Y"] > row["fixed_grip_geometry_factor_Y"]
+
+
+def test_fixed_grip_reference_fails_closed_for_other_geometry(tmp_path):
+    completed, artifact = _generate_reference(tmp_path)
+    assert completed.returncode == 0
+    reference = load_fixed_grip_reference(artifact)
+    geometry = SpecimenGeometryV10056(width_m=3.0e-3)
+    with pytest.raises(ValueError, match="geometry specific"):
+        fixed_grip_reference_K_Pa_sqrt_m(100.0e6, geometry, reference)
+
+
+def test_generator_recovers_converged_factor_and_loader_preserves_evidence(tmp_path):
+    completed, out = _generate_reference(tmp_path)
     assert completed.returncode == 0, completed.stderr + completed.stdout
     payload = json.loads(out.read_text())
     assert payload["convergence_passed"]
     assert payload["geometry_factor_Y"] == pytest.approx(1.2003, rel=5.0e-4)
     assert payload["tail_max_relative_spread"] < 0.02
-    assert DEFAULT_FIXED_GRIP_REFERENCE.geometry_factor_Y == pytest.approx(1.2003)
+    reference = load_fixed_grip_reference(out)
+    assert reference.tail_count >= 3
+    assert reference.tail_max_relative_spread == pytest.approx(
+        payload["tail_max_relative_spread"]
+    )
+
+
+def test_no_default_or_missing_reference_is_accepted(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_fixed_grip_reference(tmp_path / "missing.json")
+
+
+def test_loader_rejects_reference_without_convergence_evidence(tmp_path):
+    path = tmp_path / "invalid.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema": "fixed_grip_edge_crack_reference_v10057",
+                "boundary_condition": "symmetric_fixed_grip_displacement",
+                "convergence_passed": True,
+                "width_m": 2.0e-3,
+                "height_m": 4.0e-3,
+                "initial_crack_m": 0.5e-3,
+                "geometry_factor_Y": 1.2,
+                "tail_count": 1,
+                "tail_max_relative_spread": 0.0,
+                "relative_spread_tolerance": 0.02,
+                "convergence_rows": [{}],
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="at least three"):
+        load_fixed_grip_reference(path)
