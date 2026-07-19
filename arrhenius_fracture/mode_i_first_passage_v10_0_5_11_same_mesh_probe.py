@@ -10,6 +10,11 @@ from .production_j_same_mesh_energy_v100511 import PROBE_JSON
 POINT_RELEASE = "10.0.5.11"
 MODEL_ID = "FEM_CZM_production_J_same_mesh_fixed_grip_energy_probe_v10_0_5_11"
 
+# Freeze the parent transform before ``main`` temporarily replaces the mutable
+# module attribute. Calling ``_v100510.patch_run_2d_source_v100510`` from the
+# replacement after that monkeypatch would call this function recursively.
+_ORIGINAL_V100510_PATCH = _v100510.patch_run_2d_source_v100510
+
 _BASE_IMPORT = (
     "from arrhenius_fracture.production_j_refinement_support_v100510 "
     "import record_production_j_refinement_probe_v100510"
@@ -38,7 +43,7 @@ def _replace_unique(source: str, old: str, new: str, name: str) -> str:
 
 
 def patch_run_2d_source_v100511(source: str) -> str:
-    patched = _v100510.patch_run_2d_source_v100510(source)
+    patched = _ORIGINAL_V100510_PATCH(source)
     patched = _replace_unique(patched, _BASE_IMPORT, _NEW_IMPORT, "recorder import")
     patched = _replace_unique(patched, _BASE_CALL, _NEW_CALL, "recorder call")
     patched = _replace_unique(patched, _CALL_TAIL, _CALL_TAIL_NEW, "same-mesh arguments")
@@ -58,6 +63,9 @@ def validate_source_transform_v100511() -> dict[str, Any]:
         "v10_0_5_10_contour_recorder_composition_preserved": "contours_v10059" in patched,
         "v10_0_5_9_production_path_preserved": "straight_progressive_cluster_no_exclusion" in patched,
         "full_audited_v10055_stack": "cohesive_elements" in patched,
+        "parent_transform_frozen_before_monkeypatch": (
+            _ORIGINAL_V100510_PATCH is not patch_run_2d_source_v100511
+        ),
     }
     failed = [name for name, passed in checks.items() if not passed]
     if failed:
