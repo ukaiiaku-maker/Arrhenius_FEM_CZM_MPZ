@@ -55,7 +55,7 @@ def validate_source_transform_v100511() -> dict[str, Any]:
         "same_mesh_recorder": "record_production_j_same_mesh_probe_v100511(" in patched,
         "boundary_data_supplied": "boundary_data=bnd" in patched,
         "fixed_grip_opening_supplied": "total_grip_opening_m=Uapp" in patched,
-        "v10_0_5_10_refinement_path_preserved": "production_refinement_radius_m" in patched,
+        "v10_0_5_10_contour_recorder_composition_preserved": "contours_v10059" in patched,
         "v10_0_5_9_production_path_preserved": "straight_progressive_cluster_no_exclusion" in patched,
         "full_audited_v10055_stack": "cohesive_elements" in patched,
     }
