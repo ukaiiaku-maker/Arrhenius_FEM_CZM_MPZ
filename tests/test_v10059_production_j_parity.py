@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,7 @@ from arrhenius_fracture.mode_i_first_passage_v10_0_5_9_production_j_probe import
 from arrhenius_fracture.production_j_parity_v10059 import (
     analyze_production_j_parity_v10059,
 )
+from run_v10_0_5_9_production_j_parity import _probe_command, build_parser
 
 
 def _reference():
@@ -107,3 +110,13 @@ def test_source_transform_compiles_and_preserves_stack():
     assert result["production_exclusion"] is True
     assert result["full_audited_v10055_stack"] is True
     assert result["constitutive_physics_changed"] is False
+
+
+def test_probe_command_satisfies_vhcf_cycle_mode_contract(tmp_path: Path):
+    args = build_parser().parse_args(["--reference-json", str(tmp_path / "reference.json")])
+    command = _probe_command(args, tmp_path / "case", 1.0e-6)
+    mode_index = command.index("--cycle-block-mode")
+    assert command[mode_index + 1] == "hazard_limited"
+    assert "requested_cap" not in command
+    assert command[command.index("--cycles-max") + 1] == "1"
+    assert command[command.index("--max-block-cycles") + 1] == "1"
