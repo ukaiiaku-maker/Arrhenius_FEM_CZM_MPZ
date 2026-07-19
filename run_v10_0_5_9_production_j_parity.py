@@ -30,6 +30,7 @@ ENTRY_MODULE = (
     "arrhenius_fracture."
     "mode_i_first_passage_v10_0_5_9_production_j_probe"
 )
+LAUNCH_FAILURE_JSON = "production_j_probe_launch_failure_v10_0_5_9.json"
 
 
 def _values(text: str, scale: float = 1.0) -> list[float]:
@@ -60,6 +61,13 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def _log_tail(path: Path, max_lines: int = 80) -> str:
+    if not path.exists():
+        return "<log file was not created>"
+    lines = path.read_text(errors="replace").splitlines()
+    return "\n".join(lines[-max(int(max_lines), 1):])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference-json", type=Path, required=True)
@@ -83,7 +91,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tip-ratio", type=float, default=1.15)
     parser.add_argument("--cluster-J-outer-um", type=float, default=240.0)
     parser.add_argument("--local-J-outer-um", type=float, default=100.0)
-    parser.add_argument("--L-pz-um", type=float, default=20.0)
+    parser.add_argument(
+        "--L-pz-um",
+        type=float,
+        default=None,
+        help=(
+            "legacy compatibility input; v9.11 uses --mpz-length-um as the one "
+            "authoritative process-zone length, so this value is recorded but "
+            "the subprocess receives the authoritative MPZ length"
+        ),
+    )
     parser.add_argument("--mpz-length-um", type=float, default=100.0)
     parser.add_argument("--mpz-n-bins", type=int, default=80)
     parser.add_argument("--da-phys-um", type=float, default=5.0)
@@ -101,15 +118,22 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _authoritative_mpz_length_um(args) -> float:
+    value = float(args.mpz_length_um)
+    if value <= 0.0:
+        raise ValueError("--mpz-length-um must be positive")
+    return value
+
+
 def _probe_command(args, case_dir: Path, opening_m: float) -> list[str]:
     """Build one elastic production-probe command.
 
-    v10.0.5.4 and every audited VHCF descendant require
-    ``--cycle-block-mode hazard_limited``. The probe still consumes exactly one
-    cycle because ``cycles-max``, ``block-cycles`` and ``max-block-cycles`` are
-    all one; hazard-limited is therefore a wrapper-contract requirement, not a
-    change to the elastic mechanics state being recorded.
+    The audited VHCF stack requires ``hazard_limited`` cycle blocks. v9.11 also
+    requires legacy ``--L-pz`` and modern ``--mpz-length-um`` to describe the same
+    physical length. The modern MPZ length is authoritative and is passed through
+    both interfaces so the production wrapper cannot receive conflicting values.
     """
+    mpz_length_um = _authoritative_mpz_length_um(args)
     command = [
         args.python,
         "-m",
@@ -170,9 +194,9 @@ def _probe_command(args, case_dir: Path, opening_m: float) -> list[str]:
         "--rJ-cluster",
         f"{args.cluster_J_outer_um * 1.0e-6 / 8.0:.17g}",
         "--L-pz",
-        f"{args.L_pz_um * 1.0e-6:.17g}",
+        f"{mpz_length_um * 1.0e-6:.17g}",
         "--mpz-length-um",
-        f"{args.mpz_length_um:.17g}",
+        f"{mpz_length_um:.17g}",
         "--mpz-n-bins",
         str(args.mpz_n_bins),
         "--crack-backend",
@@ -214,6 +238,22 @@ def main(argv: Iterable[str] | None = None) -> int:
     if len(contours) < 3 or any(value <= 0.0 for value in contours):
         raise SystemExit("at least three positive --contour-outer-um values are required")
 
+    try:
+        mpz_length_um = _authoritative_mpz_length_um(args)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    requested_L_pz_um = None if args.L_pz_um is None else float(args.L_pz_um)
+    if (
+        requested_L_pz_um is not None
+        and abs(requested_L_pz_um - mpz_length_um)
+        > 1.0e-12 * max(abs(requested_L_pz_um), abs(mpz_length_um), 1.0)
+    ):
+        print(
+            "NOTE: v9.11 permits one process-zone length; overriding legacy "
+            f"--L-pz-um={requested_L_pz_um:g} with authoritative "
+            f"--mpz-length-um={mpz_length_um:g}."
+        )
+
     root = args.out.resolve()
     root.mkdir(parents=True, exist_ok=True)
     probes: list[dict[str, Any]] = []
@@ -241,6 +281,7 @@ def main(argv: Iterable[str] | None = None) -> int:
                 check=False,
             )
         probe_path = case_dir / PROBE_JSON
+        log_tail = _log_tail(log_path)
         process_rows.append(
             {
                 "requested_opening_um": opening * 1.0e6,
@@ -249,11 +290,24 @@ def main(argv: Iterable[str] | None = None) -> int:
                 "case_directory": str(case_dir),
                 "log": str(log_path),
                 "command": " ".join(command),
+                "log_tail": log_tail,
             }
         )
         if not probe_path.exists():
+            failure = {
+                "schema": "production_j_probe_launch_failure_v10_0_5_9",
+                "point_release": "10.0.5.9",
+                "mechanics_probe_complete": False,
+                "authoritative_mpz_length_um": mpz_length_um,
+                "legacy_L_pz_um_requested": requested_L_pz_um,
+                "probe_processes": process_rows,
+            }
+            (root / LAUNCH_FAILURE_JSON).write_text(
+                json.dumps(failure, indent=2, default=str)
+            )
             raise RuntimeError(
-                f"production probe did not write {probe_path}; see {log_path}"
+                f"production probe did not write {probe_path}; subprocess return code "
+                f"{process.returncode}. Last lines of {log_path}:\n{log_tail}"
             )
         probe = json.loads(probe_path.read_text())
         probe["subprocess_returncode"] = int(process.returncode)
@@ -281,8 +335,9 @@ def main(argv: Iterable[str] | None = None) -> int:
                 "tip_ratio": args.tip_ratio,
                 "cluster_J_outer_um": args.cluster_J_outer_um,
                 "local_J_outer_um": args.local_J_outer_um,
-                "L_pz_um": args.L_pz_um,
-                "mpz_length_um": args.mpz_length_um,
+                "legacy_L_pz_um_requested": requested_L_pz_um,
+                "authoritative_mpz_length_um": mpz_length_um,
+                "subprocess_L_pz_um": mpz_length_um,
                 "mpz_n_bins": args.mpz_n_bins,
                 "da_phys_um": args.da_phys_um,
                 "crack_backend": args.crack_backend,
@@ -299,13 +354,14 @@ def main(argv: Iterable[str] | None = None) -> int:
     all_contours: list[dict[str, Any]] = []
     for probe in probes:
         for row in probe.get("contours", []):
-            combined = {
-                "Uapp_um": float(probe["Uapp_um"]),
-                "sigma_gross_MPa": float(probe["sigma_gross_MPa"]),
-                "case_directory": probe["case_directory"],
-                **dict(row),
-            }
-            all_contours.append(combined)
+            all_contours.append(
+                {
+                    "Uapp_um": float(probe["Uapp_um"]),
+                    "sigma_gross_MPa": float(probe["sigma_gross_MPa"]),
+                    "case_directory": probe["case_directory"],
+                    **dict(row),
+                }
+            )
     _write_csv(root / PROBE_CSV, list(summary.get("cases", [])))
     _write_csv(root / CONTOUR_CSV, all_contours)
     (root / SUMMARY_JSON).write_text(json.dumps(summary, indent=2, default=str))
