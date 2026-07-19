@@ -1,1 +1,0 @@
-publication-style/no-grid comparison with added median propagation metric

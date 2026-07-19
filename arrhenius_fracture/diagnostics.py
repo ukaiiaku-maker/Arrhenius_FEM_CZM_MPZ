@@ -24,7 +24,7 @@ class StepDiagnostics:
     # Energetics
     Wext: float = 0.0         # cumulative external work
     Uel: float = 0.0          # stored degraded elastic energy used in thermodynamic audit
-    Uel_drive: float = 0.0    # undegraded positive tensile energy used as AT2 damage drive
+    Uel_drive: float = 0.0    # undegraded positive tensile-energy diagnostic
     Uel_undegraded: float = 0.0  # total undegraded elastic energy diagnostic
     Wext_top: float = 0.0     # cumulative work using top reaction times opening
     Wext_pair: float = 0.0    # cumulative signed work from top and bottom moving boundaries

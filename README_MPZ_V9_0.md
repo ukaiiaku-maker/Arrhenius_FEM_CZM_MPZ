@@ -231,4 +231,4 @@ arrhenius_fracture/sn_intact_fem.py
 pytest.ini
 ```
 
-The supplied source referenced `sn_intact_fem.py` from the stateful local-peridynamics workflow but did not include that module. v9 restores it by factoring the existing intact-FEM algorithms from `sn_pf2d_fullplastic.py` into a shared implementation. The active regression suite completes with 139 tests and 16 subtests.
+The supplied source referenced `sn_intact_fem.py` from the stateful local-peridynamics workflow but did not include that module. v9 restores it by factoring the existing intact-FEM algorithms from the retired full-field initiation driver into a shared implementation. The active regression suite completes with 139 tests and 16 subtests.

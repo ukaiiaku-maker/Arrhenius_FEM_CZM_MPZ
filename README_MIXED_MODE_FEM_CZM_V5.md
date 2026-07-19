@@ -18,7 +18,7 @@ The anisotropic FEM field is used only to determine dimensionless directional
 weights, local mode phase, crystallographic crack direction, and slip-system
 resolution.
 
-No AT2 model is used.
+The implementation is exclusively sharp-interface cohesive mechanics.
 
 ## Kinetic coupling
 

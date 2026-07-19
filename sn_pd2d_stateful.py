@@ -11,7 +11,7 @@ Active architecture
    embryo formation, stabilization/healing, stable-defect growth, and spatial
    bond linkage.
 4. Crack formation is a graph-connectivity event in the softened/broken bond
-   network.  No phase-field or AT1/AT2 module is imported or called.
+   network.  No smeared variational-fracture module is imported or called.
 
 This first pilot is one-way coupled: PD bond degradation redistributes the local
 patch deformation but does not yet modify the global FEM stiffness.

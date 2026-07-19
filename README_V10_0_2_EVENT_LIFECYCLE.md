@@ -22,7 +22,7 @@ The release also includes `dot_ep` in the complete trial rollback history. The p
 - Commit performs zero additional MPZ translation or source refresh.
 - One trial topology event is admitted per re-equilibrated mechanics state.
 - No cohesive critical-opening, traction, or energy failure criterion is added.
-- Wake shielding, AT2 fracture, temporal source recycling, empirical source caps, and temperature-dependent fitted controls remain disabled.
+- Wake shielding, smeared variational fracture, temporal source recycling, empirical source caps, and temperature-dependent fitted controls remain disabled.
 
 ## Validation status
 

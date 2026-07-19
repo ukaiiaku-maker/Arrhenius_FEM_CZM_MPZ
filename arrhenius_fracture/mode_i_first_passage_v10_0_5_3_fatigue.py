@@ -43,6 +43,11 @@ def _replace_unique(source: str, old: str, new: str, name: str) -> str:
     return source.replace(old, new)
 
 
+def _escaped_builder_block(block: str) -> str:
+    """Encode a multiline fragment as it appears inside the v10.0.2 source literal."""
+    return block.replace("\n", "\\n")
+
+
 def _patch_run_2d_source(source: str) -> str:
     """Route only the v10 progressive engine away from legacy fatigue commit."""
     old = (
@@ -108,8 +113,8 @@ def _build_progressive_run_2d_v10053(original_run_2d):
 """
     builder_source = _replace_unique(
         builder_source,
-        target_block,
-        target_replacement,
+        _escaped_builder_block(target_block),
+        _escaped_builder_block(target_replacement),
         "one-fatigue-commit-per-outer-block target",
     )
     commit_nonlocal = """                        def on_commit_v1002(context_v1002, result_v1002):
@@ -124,8 +129,8 @@ def _build_progressive_run_2d_v10053(original_run_2d):
 """
     builder_source = _replace_unique(
         builder_source,
-        commit_nonlocal,
-        commit_nonlocal_replacement,
+        _escaped_builder_block(commit_nonlocal),
+        _escaped_builder_block(commit_nonlocal_replacement),
         "fatigue commit counter",
     )
     accepted_anchor = (
@@ -142,8 +147,8 @@ def _build_progressive_run_2d_v10053(original_run_2d):
     )
     builder_source = _replace_unique(
         builder_source,
-        accepted_anchor,
-        accepted_replacement,
+        _escaped_builder_block(accepted_anchor),
+        _escaped_builder_block(accepted_replacement),
         "consumed-cycle accounting",
     )
 

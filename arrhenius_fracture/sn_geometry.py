@@ -1,13 +1,13 @@
 """Geometry utilities for S-N crack-initiation simulations.
 
 The 2-D S-N driver starts from a *geometrically blunt* free-surface feature,
-not from an initial phase-field crack.  The helper below generates a triangular
+not from an initial sharp precrack.  The helper below generates a triangular
 mesh of a rectangular plate with a smooth half-elliptical edge notch removed
 from the left free surface.
 
 For an ellipse x=a cos(theta), y=b sin(theta), theta in [-pi/2, pi/2], the
 notch root is (a, 0) and its local radius of curvature is rho=b^2/a.  Choosing
-b^2/a >> the phase-field length gives a genuinely blunt stress concentrator.
+b^2/a much larger than the local discretization length gives a genuinely blunt stress concentrator.
 """
 from __future__ import annotations
 
@@ -180,7 +180,7 @@ def make_blunt_edge_notch_mesh(
     return mesh, bnd, geom.root_xy
 
 # -----------------------------------------------------------------------------
-# Evolving blunt-feature geometry helpers used by sn_pf2d_fullplastic.py
+# Evolving blunt-feature geometry helpers used by the intact-FEM initiation workflow
 # -----------------------------------------------------------------------------
 
 
