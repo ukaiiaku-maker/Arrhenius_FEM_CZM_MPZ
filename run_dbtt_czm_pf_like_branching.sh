@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Moderately permissive branching calibrated as an exploratory analogue of the
-# prior phase-field morphology: usually one dominant crack, occasional second
+# prior diffuse-fracture morphology: usually one dominant crack, occasional second
 # branch, and at most three simultaneously active fronts. The front cap is a
 # computational/morphology guard, not a fitted physical parameter.
 export LONG_GROWTH=1

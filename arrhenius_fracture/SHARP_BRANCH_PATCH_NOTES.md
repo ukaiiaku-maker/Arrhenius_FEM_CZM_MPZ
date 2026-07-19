@@ -1,6 +1,6 @@
 # Sharp-front branching patch notes
 
-This patch keeps the model sharp-interface only.  No AT2/phase-field fracture criterion is reintroduced.  The goal is to make branching enter through competing sharp-tip hazards rather than through smeared damage topology.
+This patch keeps the model sharp-interface only.  No smeared variational-fracture criterion is introduced.  The goal is to make branching enter through competing sharp-tip hazards rather than through smeared damage topology.
 
 ## What changed
 

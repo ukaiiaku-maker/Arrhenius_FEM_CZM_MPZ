@@ -32,6 +32,6 @@ regime studies with `--emb-sat-frac 1` (cap off) and bound the ledger with
 `--n-sat` or `--recover-k`.
 
 ## Still to revisit if/when moving to 2D
-The 2D AT2 driver has its own clamps (`rho_cap`, `mobile_rho_floor`,
+The deleted legacy full-field variational driver had its own clamps (`rho_cap`, `mobile_rho_floor`,
 `peierls_floor`, mesh `da_phys` floor). They do not touch the 1D regime results
 but must be audited before 2D regime claims.

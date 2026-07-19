@@ -1,7 +1,7 @@
 # Sharp-front dual-hazard fracture (`sharp_front.py`)
 
 A rebuild of the crack-advance layer for the tungsten DBTT model. It replaces
-the AT2 ↔ hazard coupling (source mode, Griffith license, consume halo,
+the deleted smeared-damage coupling (source mode, Griffith license, consume halo,
 frontier gates, fired-memory relief) with a **single crack-advance law** on a
 sharp ligament front. The FEM, plasticity, J-integral, and energy-audit
 modules are reused unchanged.
@@ -25,7 +25,7 @@ The previous `--preset emergent` model had three structural problems
    to 5×10¹⁵ — a free regularizer, and the energy audit was off by ~85×
    (`K_J` domain vs global).
 
-`sharp_front` removes the two-criterion conflict entirely: the phase field is
+`sharp_front` removes the two-criterion conflict entirely: the broken-material field is
 only a stiffness-kill indicator for broken material; it never evolves
 variationally and there is no second fracture criterion to reconcile.
 
@@ -310,7 +310,7 @@ columns sampled across the run (step 1, evenly spaced steps, every advance, and
 the final step):
 
 - **damage d** — the sharp ligament front (stiffness-kill indicator); shows
-  where the crack actually is, not a smeared phase field.
+  where the crack actually is, not a smeared damage representation.
 - **log10 rho** — dislocation density. Uniform in the brittle regime (no
   emission); a growing tip cloud in the ductile regime, deposited where
   emission did work.
@@ -345,13 +345,13 @@ legacy main.py figures), plus a cross-temperature `toughness_vs_temperature.png`
 - `energetics_<T>K.png` — U_el, W_p, W_emit growth. See caveat below.
 
 **Deliberately omitted** (no sharp-front analogue — these were artifacts of the
-AT2-coupling layer that was removed):
+deleted smeared-damage coupling layer):
 - local-Gc toughening state (`toughening_state`) — there is no degradable Gc
   field; cleavage is a hazard, not a Gc.
 - M_tip amplification / z_shield (`tip_memory` upper curves) — replaced by the
   physical blunting r_eff/r0 in `tip_state`.
-- phase-field energy E_pf — no variational damage energy exists.
-- yield / plastic / thermo-admissible fractions — AT2 projection diagnostics.
+- diffuse damage energy — no variational damage energy exists.
+- yield / plastic / thermo-admissible fractions — legacy diffuse-field projection diagnostics.
 
 **Energy balance (fixed):** the `energetics` panel IS a closed balance.
 A FEM bug previously left the elastic energy density `psi_e_gp`

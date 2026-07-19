@@ -3,7 +3,7 @@
 This module restores the public helper layer expected by
 ``sn_pd2d_stateful.py`` and ``stateful_peridynamics.py``.  The algorithms are
 factored from the existing, tested intact-FEM implementation in
-``sn_pf2d_fullplastic.py``; no phase-field degradation is used here.  The
+the retired full-field initiation driver; no diffuse damage degradation is used here.  The
 module intentionally keeps the prior anisotropic/spatial drivers separate from
 crack-tip MPZ constitutive changes.
 """
@@ -151,7 +151,7 @@ def affine_stress_control_displacements(
 
 
 def stress_state_intact(mesh, u, ep_gp, Dmat, mat):
-    """Stress-state wrapper for an intact body (no phase-field degradation)."""
+    """Stress-state wrapper for an intact body with no diffuse damage degradation."""
     return stress_state(mesh, u, ep_gp, _intact_damage(mesh), Dmat, mat)
 
 

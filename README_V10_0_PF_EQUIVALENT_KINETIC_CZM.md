@@ -191,7 +191,7 @@ The branch does not add:
 - temporal source recycling;
 - stored-energy subtraction from cleavage;
 - independent cohesive failure criterion;
-- AT2 fracture;
+- smeared variational fracture;
 - wake shielding as the primary toughening mechanism;
 - barrier re-fitting.
 

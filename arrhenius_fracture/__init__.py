@@ -8,7 +8,7 @@ moving-PZ default is intentionally unchanged for regression compatibility.
 
 from .config import (
     SimulationConfig, GeometryConfig, MeshConfig, ElasticProperties,
-    PlasticityBarrier, FractureBarrier, LoadingConfig, PhaseFieldConfig,
+    PlasticityBarrier, FractureBarrier, LoadingConfig, FractureResistanceConfig,
     DislocationConfig, TipMemoryConfig, CohesiveConfig, HazardConfig,
     JIntegralConfig, DiagnosticsConfig,
     make_dbtt_config, make_ceramic_config, make_cohesive_dbtt_config,
@@ -19,13 +19,9 @@ from .mesh import TriMesh, BoundaryData, make_tri_mesh, make_boundary_data
 from .materials import PlasticityModel, FractureModel
 from .fem import (
     plane_strain_D, assemble_mechanics, solve_dirichlet,
-    project_gp_to_nodes, assemble_pf_matrices,
+    project_gp_to_nodes,
 )
 from .plasticity import update_plasticity
-from .phase_field import (
-    update_phase_field, at2_surface_energy, crack_front_mask,
-    update_tip_memory, compute_fracture_amplification, cohesive_gate,
-)
 from .j_integral import compute_J_integral, find_crack_tip, compute_crack_advance
 
 from .moving_process_zone import MovingProcessZoneConfig, MovingProcessZoneState
@@ -88,4 +84,4 @@ from .kinetic_cohesive_stepper import (
     KineticCohesiveStepper,
 )
 
-__version__ = '10.0.2'
+__version__ = '10.0.5.7'
