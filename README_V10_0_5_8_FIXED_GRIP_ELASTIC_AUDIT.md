@@ -77,7 +77,7 @@ pytest -q \
 ```bash
 python run_v10_0_5_8_fixed_grip_elastic_convergence.py \
   --tip-h-um "10 5 2.5" \
-  --crack-increment-um "20 10 5" \
+  --crack-increment-um "40 20 10" \
   --contour-outer-um "100 140 180 240 300" \
   --width-mm 2 \
   --height-mm 4 \
@@ -88,6 +88,10 @@ python run_v10_0_5_8_fixed_grip_elastic_convergence.py \
   --crystal-theta-deg 45 \
   --out runs/v10_0_5_8_fixed_grip_elastic_convergence_v1
 ```
+
+The crack increments are intentionally no smaller than the coarsest 10 µm tip
+spacing. If a requested perturbation does not move the actual killed-node tip, the
+audit fails closed instead of fabricating a zero-width derivative.
 
 The process returns zero only when every convergence and J/energy agreement gate
 passes. A nonzero return is an audit result, not a solver crash.
