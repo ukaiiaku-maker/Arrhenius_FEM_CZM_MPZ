@@ -23,6 +23,8 @@ def _write_case(
     control_state: str = "first_passage",
     with_field: bool = True,
     y_shift: float = 0.0,
+    n_independent_load_events: int = 4,
+    cascade_fraction: float = 0.0,
 ):
     case = root / "seed_1" / "tip_only" / cls / "T700_th45"
     case.mkdir(parents=True, exist_ok=True)
@@ -56,10 +58,10 @@ def _write_case(
         [
             {
                 "n_raw_topology_events": 4,
-                "n_independent_load_events": 4,
-                "n_unstable_same_load_cascades": 0,
-                "largest_same_load_jump_um": 0.0,
-                "fraction_topology_events_in_cascades": 0.0,
+                "n_independent_load_events": n_independent_load_events,
+                "n_unstable_same_load_cascades": 1 if cascade_fraction > 0 else 0,
+                "largest_same_load_jump_um": 10.0 if cascade_fraction > 0 else 0.0,
+                "fraction_topology_events_in_cascades": cascade_fraction,
             }
         ]
     ).to_csv(case / "R_curve_cascade_metrics.csv", index=False)
@@ -134,6 +136,7 @@ def test_complete_multimaterial_campaign_passes_strict_gate(tmp_path):
     out = audit_campaign(tmp_path, 1, 700.0)
     assert out["n_pairwise_comparisons"] == 3
     assert out["all_case_solver_gates_passed"]
+    assert out["all_case_publication_gates_passed"]
     assert out["material_rcurve_gate_passed"]
     assert out["interpretation"] == "material_transfer_gate_passed"
 
@@ -168,6 +171,24 @@ def test_non_first_passage_case_fails_publication_gate(tmp_path):
     out = audit_campaign(tmp_path, 1, 700.0)
     assert "weakT" in out["non_first_passage_cases"]
     assert not out["material_rcurve_gate_passed"]
+
+
+def test_unstable_fixed_displacement_case_fails_publication_gate(tmp_path):
+    _write_case(
+        tmp_path,
+        "ceramic",
+        y_shift=0.0,
+        n_independent_load_events=3,
+        cascade_fraction=0.75,
+    )
+    _write_case(tmp_path, "weakT", y_shift=1.0e-7)
+    _write_case(tmp_path, "DBTT", y_shift=-1.0e-7)
+    out = audit_campaign(tmp_path, 1, 700.0)
+    assert out["all_case_solver_gates_passed"]
+    assert not out["all_case_publication_gates_passed"]
+    assert "ceramic" in out["unstable_response_cases"]
+    assert not out["material_rcurve_gate_passed"]
+    assert out["interpretation"].startswith("unstable_fixed_displacement")
 
 
 def test_single_material_campaign_cannot_pass_transfer_gate(tmp_path):
