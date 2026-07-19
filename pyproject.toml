@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.9"
-description = "Arrhenius FEM/CZM solver with production-path J parity, fixed-grip convergence, and strict publication audits"
+version = "10.0.5.10"
+description = "Arrhenius FEM/CZM solver with fixed physical J-domain mesh support and strict production parity audits"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
