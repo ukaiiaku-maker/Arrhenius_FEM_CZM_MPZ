@@ -1,8 +1,9 @@
 """Strict publication gate for v9.12 full-field material R-curve campaigns.
 
 This v10.0.5.7 layer preserves the v9.12 mechanics and constitutive response but
-prevents failed, right-censored, non-first-passage, missing-field, or vacuous
-single-material campaigns from passing the material-transfer publication gate.
+prevents failed, right-censored, non-first-passage, unstable-cascade,
+missing-field, or vacuous single-material campaigns from passing the
+material-transfer publication gate.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from . import material_rcurve_audit_v912 as _base
 
 POINT_RELEASE = "10.0.5.7"
 CLASSES = _base.CLASSES
+STABLE_RESPONSE_CLASS = "candidate_stable_resistance_sequence"
 
 
 def _as_bool(value: Any, default: bool = False) -> bool:
@@ -55,7 +57,7 @@ def _finite(value: Any) -> bool:
 
 
 def audit_case_strict(case_dir: str | Path, material_class: str, T_K: float) -> dict[str, Any]:
-    """Return the v9.12 physical audit plus authoritative solver lifecycle state."""
+    """Return physical, lifecycle, and response-stability audit state."""
     root = Path(case_dir)
     physical = asdict(_base.audit_case(root, material_class, T_K))
     summary_path = root / "v9_12_case_summary.json"
@@ -85,20 +87,30 @@ def audit_case_strict(case_dir: str | Path, material_class: str, T_K: float) -> 
     )
     successful_status = solver_status in {"complete", "skipped_complete"}
     case_summary_present = bool(summary_path.exists() and summary)
+    response_classification = str(
+        physical.get("response_classification", "unknown")
+    ).strip().lower()
+    response_gate_passed = response_classification == STABLE_RESPONSE_CLASS
 
-    reasons: list[str] = []
+    lifecycle_reasons: list[str] = []
     if not case_summary_present:
-        reasons.append("missing_v9_12_case_summary")
+        lifecycle_reasons.append("missing_v9_12_case_summary")
     if subprocess_returncode != 0:
-        reasons.append("subprocess_returncode_nonzero")
+        lifecycle_reasons.append("subprocess_returncode_nonzero")
     if not successful_status:
-        reasons.append("solver_status_not_complete")
+        lifecycle_reasons.append("solver_status_not_complete")
     if not target_completed:
-        reasons.append("target_extension_not_completed")
+        lifecycle_reasons.append("target_extension_not_completed")
     if not first_passage_observed:
-        reasons.append("first_passage_not_observed")
+        lifecycle_reasons.append("first_passage_not_observed")
     if not bool(physical.get("full_field_image_present", False)):
-        reasons.append("missing_full_field_image")
+        lifecycle_reasons.append("missing_full_field_image")
+
+    response_reasons: list[str] = []
+    if not response_gate_passed:
+        response_reasons.append(
+            f"response_not_{STABLE_RESPONSE_CLASS}:{response_classification}"
+        )
 
     out = dict(physical)
     out.update(
@@ -112,8 +124,13 @@ def audit_case_strict(case_dir: str | Path, material_class: str, T_K: float) -> 
             "target_completed": target_completed,
             "control_state": control_state,
             "first_passage_observed": first_passage_observed,
-            "solver_gate_passed": not reasons,
-            "solver_gate_failure_reasons": ";".join(reasons),
+            "solver_gate_passed": not lifecycle_reasons,
+            "solver_gate_failure_reasons": ";".join(lifecycle_reasons),
+            "response_gate_passed": response_gate_passed,
+            "response_gate_failure_reasons": ";".join(response_reasons),
+            "case_publication_gate_passed": bool(
+                not lifecycle_reasons and response_gate_passed
+            ),
         }
     )
     return out
@@ -124,6 +141,7 @@ def _interpretation(
     failed_cases: list[str],
     incomplete_cases: list[str],
     non_first_passage_cases: list[str],
+    unstable_response_cases: list[str],
     missing_fields: list[str],
     pairwise_sufficient: bool,
     geometry_pairs: list[dict[str, Any]],
@@ -134,6 +152,8 @@ def _interpretation(
         return "right_censored_or_incomplete_do_not_publish_as_material_R_curves"
     if non_first_passage_cases:
         return "first_passage_not_observed_do_not_publish_as_material_R_curves"
+    if unstable_response_cases:
+        return "unstable_fixed_displacement_propagation_do_not_publish_as_material_R_curves"
     if missing_fields:
         return "missing_required_full_field_outputs"
     if not pairwise_sufficient:
@@ -153,8 +173,10 @@ def audit_campaign(
     """Run a fail-closed material-transfer audit.
 
     Passing requires every case to have a successful subprocess, completed target
-    extension, observed first passage, and required full-field image. At least one
-    pairwise material comparison must exist, and no pair may be geometry dominated.
+    extension, observed first passage, required full-field image, and a stable
+    independent-load resistance sequence rather than a serialized same-load
+    cascade. At least one pairwise material comparison must exist, and no pair may
+    be geometry dominated.
     """
     root = Path(campaign_root)
     class_list = [str(x) for x in classes]
@@ -200,14 +222,22 @@ def audit_campaign(
     non_first_passage_cases = [
         str(c["material_class"]) for c in cases if not c["first_passage_observed"]
     ]
+    unstable_response_cases = [
+        str(c["material_class"]) for c in cases if not c["response_gate_passed"]
+    ]
     missing_case_summaries = [
         str(c["material_class"]) for c in cases if not c["case_summary_present"]
     ]
     n_pairs = len(pairs)
     pairwise_sufficient = n_pairs > 0
-    all_cases_pass = bool(cases) and all(bool(c["solver_gate_passed"]) for c in cases)
+    all_solver_gates_pass = bool(cases) and all(
+        bool(c["solver_gate_passed"]) for c in cases
+    )
+    all_publication_gates_pass = bool(cases) and all(
+        bool(c["case_publication_gate_passed"]) for c in cases
+    )
     gate_passed = bool(
-        all_cases_pass
+        all_publication_gates_pass
         and pairwise_sufficient
         and not geometry_pairs
         and not missing_fields
@@ -216,6 +246,7 @@ def audit_campaign(
         failed_cases=failed_cases,
         incomplete_cases=incomplete_cases,
         non_first_passage_cases=non_first_passage_cases,
+        unstable_response_cases=unstable_response_cases,
         missing_fields=missing_fields,
         pairwise_sufficient=pairwise_sufficient,
         geometry_pairs=geometry_pairs,
@@ -239,9 +270,11 @@ def audit_campaign(
         "failed_solver_cases": sorted(set(failed_cases)),
         "incomplete_or_censored_cases": sorted(set(incomplete_cases)),
         "non_first_passage_cases": sorted(set(non_first_passage_cases)),
+        "unstable_response_cases": sorted(set(unstable_response_cases)),
         "missing_case_summaries": sorted(set(missing_case_summaries)),
         "missing_full_field_images": sorted(set(missing_fields)),
-        "all_case_solver_gates_passed": all_cases_pass,
+        "all_case_solver_gates_passed": all_solver_gates_pass,
+        "all_case_publication_gates_passed": all_publication_gates_pass,
         "material_rcurve_gate_passed": gate_passed,
         "interpretation": interpretation,
         "constitutive_physics_changed": False,
@@ -261,6 +294,7 @@ def audit_campaign(
 
 __all__ = [
     "POINT_RELEASE",
+    "STABLE_RESPONSE_CLASS",
     "audit_case_strict",
     "audit_campaign",
 ]
