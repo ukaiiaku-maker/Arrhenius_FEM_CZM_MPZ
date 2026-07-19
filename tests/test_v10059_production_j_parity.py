@@ -111,7 +111,9 @@ def test_source_transform_compiles_and_preserves_stack():
     result = validate_source_transform_v10059()
     assert result["source_transform_preflight_passed"] is True
     assert result["production_recorder"] is True
-    assert result["production_exclusion"] is True
+    assert result["root_front_production_exclusion"] is True
+    assert result["straight_progressive_no_exclusion"] is True
+    assert result["no_unconditional_kill_r_read"] is True
     assert result["full_audited_v10055_stack"] is True
     assert result["constitutive_physics_changed"] is False
 
