@@ -13,12 +13,13 @@ from arrhenius_fracture.mode_i_first_passage_v10_0_5_13_2_barrier_only import (
     _quality_selected_corridor_mesh_v1005132,
 )
 from arrhenius_fracture.mode_i_first_passage_v10_0_5_13_5_barrier_only import (
+    _union_find_keep_indices_v1005135,
     expanded_candidate_counts_v1005135,
+    make_physical_refinement_mesh_v1005135,
 )
 from arrhenius_fracture.physical_refinement_mesh_v100510 import (
     clear_physical_refinement_v100510,
     configure_physical_refinement_v100510,
-    make_physical_refinement_mesh_v100510,
 )
 
 AUDIT_PATH = Path("v1005135_candidate_audit.json")
@@ -36,7 +37,7 @@ def _candidate_geometry_diagnostics(geom, mesh_cfg):
     out = []
     for count in expanded_candidate_counts_v1005135(110.0, 35.0):
         centers = v91853._centers_for_count(geom, length_m, count)
-        raw = make_physical_refinement_mesh_v100510(
+        raw = make_physical_refinement_mesh_v1005135(
             geom, mesh_cfg, seed=42, tip_center=centers
         )
         compact, audit = v91853._compact_without_quality_abort(raw, centers)
@@ -61,6 +62,9 @@ def _candidate_geometry_diagnostics(geom, mesh_cfg):
                 "worst_triangle_nearest_center_distance_m": float(
                     np.min(np.linalg.norm(centers - centroid[None, :], axis=1))
                 ),
+                "robust_dedup_removed_nodes": int(
+                    getattr(raw, "production_refinement_removed_near_duplicates", 0)
+                ),
                 "compaction_audit": audit,
             }
         )
@@ -71,6 +75,22 @@ def test_expanded_counts_include_low_count_long_corridors():
     counts = expanded_candidate_counts_v1005135(110.0, 35.0)
     assert counts[0] == 2
     assert counts[-1] >= 8
+
+
+def test_radius_dedup_merges_points_across_rounding_bin_boundary():
+    geom = GeometryConfig()
+    points = np.array(
+        [
+            [601.261762741483e-6, 0.0],
+            [601.31875e-6, 0.0],
+            [602.1784640155221e-6, 3.766653210214303e-6],
+        ],
+        dtype=float,
+    )
+    keep = _union_find_keep_indices_v1005135(
+        points, tolerance_m=0.125e-6, protected_start=len(points), geom=geom
+    )
+    assert len(keep) == 2
 
 
 def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch):
@@ -94,7 +114,7 @@ def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch
     had_original = hasattr(fn, "_original")
     saved_original = getattr(fn, "_original", None)
     saved_counts = v91853._candidate_counts
-    fn._original = make_physical_refinement_mesh_v100510
+    fn._original = make_physical_refinement_mesh_v1005135
     v91853._candidate_counts = expanded_candidate_counts_v1005135
     configure_physical_refinement_v100510(330.0e-6)
     v91852._STARTUP_AUDIT.clear()
@@ -129,11 +149,18 @@ def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch
             "test_mesh_node_count": int(mesh.nn),
             "test_mesh_triangle_count": int(mesh.ne),
             "test_minimum_triangle_quality": float(np.min(quality)),
+            "test_dedup_policy": getattr(
+                mesh, "production_refinement_policy", None
+            ),
+            "test_removed_near_duplicates": int(
+                getattr(mesh, "production_refinement_removed_near_duplicates", 0)
+            ),
         }
     )
     assert np.all(np.isfinite(mesh.area_e))
     assert np.all(mesh.area_e > 0.0)
     assert float(np.min(quality)) >= 0.035
+    assert getattr(mesh, "production_refinement_removed_near_duplicates", 0) > 0
     audit = v91852._STARTUP_AUDIT
     assert audit["startup_resolution_warning"] in (True, False)
     assert audit["tip_h_over_da_enforced_as_veto"] is False
