@@ -14,13 +14,13 @@ TARGET_EXT_UM=${TARGET_EXT_UM:-}
 
 case "$MODE" in
   smoke)
-    DEFAULT_OUTROOT=runs/v10_0_5_12_phase_c_smoke_DBTT_700K_50um_v1
+    DEFAULT_OUTROOT=runs/v10_0_5_12_2_phase_c_smoke_DBTT_700K_50um_v1
     ;;
   anchors)
-    DEFAULT_OUTROOT=runs/v10_0_5_12_phase_c_500um_theta45_v1
+    DEFAULT_OUTROOT=runs/v10_0_5_12_2_phase_c_500um_theta45_v1
     ;;
   full)
-    DEFAULT_OUTROOT=runs/v10_0_5_12_phase_c_500um_theta45_v1
+    DEFAULT_OUTROOT=runs/v10_0_5_12_2_phase_c_500um_theta45_v1
     ;;
   *)
     echo "ERROR: MODE must be smoke, anchors, or full" >&2
@@ -39,7 +39,7 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 args=(
-  "$PYTHON_BIN" run_v10_0_5_12_1_phase_c_monotonic.py
+  "$PYTHON_BIN" run_v10_0_5_12_2_phase_c_monotonic.py
   --mode "$MODE"
   --python-bin "$PYTHON_BIN"
   --conda-env "$CONDA_ENV"
