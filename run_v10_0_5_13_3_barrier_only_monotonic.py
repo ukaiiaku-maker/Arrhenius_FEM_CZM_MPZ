@@ -13,6 +13,21 @@ POINT_RELEASE = "10.0.5.13.3"
 ENTRY_MODULE = (
     "arrhenius_fracture.mode_i_first_passage_v10_0_5_13_3_barrier_only"
 )
+TIP_ONLY_POLICY = {
+    "policy_id": "preserve_existing_tip_only_moving_mpz_v1005133",
+    "bulk_plasticity_mode": "tip_only",
+    "mpz_length_um": 100.0,
+    "mpz_n_bins": 80,
+    "candidate_source_inventory_applied": False,
+    "candidate_source_refresh_applied": False,
+    "candidate_encounter_recovery_applied": False,
+    "candidate_shielding_blunting_applied": False,
+    "candidate_initial_state_applied": False,
+    "state_configuration_source": "existing_tip_only_2d_solver_and_explicit_cli",
+    "state_evolution_source": "existing_moving_crack_tip_MPZ",
+    "continuum_bulk_role": "elastic_fem_only",
+    "uniform_bulk_mobile_retained_state_active": False,
+}
 _ORIGINAL_BUILD = _base._build_command
 _ORIGINAL_PREFLIGHT = _base._preflight
 _ULTIMATE = _base._base._base
@@ -146,11 +161,15 @@ def main():
     saved_release = _base.POINT_RELEASE
     saved_complete = _ULTIMATE._case_is_complete
     saved_summarize = _ULTIMATE._summarize
+    saved_policy = _ULTIMATE.TWO_D_STATE_POLICY
     _base._build_command = _build_command
     _base._preflight = _preflight
     _base.POINT_RELEASE = POINT_RELEASE
     _ULTIMATE._case_is_complete = _tip_only_case_is_complete
     _ULTIMATE._summarize = _tip_only_summarize
+    # Scope the tip-only campaign metadata and MPZ resolution to this release.
+    # The shared v10.0.5.13 registry remains unchanged for legacy contracts.
+    _ULTIMATE.TWO_D_STATE_POLICY = dict(TIP_ONLY_POLICY)
     try:
         return _base.main()
     finally:
@@ -159,6 +178,7 @@ def main():
         _base.POINT_RELEASE = saved_release
         _ULTIMATE._case_is_complete = saved_complete
         _ULTIMATE._summarize = saved_summarize
+        _ULTIMATE.TWO_D_STATE_POLICY = saved_policy
 
 
 if __name__ == "__main__":
@@ -168,6 +188,7 @@ if __name__ == "__main__":
 __all__ = [
     "POINT_RELEASE",
     "ENTRY_MODULE",
+    "TIP_ONLY_POLICY",
     "_build_command",
     "_tip_only_case_is_complete",
     "_tip_only_summarize",
