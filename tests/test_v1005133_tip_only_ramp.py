@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
@@ -8,19 +7,21 @@ from types import SimpleNamespace
 import pytest
 
 from arrhenius_fracture.barrier_only_response_registry_v100513 import (
-    TWO_D_STATE_POLICY,
+    TWO_D_STATE_POLICY as LEGACY_POLICY,
 )
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_3_barrier_only as entry
 import run_v10_0_5_13_3_barrier_only_monotonic as runner
 
 
-def test_campaign_policy_is_tip_only_moving_mpz():
-    assert TWO_D_STATE_POLICY["bulk_plasticity_mode"] == "tip_only"
-    assert TWO_D_STATE_POLICY["state_evolution_source"] == (
-        "existing_moving_crack_tip_MPZ"
-    )
-    assert TWO_D_STATE_POLICY["continuum_bulk_role"] == "elastic_fem_only"
-    assert TWO_D_STATE_POLICY["uniform_bulk_mobile_retained_state_active"] is False
+def test_campaign_policy_is_tip_only_and_legacy_policy_is_unchanged():
+    policy = runner.TIP_ONLY_POLICY
+    assert policy["bulk_plasticity_mode"] == "tip_only"
+    assert policy["state_evolution_source"] == "existing_moving_crack_tip_MPZ"
+    assert policy["continuum_bulk_role"] == "elastic_fem_only"
+    assert policy["uniform_bulk_mobile_retained_state_active"] is False
+    # v10.0.5.13.3 must not retroactively alter older release contracts.
+    assert LEGACY_POLICY["bulk_plasticity_mode"] == "bulk_same_pt_km"
+    assert LEGACY_POLICY["policy_id"] == "preserve_existing_full_2d_state_v100513"
 
 
 def test_command_forces_tip_only_and_new_entry(monkeypatch, tmp_path: Path):
