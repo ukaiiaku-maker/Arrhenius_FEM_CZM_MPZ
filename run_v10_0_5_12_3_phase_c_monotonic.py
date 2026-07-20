@@ -22,8 +22,10 @@ import run_v10_0_5_12_2_phase_c_monotonic as _live
 
 POINT_RELEASE = "10.0.5.12.3"
 ENTRY_MODULE = "arrhenius_fracture.mode_i_first_passage_v10_0_5_12_3_phase_c"
+LIVE_STATUS_SCHEMA = "phase_c_live_status_v10_0_5_12_3"
 _ORIGINAL_RADIUS_BUILD = _radius.build_command
 _ORIGINAL_PREFLIGHT = _base.preflight
+_ORIGINAL_WRITE_LIVE_STATUS = _live.write_live_status
 
 
 def ensure_numpy_trapz_compat() -> None:
@@ -46,6 +48,14 @@ def build_command(py, args, option_key, T_K, target_um, case_dir):
         raise RuntimeError(f"Phase-C command lacks expected entry module {old_module}") from exc
     cmd[index] = ENTRY_MODULE
     return cmd
+
+
+def write_live_status(case_dir, payload):
+    """Stamp inherited live-status records with the active point release."""
+    revised = dict(payload)
+    revised["schema"] = LIVE_STATUS_SCHEMA
+    revised["point_release"] = POINT_RELEASE
+    _ORIGINAL_WRITE_LIVE_STATUS(case_dir, revised)
 
 
 def preflight(py, run_tests):
@@ -81,15 +91,18 @@ def main() -> None:
     saved_live_release = _live.POINT_RELEASE
     saved_radius_build = _radius.build_command
     saved_preflight = _base.preflight
+    saved_write_live_status = _live.write_live_status
     _live.POINT_RELEASE = POINT_RELEASE
     _radius.build_command = build_command
     _base.preflight = preflight
+    _live.write_live_status = write_live_status
     try:
         _live.main()
     finally:
         _live.POINT_RELEASE = saved_live_release
         _radius.build_command = saved_radius_build
         _base.preflight = saved_preflight
+        _live.write_live_status = saved_write_live_status
 
 
 if __name__ == "__main__":
@@ -99,8 +112,10 @@ if __name__ == "__main__":
 __all__ = [
     "POINT_RELEASE",
     "ENTRY_MODULE",
+    "LIVE_STATUS_SCHEMA",
     "ensure_numpy_trapz_compat",
     "build_command",
+    "write_live_status",
     "preflight",
     "main",
     "_base",
