@@ -50,6 +50,13 @@ jobs:
         run: python -m pytest -q tests/test_v1005134_tip_only_policy_propagation.py
       - name: Test real 100 um physical-refinement corridor
         run: python -m pytest -q -s tests/test_v1005135_long_corridor.py
+      - name: Upload 100 um corridor candidate audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1005135-candidate-audit
+          path: v1005135_candidate_audit.json
+          if-no-files-found: error
       - name: Test inherited Phase-C repairs
         run: python -m pytest -q tests/test_v1005123_phase_c_repairs.py
       - name: Test inherited MPZ and mechanics contracts
