@@ -32,15 +32,17 @@ jobs:
           bash -n run_v10_0_5_13_barrier_only_monotonic.sh
           bash -n run_v10_0_5_13_2_barrier_only_monotonic.sh
           bash -n run_v10_0_5_13_3_barrier_only_monotonic.sh
-      - name: Test barrier-only, tip-only, ramp, startup, and restart contracts
-        run: |
-          python -m pytest -q \
-            tests/test_v100513_barrier_only.py \
-            tests/test_v1005131_preserved_state.py \
-            tests/test_v1005132_startup_resolution_warning.py \
-            tests/test_v1005133_tip_only_ramp.py \
-            tests/test_v1005123_phase_c_repairs.py
-      - name: Test inherited MPZ, quality, refinement, and mechanics contracts
+      - name: Test legacy barrier-only contracts
+        run: python -m pytest -q tests/test_v100513_barrier_only.py
+      - name: Test preserved-state contracts
+        run: python -m pytest -q tests/test_v1005131_preserved_state.py
+      - name: Test startup resolution policy
+        run: python -m pytest -q tests/test_v1005132_startup_resolution_warning.py
+      - name: Test tip-only adaptive ramp contracts
+        run: python -m pytest -q tests/test_v1005133_tip_only_ramp.py
+      - name: Test inherited Phase-C repairs
+        run: python -m pytest -q tests/test_v1005123_phase_c_repairs.py
+      - name: Test inherited MPZ and mechanics contracts
         run: |
           python -m pytest -q \
             tests/test_state_coupled_material_differentiation_v91858.py \
