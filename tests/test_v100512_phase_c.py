@@ -17,7 +17,7 @@ from arrhenius_fracture.mpz_response_registry_v100512 import (
     load_option,
     load_registry,
 )
-import run_v10_0_5_12_phase_c_monotonic as campaign
+import run_v10_0_5_12_1_phase_c_monotonic as campaign
 
 
 def _campaign_args() -> Namespace:
@@ -56,11 +56,17 @@ def test_authoritative_four_option_registry():
 
 
 def test_full_matrix_is_exactly_40_cases():
-    options, temperatures, target = campaign.default_matrix("full")
+    options, temperatures, target = campaign._base.default_matrix("full")
     assert options == PRIMARY_OPTION_KEYS
     assert temperatures == tuple(range(300, 1201, 100))
     assert target == 500.0
     assert len(options) * len(temperatures) == 40
+
+
+def test_cluster_j_physical_radius_converts_to_legacy_length():
+    assert campaign.cluster_j_legacy_length_m(240.0) == pytest.approx(30.0e-6)
+    with pytest.raises(ValueError):
+        campaign.cluster_j_legacy_length_m(0.0)
 
 
 def test_command_uses_exact_option_grid_and_validated_mechanics(tmp_path: Path):
@@ -85,6 +91,10 @@ def test_command_uses_exact_option_grid_and_validated_mechanics(tmp_path: Path):
     assert "--max-fronts 1" in text
     assert "--bulk-plasticity-mode tip_only" in text
     assert "--adaptive-event-target 0.15" in text
+    cluster_index = command.index("--rJ-cluster")
+    assert float(command[cluster_index + 1]) == pytest.approx(30.0e-6)
+    local_index = command.index("--rJ-outer")
+    assert float(command[local_index + 1]) == pytest.approx(100.0e-6)
 
 
 def test_phase_c_entry_composes_registry_and_refinement(monkeypatch, tmp_path: Path):
@@ -120,7 +130,7 @@ def test_phase_c_entry_composes_registry_and_refinement(monkeypatch, tmp_path: P
             "--mpz-length-um", "50",
             "--mpz-n-bins", "80",
             "--max-fronts", "1",
-            "--rJ-cluster", "240e-6",
+            "--rJ-cluster", "30e-6",
             "--rJ-outer", "100e-6",
             "--out", str(out),
         ]
