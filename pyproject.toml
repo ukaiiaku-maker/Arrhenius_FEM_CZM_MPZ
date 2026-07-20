@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.12.2"
-description = "Arrhenius FEM/CZM solver with live-reporting four-option Phase-C runner"
+version = "10.0.5.12.3"
+description = "Arrhenius FEM/CZM solver with repaired live-reporting Phase-C runner"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
