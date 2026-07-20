@@ -1,0 +1,42 @@
+name: Verify v10.0.5.13 barrier-only FEM-CZM
+
+on:
+  push:
+    branches: [v10.0.5.13-barrier-only-state-coupled-monotonic]
+  pull_request:
+    branches: [v10.0.5.11-same-mesh-energy-release-audit]
+
+jobs:
+  verify-v100513:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install FEM-CZM package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile release entries
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/barrier_only_response_registry_v100513.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_13_barrier_only.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_13_1_barrier_only.py \
+            run_v10_0_5_13_barrier_only_monotonic.py \
+            run_v10_0_5_13_1_barrier_only_monotonic.py
+          bash -n run_v10_0_5_13_barrier_only_monotonic.sh
+      - name: Test barrier-only and restart contracts
+        run: |
+          python -m pytest -q \
+            tests/test_v100513_barrier_only.py \
+            tests/test_v1005131_preserved_state.py \
+            tests/test_v1005123_phase_c_repairs.py
+      - name: Test inherited state-coupled and mechanics contracts
+        run: |
+          python -m pytest -q \
+            tests/test_state_coupled_material_differentiation_v91858.py \
+            tests/test_subsegment_aware_quality_certification_v91857.py \
+            tests/test_explicit_quality_wrapper_chain_v91856.py \
+            tests/test_v100510_refinement_support.py \
+            tests/test_v100511_same_mesh_energy.py
