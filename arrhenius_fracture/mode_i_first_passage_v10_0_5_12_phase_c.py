@@ -11,6 +11,11 @@ No barrier is fitted or mutated here.  The selected registry row is fingerprinte
 materialized as a one-row v9.11 CSV, and consumed by the existing constitutive
 parser.  Mobile shielding is forced to the registry value zero; retained state is
 the only explicit unresolved shielding contribution.
+
+``sharp_front --rJ-cluster`` accepts a legacy domain length ``ell`` whose actual
+outer contour radius is approximately ``8*ell``.  Phase C exposes the requested
+physical outer radius and converts it exactly once before validating the solver
+argument.
 """
 from __future__ import annotations
 
@@ -40,9 +45,10 @@ from .physical_refinement_mesh_v100510 import (
     make_physical_refinement_mesh_v100510,
 )
 
-POINT_RELEASE = "10.0.5.12"
-MODEL_ID = "FEM_CZM_Phase_C_four_option_monotonic_v10_0_5_12"
+POINT_RELEASE = "10.0.5.12.1"
+MODEL_ID = "FEM_CZM_Phase_C_four_option_monotonic_v10_0_5_12_1"
 PRODUCTION_MANIFEST = "phase_c_production_manifest_v10_0_5_12.json"
+CLUSTER_J_RADIUS_TO_LEGACY_ELL = 8.0
 
 
 def _utc_now() -> str:
@@ -95,6 +101,13 @@ def _require_int_or_set(argv: list[str], name: str, expected: int) -> None:
     if value is not None and int(value) != int(expected):
         raise SystemExit(f"{name}={value} conflicts with Phase-C value {expected}")
     _replace_option(argv, name, str(int(expected)))
+
+
+def cluster_j_legacy_length_m(physical_outer_radius_um: float) -> float:
+    radius_um = float(physical_outer_radius_um)
+    if not math.isfinite(radius_um) or radius_um <= 0.0:
+        raise ValueError("cluster-J physical outer radius must be finite and positive")
+    return radius_um * 1.0e-6 / CLUSTER_J_RADIUS_TO_LEGACY_ELL
 
 
 class _RegistryKineticConfig(_BaseKineticConfig):
@@ -165,13 +178,14 @@ def main(argv: list[str] | None = None):
     manifest_csv = option.write_selected_csv(input_dir / "selected_parameter_manifest.csv")
     manifest = option.material_manifest(source_path=str(manifest_csv.resolve()))
 
+    cluster_ell_m = cluster_j_legacy_length_m(cluster_um)
     _replace_option(remaining, "--v10-material-source", PARAMETER_SOURCE)
     _replace_option(remaining, "--v10-material-class", option.option_key)
     _replace_option(remaining, "--mpz-material-manifest", str(manifest_csv.resolve()))
     _replace_option(remaining, "--mpz-material-class", option.canonical_class)
     _require_close_or_set(remaining, "--mpz-length-um", option.mpz_length_um)
     _require_int_or_set(remaining, "--mpz-n-bins", option.mpz_n_bins)
-    _require_close_or_set(remaining, "--rJ-cluster", cluster_um * 1.0e-6)
+    _require_close_or_set(remaining, "--rJ-cluster", cluster_ell_m)
     _require_close_or_set(remaining, "--rJ-outer", local_um * 1.0e-6)
     _replace_option(remaining, "--crack-backend", "adaptive_czm")
     _replace_option(remaining, "--max-fronts", "1")
@@ -207,7 +221,7 @@ def main(argv: list[str] | None = None):
         return manifest_csv.resolve()
 
     status: dict[str, Any] = {
-        "schema": "phase_c_production_manifest_v10_0_5_12",
+        "schema": "phase_c_production_manifest_v10_0_5_12_1",
         "model": MODEL_ID,
         "point_release": POINT_RELEASE,
         "started_utc": _utc_now(),
@@ -220,6 +234,8 @@ def main(argv: list[str] | None = None):
         "selected_manifest_csv": str(manifest_csv.resolve()),
         "selected_manifest_sha256": _sha256(manifest_csv),
         "selected_cluster_J_outer_um": cluster_um,
+        "cluster_J_legacy_length_m": cluster_ell_m,
+        "cluster_J_radius_to_legacy_ell": CLUSTER_J_RADIUS_TO_LEGACY_ELL,
         "local_J_outer_um": local_um,
         "refinement": {
             "requested_radius_um": radius_um,
@@ -294,4 +310,11 @@ if __name__ == "__main__":
     main()
 
 
-__all__ = ["POINT_RELEASE", "MODEL_ID", "PRODUCTION_MANIFEST", "main"]
+__all__ = [
+    "POINT_RELEASE",
+    "MODEL_ID",
+    "PRODUCTION_MANIFEST",
+    "CLUSTER_J_RADIUS_TO_LEGACY_ELL",
+    "cluster_j_legacy_length_m",
+    "main",
+]
