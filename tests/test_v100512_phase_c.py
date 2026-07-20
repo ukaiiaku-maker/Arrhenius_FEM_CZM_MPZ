@@ -18,6 +18,7 @@ from arrhenius_fracture.mpz_response_registry_v100512 import (
     load_registry,
 )
 import run_v10_0_5_12_1_phase_c_monotonic as campaign
+import run_v10_0_5_12_2_phase_c_monotonic as live
 
 
 def _campaign_args() -> Namespace:
@@ -95,6 +96,29 @@ def test_command_uses_exact_option_grid_and_validated_mechanics(tmp_path: Path):
     assert float(command[cluster_index + 1]) == pytest.approx(30.0e-6)
     local_index = command.index("--rJ-outer")
     assert float(command[local_index + 1]) == pytest.approx(100.0e-6)
+
+
+def test_live_progress_parser_extracts_solver_state():
+    line = (
+        "  [T=700K] step  425  KJ= 24.413  sig_tip=  9.74GPa  "
+        "B=  0.153  N_em=     0.00  a=0.520mm"
+    )
+    parsed = live.parse_progress_line(line)
+    assert parsed == {
+        "T_K": 700.0,
+        "step": 425,
+        "KJ_MPa_sqrt_m": pytest.approx(24.413),
+        "B": pytest.approx(0.153),
+        "N_em": pytest.approx(0.0),
+        "a_mm": pytest.approx(0.520),
+    }
+
+
+def test_live_reporting_selects_configuration_lines():
+    assert live.selected_diagnostic_line(
+        "da_phys=5.000e-06 m, local J outer radius=1.000e-04 m, cluster J outer radius=2.400e-04 m"
+    )
+    assert not live.selected_diagnostic_line("ordinary unselected solver message")
 
 
 def test_phase_c_entry_composes_registry_and_refinement(monkeypatch, tmp_path: Path):
