@@ -31,6 +31,42 @@ def _persist_audit(extra=None):
     AUDIT_PATH.write_text(json.dumps(payload, indent=2, default=str))
 
 
+def _candidate_geometry_diagnostics(geom, mesh_cfg):
+    length_m = 110.0e-6
+    out = []
+    for count in expanded_candidate_counts_v1005135(110.0, 35.0):
+        centers = v91853._centers_for_count(geom, length_m, count)
+        raw = make_physical_refinement_mesh_v100510(
+            geom, mesh_cfg, seed=42, tip_center=centers
+        )
+        compact, audit = v91853._compact_without_quality_abort(raw, centers)
+        quality = v91852._triangle_quality(compact.nodes, compact.elems)
+        index = int(np.argmin(quality))
+        tri = compact.nodes[compact.elems[index]]
+        edge_lengths = [
+            float(np.linalg.norm(tri[1] - tri[0])),
+            float(np.linalg.norm(tri[2] - tri[1])),
+            float(np.linalg.norm(tri[0] - tri[2])),
+        ]
+        centroid = np.mean(tri, axis=0)
+        out.append(
+            {
+                "center_count": int(count),
+                "centers_m": centers.tolist(),
+                "minimum_triangle_quality": float(quality[index]),
+                "worst_triangle_index": index,
+                "worst_triangle_nodes_m": tri.tolist(),
+                "worst_triangle_centroid_m": centroid.tolist(),
+                "worst_triangle_edge_lengths_m": edge_lengths,
+                "worst_triangle_nearest_center_distance_m": float(
+                    np.min(np.linalg.norm(centers - centroid[None, :], axis=1))
+                ),
+                "compaction_audit": audit,
+            }
+        )
+    return out
+
+
 def test_expanded_counts_include_low_count_long_corridors():
     counts = expanded_candidate_counts_v1005135(110.0, 35.0)
     assert counts[0] == 2
@@ -66,7 +102,15 @@ def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch
         try:
             mesh = fn(geom, mesh_cfg, seed=42, tip_center=None)
         except Exception as exc:
-            _persist_audit({"test_exception_type": type(exc).__name__, "test_exception": str(exc)})
+            _persist_audit(
+                {
+                    "test_exception_type": type(exc).__name__,
+                    "test_exception": str(exc),
+                    "candidate_geometry_diagnostics": _candidate_geometry_diagnostics(
+                        geom, mesh_cfg
+                    ),
+                }
+            )
             pytest.fail(
                 f"100 um corridor construction failed: {exc}\n"
                 + json.dumps(v91852._STARTUP_AUDIT, indent=2, default=str)
