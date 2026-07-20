@@ -28,6 +28,7 @@ case "$MODE" in
     ;;
 esac
 OUTROOT=${OUTROOT:-$DEFAULT_OUTROOT}
+mkdir -p "$OUTROOT"
 
 if [[ -z "$PYTHON_BIN" ]]; then
   if [[ "${CONDA_DEFAULT_ENV:-}" == "$CONDA_ENV" ]]; then
@@ -38,7 +39,7 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 args=(
-  "$PYTHON_BIN" run_v10_0_5_12_phase_c_monotonic.py
+  "$PYTHON_BIN" run_v10_0_5_12_1_phase_c_monotonic.py
   --mode "$MODE"
   --python-bin "$PYTHON_BIN"
   --conda-env "$CONDA_ENV"
