@@ -1,4 +1,4 @@
-# v10.0.5.13.1 barrier-only, state-coupled FEM/CZM campaign
+# v10.0.5.13.3 barrier-only tip/source-only FEM/CZM campaign
 
 ## Purpose
 
@@ -12,12 +12,11 @@ The active solver remains the inherited full FEM/CZM stack:
 - cubic anisotropic elasticity at 45 degrees;
 - domain J integral;
 - adaptive-CZM topology and geometry-quality transactions;
-- state-coupled `bulk_same_pt_km` mobile/retained continuum state;
-- moving process-zone transport, retention, release, recovery, shielding, and
-  blunting;
+- elastic continuum bulk under the validated `tip_only` coupling;
+- moving crack-tip MPZ source activity, emission, transport, retention,
+  clearing, shielding, and crack-advance renewal;
 - conservative rollback and existing completion/audit layers;
-- productionized 330 um physical refinement support with 240 um cluster J and
-  100 um local J.
+- 330 um physical refinement support with 240 um cluster J and 100 um local J.
 
 No solver subsystem is removed or replaced.
 
@@ -30,23 +29,40 @@ The response registry supplies only:
 - Peierls barrier, entropy, shape, and attempt frequency;
 - Taylor barrier, entropy, shape, and attempt frequency.
 
-The following candidate-specific reduced-model fields are recorded as
-provenance but are not applied:
+Candidate-specific source count/density, source refresh, encounter/retention,
+shielding, back-stress, blunting, MPZ-grid recommendation, Taylor-correlation,
+and developed-state fields are recorded as provenance but are not applied.
 
-- source sites or source density;
-- source refresh or time recovery;
-- encounter/retention coefficients;
-- shielding magnitude or clipping;
-- back-stress weights;
-- blunting coefficient;
-- MPZ length/bin recommendation;
-- Taylor-correlation closure values;
-- developed-state initialization.
+## Tip/source-only policy
 
-v10.0.5.13.1 also avoids assigning nominal common replacements for those
-fields.  Their active values are whatever the existing full 2-D solver and
-explicit CLI construct.  The campaign fixes only the common validation mode and
-resolution: `bulk_same_pt_km`, 100 um MPZ, and 80 bins.
+The campaign explicitly requires:
+
+- `bulk_plasticity_mode = tip_only`;
+- continuum bulk role = elastic FEM only;
+- source interpretation = moving crack-tip MPZ only;
+- no uniform bulk mobile/retained state;
+- restart/completion verification of the same policy.
+
+## Rate-preserving adaptive macro-ramp
+
+The historical loading rate is defined by:
+
+```text
+dU = 2e-7 m
+dt = 8.4 s
+```
+
+The v10.0.5.13.3 launcher defaults to a 100x numerical macro-step:
+
+```text
+dU = 2e-5 m
+dt = 840 s
+```
+
+The physical rate `dU/dt` is unchanged.  The existing adaptive-event
+controller multiplies both values by the same accepted trial fraction near a
+kinetic event.  The launcher rejects an accidental loading-rate change unless
+`ALLOW_RATE_CHANGE=1` is explicitly supplied for a rate study.
 
 ## Four barrier options
 
@@ -71,26 +87,19 @@ Long 500 um calculations should be selected after inspecting the 100 um map.
 
 ## Restart behavior
 
-A case is skipped only when all of the following are verified:
+A case is skipped only when the requested target extension and barrier-only
+manifest are complete, the barrier option matches, 330 um refinement support
+is verified, and both the production and v9.11 integration audits confirm
+`tip_only` with the moving crack-tip MPZ and no uniform bulk mobile/retained
+state.
 
-- requested target extension was reached;
-- barrier-only production manifest completed without exception;
-- candidate state fields were not applied;
-- 330 um physical refinement metadata was verified;
-- explicit bulk mobile/retained state was active;
-- at least one bulk-state update occurred.
-
-Any other existing case directory is treated as an interrupted/non-resumable
-partial case.  Its command, manifests, and final 200 log lines are archived in
-`interrupted_case_logs/`, the partial directory is removed, and that case is
-rerun from its initial state.  Completed compatible cases are retained.
+Any incompatible or interrupted case is archived by command/manifests/log tail,
+removed, and rerun cleanly.
 
 ## New-install isolation
 
-`run_v10_0_5_13_barrier_only_monotonic.sh` resolves its project root from its own
-location and refuses to launch unless the imported `arrhenius_fracture` package
-resolves inside that same directory.  This prevents the historical shared
-namespace from loading `PF-fracture-fatigue` or a deleted legacy worktree.
+The version-specific launcher resolves its root from its own location and
+refuses to launch unless `arrhenius_fracture` resolves inside that installation.
 
 ## Validation
 
@@ -100,10 +109,9 @@ python -m pip install -e . --no-deps
 python -m pytest -q \
   tests/test_v100513_barrier_only.py \
   tests/test_v1005131_preserved_state.py \
+  tests/test_v1005132_startup_resolution_warning.py \
+  tests/test_v1005133_tip_only_ramp.py \
   tests/test_v1005123_phase_c_repairs.py
 
-bash -n run_v10_0_5_13_barrier_only_monotonic.sh
+bash -n run_v10_0_5_13_3_barrier_only_monotonic.sh
 ```
-
-The complete inherited mechanics/state subset is also exercised by the
-release-specific GitHub Actions workflow.
