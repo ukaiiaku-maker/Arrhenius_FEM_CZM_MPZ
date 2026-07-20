@@ -59,10 +59,16 @@ dU = 2e-5 m
 dt = 840 s
 ```
 
-The physical rate `dU/dt` is unchanged.  The existing adaptive-event
-controller multiplies both values by the same accepted trial fraction near a
-kinetic event.  The launcher rejects an accidental loading-rate change unless
+The physical rate `dU/dt` is unchanged. The existing adaptive-event controller
+multiplies both values by the same accepted trial fraction near a kinetic event.
+The launcher rejects an accidental loading-rate change unless
 `ALLOW_RATE_CHANGE=1` is explicitly supplied for a rate study.
+
+The 100x step is a screening acceleration, not assumed convergence. The first
+DBTT 700 K case must be compared against a 50x case (`dU=1e-5`, `dt=420`) using
+first-event K, emitted/retained state at first event, and the 0--20 um R-curve.
+The 100x step is promoted to the 40-case sweep only when those results agree
+within the campaign tolerance.
 
 ## Four barrier options
 
