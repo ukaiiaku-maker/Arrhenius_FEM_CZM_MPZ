@@ -20,10 +20,10 @@ PRINT_EVERY=${PRINT_EVERY:-25}
 
 case "$MODE" in
   smoke)
-    DEFAULT_OUTROOT="$ROOT_DIR/runs/v10_0_5_13_barrier_only_DBTT_700K_20um_smoke_v1"
+    DEFAULT_OUTROOT="$ROOT_DIR/runs/v10_0_5_13_1_barrier_only_DBTT_700K_20um_smoke_v1"
     ;;
   full)
-    DEFAULT_OUTROOT="$ROOT_DIR/runs/v10_0_5_13_barrier_only_4class_300_1200K_100um_v1"
+    DEFAULT_OUTROOT="$ROOT_DIR/runs/v10_0_5_13_1_barrier_only_4class_300_1200K_100um_v1"
     ;;
   *)
     echo "ERROR: MODE must be smoke or full" >&2
@@ -56,7 +56,7 @@ if [[ "$ACTUAL_PACKAGE" != "$EXPECTED_PACKAGE" ]]; then
 fi
 
 args=(
-  "$PYTHON_BIN" "$ROOT_DIR/run_v10_0_5_13_barrier_only_monotonic.py"
+  "$PYTHON_BIN" "$ROOT_DIR/run_v10_0_5_13_1_barrier_only_monotonic.py"
   --mode "$MODE"
   --python-bin "$PYTHON_BIN"
   --conda-env "$CONDA_ENV"
@@ -86,6 +86,7 @@ fi
 printf 'FEM/CZM installation: %s\n' "$ROOT_DIR"
 printf 'Python: %s\n' "$PYTHON_BIN"
 printf 'Output: %s\n' "$OUTROOT"
+printf 'Point release: 10.0.5.13.1\n'
 printf 'Launching:'
 printf ' %q' "${args[@]}"
 printf '\n'
