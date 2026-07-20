@@ -9,16 +9,18 @@ import numpy as np
 import pytest
 
 from arrhenius_fracture import crack_backend
-from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_barrier_only as entry
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_1_barrier_only as entry
 from arrhenius_fracture import mode_i_first_passage_v9_18_5 as v9185
 from arrhenius_fracture.barrier_only_response_registry_v100513 import (
     BARRIER_FIELDS,
     IGNORED_CANDIDATE_STATE_FIELDS,
+    LEGACY_COMPATIBILITY_PLACEHOLDERS,
     PRIMARY_OPTION_KEYS,
     TWO_D_STATE_POLICY,
     load_barrier_option,
 )
-import run_v10_0_5_13_barrier_only_monotonic as campaign
+import run_v10_0_5_13_barrier_only_monotonic as base_campaign
+import run_v10_0_5_13_1_barrier_only_monotonic as campaign
 
 
 def _campaign_args() -> Namespace:
@@ -64,26 +66,27 @@ def test_four_options_transfer_only_barrier_fields():
         assert "c_blunt" not in option.barrier_row
 
 
-def test_legacy_compatibility_row_uses_common_2d_state_not_candidate_state():
+def test_legacy_state_columns_are_non_authoritative_placeholders():
     option = load_barrier_option("dbtt_primary")
     assert option.ignored_candidate_state["source_sites_per_system"] == pytest.approx(
         141.0590567476921
     )
     row = option.legacy_row()
     assert row["source_sites_per_system"] == pytest.approx(
-        TWO_D_STATE_POLICY["source_sites_per_system"]
+        LEGACY_COMPATIBILITY_PLACEHOLDERS["source_sites_per_system"]
     )
     assert row["source_sites_per_system"] != pytest.approx(
         option.ignored_candidate_state["source_sites_per_system"]
     )
-    assert row["source_refresh_length_um"] == pytest.approx(
-        TWO_D_STATE_POLICY["source_refresh_length_um"]
-    )
-    assert row["c_blunt"] == pytest.approx(TWO_D_STATE_POLICY["c_blunt"])
+    assert row["legacy_state_columns_are_non_authoritative_placeholders"] is True
     assert row["two_d_state_policy_id"] == TWO_D_STATE_POLICY["policy_id"]
+    audit = option.audit_payload()
+    assert audit["legacy_state_placeholders_consumed"] is False
+    assert audit["two_d_state_policy"]["candidate_source_inventory_applied"] is False
+    assert audit["two_d_state_policy"]["candidate_shielding_blunting_applied"] is False
 
 
-def test_full_command_uses_state_coupled_2d_policy(tmp_path: Path):
+def test_full_command_uses_state_coupled_preserved_state_entry(tmp_path: Path):
     command = campaign._build_command(
         "/example/python",
         _campaign_args(),
@@ -92,14 +95,16 @@ def test_full_command_uses_state_coupled_2d_policy(tmp_path: Path):
         100.0,
         tmp_path / "case",
     )
-    assert command[2] == "arrhenius_fracture.mode_i_first_passage_v10_0_5_13_barrier_only"
+    assert command[2] == (
+        "arrhenius_fracture.mode_i_first_passage_v10_0_5_13_1_barrier_only"
+    )
     assert command[command.index("--bulk-plasticity-mode") + 1] == "bulk_same_pt_km"
     assert float(command[command.index("--mpz-length-um") + 1]) == pytest.approx(100.0)
     assert int(command[command.index("--mpz-n-bins") + 1]) == 80
     assert float(command[command.index("--target-crack-extension-um") + 1]) == pytest.approx(100.0)
     assert float(command[command.index("--tip-refinement-radius-um") + 1]) == pytest.approx(330.0)
     assert float(command[command.index("--selected-cluster-J-outer-um") + 1]) == pytest.approx(240.0)
-    assert float(entry.cluster_j_legacy_length_m(240.0)) == pytest.approx(30.0e-6)
+    assert float(entry._base.cluster_j_legacy_length_m(240.0)) == pytest.approx(30.0e-6)
 
 
 def test_entry_preserves_refinement_metadata_and_records_barrier_only_contract(
@@ -126,7 +131,7 @@ def test_entry_preserves_refinement_metadata_and_records_barrier_only_contract(
         v9185._RUNTIME["mesh"] = mesh
         return [{"T_K": 700.0}]
 
-    monkeypatch.setattr(entry._solver, "main", fake_solver)
+    monkeypatch.setattr(entry._base._solver, "main", fake_solver)
     out = tmp_path / "case"
     result = entry.main(
         [
@@ -159,11 +164,14 @@ def test_entry_preserves_refinement_metadata_and_records_barrier_only_contract(
     assert result == [{"T_K": 700.0}]
     assert crack_backend.rebuild_tri_mesh is original_rebuild
     payload = json.loads((out / entry.PRODUCTION_MANIFEST).read_text())
-    assert payload["point_release"] == "10.0.5.13"
+    assert payload["point_release"] == "10.0.5.13.1"
     assert payload["run_completed_without_exception"] is True
     assert payload["candidate_state_fields_applied"] is False
     assert payload["bulk_plasticity_mode"] == "bulk_same_pt_km"
     assert payload["mesh_refinement_runtime"]["actual_radius_verified"] is True
+    repair = payload["nonbarrier_state_assignment_repair"]
+    assert repair["common_state_values_reassigned"] is False
+    assert repair["barrier_hooks_changed_only"] is True
     ignored = payload["barrier_option"]["candidate_state_fields_ignored"]
     assert "source_sites_per_system" in ignored
     assert "source_refresh_length_um" in ignored
@@ -175,7 +183,7 @@ def test_restart_gate_skips_only_verified_complete_state_coupled_case(
 ):
     case = tmp_path / "dbtt_primary" / "T0700"
     case.mkdir(parents=True)
-    (case / campaign.STATUS_FILE).write_text(
+    (case / base_campaign.STATUS_FILE).write_text(
         json.dumps(
             {
                 "status": "complete",
@@ -203,20 +211,20 @@ def test_restart_gate_skips_only_verified_complete_state_coupled_case(
             }
         )
     )
-    monkeypatch.setattr(campaign, "completion_status", lambda *_: (True, 100.0))
-    assert campaign._case_is_complete(case, "dbtt_primary", 100.0)
+    monkeypatch.setattr(base_campaign, "completion_status", lambda *_: (True, 100.0))
+    assert base_campaign._case_is_complete(case, "dbtt_primary", 100.0)
 
     production = json.loads((case / entry.PRODUCTION_MANIFEST).read_text())
     production["candidate_state_fields_applied"] = True
     (case / entry.PRODUCTION_MANIFEST).write_text(json.dumps(production))
-    assert not campaign._case_is_complete(case, "dbtt_primary", 100.0)
+    assert not base_campaign._case_is_complete(case, "dbtt_primary", 100.0)
 
     production["candidate_state_fields_applied"] = False
     (case / entry.PRODUCTION_MANIFEST).write_text(json.dumps(production))
     bulk = json.loads(bulk_path.read_text())
     bulk["bulk_state_update_calls"] = 0
     bulk_path.write_text(json.dumps(bulk))
-    assert not campaign._case_is_complete(case, "dbtt_primary", 100.0)
+    assert not base_campaign._case_is_complete(case, "dbtt_primary", 100.0)
 
 
 def test_shell_launcher_has_valid_syntax_and_root_import_guard():
@@ -227,4 +235,4 @@ def test_shell_launcher_has_valid_syntax_and_root_import_guard():
     assert 'ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)' in text
     assert "ACTUAL_PACKAGE" in text
     assert "EXPECTED_PACKAGE" in text
-    assert "run_v10_0_5_13_barrier_only_monotonic.py" in text
+    assert "run_v10_0_5_13_1_barrier_only_monotonic.py" in text
