@@ -22,7 +22,7 @@ from .mpz_response_registry_v100512 import (
     normalize_option_key,
 )
 
-POINT_RELEASE = "10.0.5.13"
+POINT_RELEASE = "10.0.5.13.3"
 PARAMETER_SOURCE = "mpz_v9_11_1_barriers_only"
 
 BARRIER_FIELDS = (
@@ -70,13 +70,13 @@ IGNORED_CANDIDATE_STATE_FIELDS = (
     "taylor_corr_scale",
 )
 
-# Campaign controls common to all materials.  Only resolution/mode are fixed
-# here.  The source, recovery, shielding, blunting, encounter, correlation, and
-# initial-state fields remain whatever the existing full 2-D solver and its CLI
-# construct.  This is deliberate: they are not material-row transfers.
+# Campaign controls common to all materials. The validated monotonic model is
+# tip/source only: the surrounding FEM bulk remains elastic, while source
+# activity, transport, retention, clearing, shielding, and renewal evolve in
+# the moving crack-tip MPZ. Candidate rows do not configure those state laws.
 TWO_D_STATE_POLICY: dict[str, Any] = {
-    "policy_id": "preserve_existing_full_2d_state_v100513",
-    "bulk_plasticity_mode": "bulk_same_pt_km",
+    "policy_id": "preserve_existing_tip_only_moving_mpz_v1005133",
+    "bulk_plasticity_mode": "tip_only",
     "mpz_length_um": 100.0,
     "mpz_n_bins": 80,
     "candidate_source_inventory_applied": False,
@@ -84,16 +84,15 @@ TWO_D_STATE_POLICY: dict[str, Any] = {
     "candidate_encounter_recovery_applied": False,
     "candidate_shielding_blunting_applied": False,
     "candidate_initial_state_applied": False,
-    "state_configuration_source": "existing_full_2d_solver_and_explicit_cli",
-    "state_evolution_source": (
-        "existing_FEM_bulk_same_pt_km_plus_existing_moving_process_zone"
-    ),
+    "state_configuration_source": "existing_tip_only_2d_solver_and_explicit_cli",
+    "state_evolution_source": "existing_moving_crack_tip_MPZ",
+    "continuum_bulk_role": "elastic_fem_only",
+    "uniform_bulk_mobile_retained_state_active": False,
 }
 
 # The legacy v9.11 parser requires these columns even though v10.0.5.13
-# intercepts the row before the old state-loading functions consume them.  The
-# values match the original class-independent solver defaults and are marked as
-# non-authoritative compatibility placeholders in every audit.
+# intercepts the row before the old state-loading functions consume them. The
+# values are compatibility placeholders only and are marked non-authoritative.
 LEGACY_COMPATIBILITY_PLACEHOLDERS: dict[str, float] = {
     "source_sites_per_system": 200.0,
     "encounter_efficiency": 1.0,
@@ -122,11 +121,7 @@ class BarrierOnlyOptionV100513:
     ignored_candidate_state: dict[str, Any]
 
     def legacy_row(self, manifest_path: str | None = None) -> dict[str, Any]:
-        """Return a compatibility row for the unchanged v9.11 call contract.
-
-        The compatibility state columns are never authoritative and are not
-        consumed by the v10.0.5.13 MPZ or bulk-state builders.
-        """
+        """Return a compatibility row for the unchanged v9.11 call contract."""
         row = {
             **self.barrier_row,
             "option_key": self.option_key,
