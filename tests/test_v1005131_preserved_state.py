@@ -71,7 +71,6 @@ def test_mpz_builder_preserves_existing_namespace_state_configuration():
         mpz_pair_annihilation_rate_per_count_s=0.002,
         mpz_blunting_length_m=3.2e-6,
         mpz_blunting_slip_fraction=0.58,
-        pt_encounter_efficiency=2.6,
         pt_forest_density_floor_m2=8.0e13,
         pt_peierls_stress_fraction=0.45,
         pt_taylor_stress_fraction=0.35,
@@ -95,7 +94,6 @@ def test_mpz_builder_preserves_existing_namespace_state_configuration():
     assert cfg.retained_recovery_barrier_eV == pytest.approx(1.75)
     assert cfg.blunting_length_m == pytest.approx(3.2e-6)
     assert cfg.blunting_slip_fraction == pytest.approx(0.58)
-    assert cfg.pt_encounter_efficiency == pytest.approx(2.6)
     assert cfg.pt_forest_density_floor_m2 == pytest.approx(8.0e13)
     assert cfg.pt_peierls_stress_fraction == pytest.approx(0.45)
     assert cfg.pt_taylor_stress_fraction == pytest.approx(0.35)
