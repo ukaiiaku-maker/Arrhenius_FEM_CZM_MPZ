@@ -3,8 +3,8 @@
 The v9.11.1 response registry contains both Arrhenius barrier parameters and
 reduced-model state/closure parameters.  This adapter transfers only the four
 barrier surfaces and their attempt frequencies.  Source inventory, source
-refresh, encounter/retention, shielding, blunting, MPZ discretization, and
-initial state remain one common 2-D solver policy for every option.
+refresh, encounter/retention, shielding, blunting, and initial state remain
+owned by the existing 2-D solver configuration and are not reassigned here.
 """
 from __future__ import annotations
 
@@ -70,39 +70,38 @@ IGNORED_CANDIDATE_STATE_FIELDS = (
     "taylor_corr_scale",
 )
 
-# Common solver-native state policy.  These values are independent of response
-# option and reproduce the pre-parameter-overlay 2-D defaults rather than the
-# candidate-specific 0-D/1-D state fit.  The state itself still evolves during
-# the FEM/CZM solve.
+# Campaign controls common to all materials.  Only resolution/mode are fixed
+# here.  The source, recovery, shielding, blunting, encounter, correlation, and
+# initial-state fields remain whatever the existing full 2-D solver and its CLI
+# construct.  This is deliberate: they are not material-row transfers.
 TWO_D_STATE_POLICY: dict[str, Any] = {
-    "policy_id": "full_2d_common_state_v100513",
+    "policy_id": "preserve_existing_full_2d_state_v100513",
     "bulk_plasticity_mode": "bulk_same_pt_km",
     "mpz_length_um": 100.0,
     "mpz_n_bins": 80,
+    "candidate_source_inventory_applied": False,
+    "candidate_source_refresh_applied": False,
+    "candidate_encounter_recovery_applied": False,
+    "candidate_shielding_blunting_applied": False,
+    "candidate_initial_state_applied": False,
+    "state_configuration_source": "existing_full_2d_solver_and_explicit_cli",
+    "state_evolution_source": (
+        "existing_FEM_bulk_same_pt_km_plus_existing_moving_process_zone"
+    ),
+}
+
+# The legacy v9.11 parser requires these columns even though v10.0.5.13
+# intercepts the row before the old state-loading functions consume them.  The
+# values match the original class-independent solver defaults and are marked as
+# non-authoritative compatibility placeholders in every audit.
+LEGACY_COMPATIBILITY_PLACEHOLDERS: dict[str, float] = {
     "source_sites_per_system": 200.0,
-    "source_recovery_rate_s": 0.0,
-    "source_refresh_length_um": 0.25,
-    "source_bin_count": 2,
-    "shielding_orientation_factors": [1.0, 1.0],
-    "mobile_shield_fraction": 0.0,
-    "shielding_core_m": 2.5e-10,
-    "retained_recovery_nu0_s": 1.0e9,
-    "retained_recovery_barrier_eV": 1.50,
-    "retained_recovery_activation_volume_b3": 0.0,
-    "mobile_recovery_rate_s": 0.0,
-    "pair_annihilation_rate_per_count_s": 0.0,
-    "blunting_length_um": 0.5,
-    "blunting_slip_fraction": 1.0,
-    "c_blunt": 1.0,
     "encounter_efficiency": 1.0,
-    "forest_density_floor_m2": 5.0e12,
-    "peierls_stress_fraction": 1.0 / (3.0 ** 0.5),
-    "taylor_stress_fraction": 1.0 / (3.0 ** 0.5),
+    "retained_recovery_rate_s": 0.0,
+    "source_refresh_length_um": 0.25,
+    "c_blunt": 1.0,
     "taylor_corr_rho_c_m2": 1.0e14,
-    "taylor_renewal_time_s": 1.0e-9,
-    "taylor_m_exponent": 1.0,
-    "taylor_m_scale": 1.0,
-    "taylor_m_cap": float("inf"),
+    "taylor_corr_scale": 1.0,
 }
 
 
@@ -123,11 +122,10 @@ class BarrierOnlyOptionV100513:
     ignored_candidate_state: dict[str, Any]
 
     def legacy_row(self, manifest_path: str | None = None) -> dict[str, Any]:
-        """Return a compatibility row for the unchanged v9.11 parser.
+        """Return a compatibility row for the unchanged v9.11 call contract.
 
-        State fields are populated from the common 2-D policy solely because the
-        legacy parser requires those column names.  They never come from the
-        candidate row.
+        The compatibility state columns are never authoritative and are not
+        consumed by the v10.0.5.13 MPZ or bulk-state builders.
         """
         row = {
             **self.barrier_row,
@@ -135,18 +133,11 @@ class BarrierOnlyOptionV100513:
             "candidate_id": self.candidate_id,
             "target_class": self.canonical_class,
             "selection_role": "primary",
-            "source_sites_per_system": TWO_D_STATE_POLICY["source_sites_per_system"],
-            "encounter_efficiency": TWO_D_STATE_POLICY["encounter_efficiency"],
-            # Compatibility-only scalar.  The v10.0.5.13 config builder retains
-            # the solver's activated recovery law instead of consuming this.
-            "retained_recovery_rate_s": 0.0,
-            "source_refresh_length_um": TWO_D_STATE_POLICY["source_refresh_length_um"],
-            "c_blunt": TWO_D_STATE_POLICY["c_blunt"],
-            "taylor_corr_rho_c_m2": TWO_D_STATE_POLICY["taylor_corr_rho_c_m2"],
-            "taylor_corr_scale": TWO_D_STATE_POLICY["taylor_m_scale"],
+            **LEGACY_COMPATIBILITY_PLACEHOLDERS,
             "parameter_source": PARAMETER_SOURCE,
             "barrier_fingerprint_sha256": self.barrier_fingerprint_sha256,
             "two_d_state_policy_id": TWO_D_STATE_POLICY["policy_id"],
+            "legacy_state_columns_are_non_authoritative_placeholders": True,
         }
         if manifest_path is not None:
             row["parameter_manifest"] = str(manifest_path)
@@ -188,6 +179,8 @@ class BarrierOnlyOptionV100513:
             "source_registry_path": self.source_registry_path,
             "candidate_state_fields_ignored": self.ignored_candidate_state,
             "two_d_state_policy": TWO_D_STATE_POLICY,
+            "legacy_compatibility_placeholders": LEGACY_COMPATIBILITY_PLACEHOLDERS,
+            "legacy_state_placeholders_consumed": False,
         }
 
 
@@ -232,6 +225,7 @@ __all__ = [
     "BARRIER_FIELDS",
     "IGNORED_CANDIDATE_STATE_FIELDS",
     "TWO_D_STATE_POLICY",
+    "LEGACY_COMPATIBILITY_PLACEHOLDERS",
     "BarrierOnlyOptionV100513",
     "load_barrier_option",
 ]
