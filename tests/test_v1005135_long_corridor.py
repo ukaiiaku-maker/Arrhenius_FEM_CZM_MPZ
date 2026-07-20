@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -19,6 +20,15 @@ from arrhenius_fracture.physical_refinement_mesh_v100510 import (
     configure_physical_refinement_v100510,
     make_physical_refinement_mesh_v100510,
 )
+
+AUDIT_PATH = Path("v1005135_candidate_audit.json")
+
+
+def _persist_audit(extra=None):
+    payload = dict(v91852._STARTUP_AUDIT)
+    if extra:
+        payload.update(extra)
+    AUDIT_PATH.write_text(json.dumps(payload, indent=2, default=str))
 
 
 def test_expanded_counts_include_low_count_long_corridors():
@@ -56,6 +66,7 @@ def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch
         try:
             mesh = fn(geom, mesh_cfg, seed=42, tip_center=None)
         except Exception as exc:
+            _persist_audit({"test_exception_type": type(exc).__name__, "test_exception": str(exc)})
             pytest.fail(
                 f"100 um corridor construction failed: {exc}\n"
                 + json.dumps(v91852._STARTUP_AUDIT, indent=2, default=str)
@@ -69,6 +80,13 @@ def test_real_100um_physical_refinement_corridor_meets_quality_floor(monkeypatch
             delattr(fn, "_original")
 
     quality = v91852._triangle_quality(mesh.nodes, mesh.elems)
+    _persist_audit(
+        {
+            "test_mesh_node_count": int(mesh.nn),
+            "test_mesh_triangle_count": int(mesh.ne),
+            "test_minimum_triangle_quality": float(np.min(quality)),
+        }
+    )
     assert np.all(np.isfinite(mesh.area_e))
     assert np.all(mesh.area_e > 0.0)
     assert float(np.min(quality)) >= 0.035
