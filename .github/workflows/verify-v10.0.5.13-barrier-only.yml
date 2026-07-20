@@ -1,4 +1,4 @@
-name: Verify v10.0.5.13.4 tip-only barrier FEM-CZM
+name: Verify v10.0.5.13.5 long-corridor barrier FEM-CZM
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [v10.0.5.11-same-mesh-energy-release-audit]
 
 jobs:
-  verify-v1005134:
+  verify-v1005135:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,15 +26,18 @@ jobs:
             arrhenius_fracture/mode_i_first_passage_v10_0_5_13_2_barrier_only.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_13_3_barrier_only.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_13_4_barrier_only.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_13_5_barrier_only.py \
             run_v10_0_5_13_barrier_only_monotonic.py \
             run_v10_0_5_13_1_barrier_only_monotonic.py \
             run_v10_0_5_13_2_barrier_only_monotonic.py \
             run_v10_0_5_13_3_barrier_only_monotonic.py \
-            run_v10_0_5_13_4_barrier_only_monotonic.py
+            run_v10_0_5_13_4_barrier_only_monotonic.py \
+            run_v10_0_5_13_5_barrier_only_monotonic.py
           bash -n run_v10_0_5_13_barrier_only_monotonic.sh
           bash -n run_v10_0_5_13_2_barrier_only_monotonic.sh
           bash -n run_v10_0_5_13_3_barrier_only_monotonic.sh
           bash -n run_v10_0_5_13_4_barrier_only_monotonic.sh
+          bash -n run_v10_0_5_13_5_barrier_only_monotonic.sh
       - name: Test legacy barrier-only contracts
         run: python -m pytest -q tests/test_v100513_barrier_only.py
       - name: Test preserved-state contracts
@@ -45,6 +48,8 @@ jobs:
         run: python -m pytest -q tests/test_v1005133_tip_only_ramp.py
       - name: Test full tip-only policy propagation
         run: python -m pytest -q tests/test_v1005134_tip_only_policy_propagation.py
+      - name: Test real 100 um physical-refinement corridor
+        run: python -m pytest -q -s tests/test_v1005135_long_corridor.py
       - name: Test inherited Phase-C repairs
         run: python -m pytest -q tests/test_v1005123_phase_c_repairs.py
       - name: Test inherited MPZ and mechanics contracts
