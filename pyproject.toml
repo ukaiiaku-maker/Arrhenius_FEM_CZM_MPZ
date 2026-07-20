@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.13"
-description = "Full 2-D Arrhenius FEM/CZM solver with barrier-only four-option transfer"
+version = "10.0.5.13.1"
+description = "Full 2-D Arrhenius FEM/CZM solver with barrier-only transfer and preserved state configuration"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
