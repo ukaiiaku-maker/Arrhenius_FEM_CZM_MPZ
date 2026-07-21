@@ -44,8 +44,10 @@ largest-jump localization      >= 0.50
 10-90 percent transition width <= 200 K
 ```
 
-A candidate also fails unless it develops nonzero signed GND content, GND
-stress, and signed shielding.
+A 1-D candidate also fails unless it develops nonzero signed GND content, GND
+stress, and signed shielding. The homogeneous 0-D gate requires signed retained
+state and shielding but does not require spatial GND stress, which cannot be
+defined from a one-cell gradient.
 
 ## State variables and equations
 
@@ -66,7 +68,7 @@ kappa[alpha,i] = rho_r[alpha,+,i] - rho_r[alpha,-,i].
 The forest density is
 
 ```text
-rho_f[alpha] = rho_floor + sum_beta a[alpha,beta] rho_total[beta].
+rho_f[alpha] = rho_floor + sum_beta a_forest[alpha,beta] rho_total[beta].
 ```
 
 The mean free path, Peierls velocity, and storage rate are
@@ -96,15 +98,21 @@ balance and residence time.
 The same `kappa` field generates the internal resolved stress and shielding:
 
 ```text
-tau_GND[alpha,i] = sum_beta,j K_tau[alpha,beta,i,j] kappa[beta,j]
-K_shield          = sum_alpha,j K_K[alpha,j] kappa[alpha,j].
+tau_GND[alpha,i] = sum_beta,j P_GND[alpha,beta]
+                   K_tau[i,j] kappa[beta,j]
+K_shield          = sum_alpha,j f_K[alpha] K_K[j] kappa[alpha,j].
 ```
+
+The forest-interaction matrix `a_forest` and signed mechanical projection matrix
+`P_GND` are separate fixed objects. The former is nonnegative and controls
+forest obstacle density; the latter maps system-resolved signed GND stresses
+into each resolved channel and may contain signed geometric projections.
 
 The 1-D screen includes regularized analytical edge-dislocation kernels. The
 2-D adapter accepts mechanically measured kernels sampled at the same physical
-MPZ cell centers. Kernels, slip interaction coefficients, source-zone width,
-mean-free-path coefficient, and annihilation capture radius are common physics,
-not candidate parameters.
+MPZ cell centers. Kernels, forest interactions, GND projections, source-zone
+width, mean-free-path coefficient, and annihilation capture radius are common
+physics, not candidate parameters.
 
 ## Physical source convention
 
@@ -217,9 +225,10 @@ python -u scripts/run_mpz_v9_12_emergent_gnd_screen.py \
   --out runs/v9_12_emergent_gnd_0d_sobol_4096_v1
 ```
 
-`0d` collapses the MPZ to one physical cell while preserving the same source,
-storage, release, recovery and objective definitions. It is a topology screen,
-not a spatial validation.
+`0d` collapses the MPZ to one homogeneous physical cell while preserving the
+same source, storage, release, recovery and objective definitions. Crack advance
+updates source exposure but does not advect the homogeneous state out of the
+single cell. It is a topology screen, not a spatial GND validation.
 
 ## Stage 2: full 1-D moving-PZ screen
 
@@ -250,7 +259,7 @@ For each mechanical trial:
    the state and exposing pristine source-bearing material.
 
 The first 2-D gate should retain one active front, branching off, 50 um / 80
-bins, and the measured signed active-zone kernel.
+bins, and mechanically measured signed active-zone kernels.
 
 ## Required diagnostics
 
@@ -269,16 +278,16 @@ Pi_release = lambda_T_completion * residence_time
 ```
 
 A candidate fails if a sharp resistance increment is not accompanied by a
-coincident GND/internal-stress/shielding transition.
+coincident GND/internal-stress/shielding transition in the 1-D or 2-D stage.
 
 ## Current limitations
 
 - The 1-D analytical kernels are isotropic regularized edge-dislocation kernels.
   Production 2-D validation should replace them with mechanically measured
   tungsten/crystal-specific kernels.
-- The initial common slip-interaction matrix is simple and fixed. It should be
-  replaced by a geometry-derived BCC matrix before publication use, not fitted
-  per candidate.
+- The initial forest-interaction and GND-stress projection matrices are simple
+  and fixed. They should be replaced by geometry-derived BCC matrices before
+  publication use, not fitted per candidate.
 - Distributed full-field crystal plasticity is not introduced.
 - Activation in the production FEM/CZM driver remains a separate validation
   gate; this branch provides the parallel campaign and trial/commit interface.
