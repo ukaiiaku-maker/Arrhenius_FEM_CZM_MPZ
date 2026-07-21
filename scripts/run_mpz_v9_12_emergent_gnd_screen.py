@@ -7,6 +7,7 @@ import csv
 from dataclasses import replace
 import json
 from pathlib import Path
+from statistics import median
 import sys
 from typing import Any
 
@@ -83,6 +84,23 @@ def load_rows(path: str | Path) -> list[dict[str, Any]]:
     return rows
 
 
+def values_in_window(
+    result: Any,
+    field_name: str,
+    window_um: tuple[float, float],
+) -> list[float]:
+    values = list(getattr(result, field_name))
+    if len(values) != len(result.extensions_um):
+        raise RuntimeError(
+            f"{field_name} length differs from extension checkpoint length"
+        )
+    return [
+        float(value)
+        for extension, value in zip(result.extensions_um, values)
+        if window_um[0] <= float(extension) <= window_um[1]
+    ]
+
+
 def write_ranking(path: Path, records: list[dict[str, Any]]) -> None:
     if not records:
         return
@@ -101,6 +119,10 @@ def write_ranking(path: Path, records: list[dict[str, Any]]) -> None:
         "max_gnd_abs_line_count_per_unit_thickness",
         "min_source_available_fraction",
         "min_source_available_fraction_pre_advance",
+        "median_abs_K_shield_developed_window_MPa_sqrt_m",
+        "median_abs_tau_gnd_tip_developed_window_MPa",
+        "median_gnd_abs_line_count_developed_window_per_unit_thickness",
+        "min_source_available_fraction_pre_advance_developed_window",
     ]
     ordered = sorted(records, key=lambda row: float(row["score"]), reverse=True)
     with path.open("w", newline="") as fp:
@@ -117,6 +139,7 @@ def main() -> int:
     physics = load_physics(args.physics_json, args.stage)
     protocol = load_protocol_csv(args.protocol_csv)
     rows = load_rows(args.candidate_registry)
+    window_um = tuple(float(value) for value in args.window_um)
 
     print(
         "CAMPAIGN_START "
@@ -145,7 +168,7 @@ def main() -> int:
                 target_cleavage_rate_s=args.target_cleavage_rate_s,
             )
             results.append(result)
-            developed_value = developed_delta_K(result, tuple(args.window_um))
+            developed_value = developed_delta_K(result, window_um)
             developed.append(developed_value)
             if not args.compact_output:
                 dump_result_json(
@@ -174,6 +197,47 @@ def main() -> int:
             for result in results
             for value in result.source_available_fraction_pre_advance
         ]
+        developed_shield = [
+            abs(value)
+            for result in results
+            for value in values_in_window(
+                result, "K_shield_MPa_sqrt_m", window_um
+            )
+        ]
+        developed_tau = [
+            abs(value)
+            for result in results
+            for value in values_in_window(result, "tau_gnd_tip_MPa", window_um)
+        ]
+        developed_gnd = [
+            value
+            for result in results
+            for value in values_in_window(
+                result,
+                "gnd_abs_line_count_per_unit_thickness",
+                window_um,
+            )
+        ]
+        developed_source_pre = [
+            value
+            for result in results
+            for value in values_in_window(
+                result,
+                "source_available_fraction_pre_advance",
+                window_um,
+            )
+        ]
+        if not (
+            developed_shield
+            and developed_tau
+            and developed_gnd
+            and developed_source_pre
+        ):
+            raise RuntimeError(
+                f"candidate {candidate.candidate_id} has no diagnostics in "
+                f"developed window {window_um}"
+            )
+
         record = {
             "candidate_id": candidate.candidate_id,
             "stage": args.stage,
@@ -201,6 +265,18 @@ def main() -> int:
                     v for result in results for v in result.source_available_fraction
                 )
             ),
+            "median_abs_K_shield_developed_window_MPa_sqrt_m": float(
+                median(developed_shield)
+            ),
+            "median_abs_tau_gnd_tip_developed_window_MPa": float(
+                median(developed_tau)
+            ),
+            "median_gnd_abs_line_count_developed_window_per_unit_thickness": float(
+                median(developed_gnd)
+            ),
+            "min_source_available_fraction_pre_advance_developed_window": float(
+                min(developed_source_pre)
+            ),
         }
         signed_state_active = (
             record["max_abs_K_shield_MPa_sqrt_m"] > 1.0e-6
@@ -222,7 +298,7 @@ def main() -> int:
                 "candidate_id": candidate.candidate_id,
                 "stage": args.stage,
                 "temperatures_K": list(args.temperatures),
-                "developed_window_um": list(args.window_um),
+                "developed_window_um": list(window_um),
                 "developed_delta_K_micro_MPa_sqrt_m": developed,
                 "objective": record,
                 "K0_target_or_penalty_active": False,
@@ -247,7 +323,7 @@ def main() -> int:
             "protocol_csv": str(Path(args.protocol_csv).resolve()),
             "physics_json": str(Path(args.physics_json).resolve()),
             "temperatures_K": list(args.temperatures),
-            "developed_window_um": list(args.window_um),
+            "developed_window_um": list(window_um),
             "K0_target_or_penalty_active": False,
             "compact_output": bool(args.compact_output),
             "ranked_candidates": sorted(
