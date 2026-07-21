@@ -94,7 +94,7 @@ class EmergentGNDState:
 
     def forest_density_m2(self) -> np.ndarray:
         total = np.sum(self.mobile_m2 + self.retained_m2, axis=1)
-        interaction = np.asarray(self.c.slip_interaction_matrix, dtype=float)
+        interaction = np.asarray(self.c.forest_interaction_matrix, dtype=float)
         return np.maximum(
             self.c.rho_forest_floor_m2 + interaction @ total,
             1.0,
@@ -104,7 +104,7 @@ class EmergentGNDState:
         own = np.asarray(
             [self._gnd_kernel @ row for row in self.signed_gnd_m2()]
         )
-        return np.asarray(self.c.slip_interaction_matrix, dtype=float) @ own
+        return np.asarray(self.c.gnd_stress_projection_matrix, dtype=float) @ own
 
     def K_shield_MPa_sqrt_m(self) -> float:
         factors = np.asarray(self.c.shielding_orientation_factors, dtype=float)
@@ -388,6 +388,17 @@ class EmergentGNDState:
     def translate_tip(self, da_m: float) -> None:
         da = max(float(da_m), 0.0)
         if da <= 0.0:
+            return
+        if self.c.n_bins == 1:
+            refresh = 1.0 - math.exp(
+                -da / max(self.p.source_refresh_length_m, 1.0e-30)
+            )
+            self.source_available_m2 = np.minimum(
+                self.source_available_m2
+                + (self.source_capacity_m2 - self.source_available_m2) * refresh,
+                self.source_capacity_m2,
+            )
+            self.extension_m += da
             return
         sample = self.x + da
         for array in (self.mobile_m2, self.retained_m2):
