@@ -34,6 +34,11 @@ def run_temperature_protocol(
             segment.K_start_MPa_sqrt_m + segment.K_end_MPa_sqrt_m
         )
         state.advance_time(segment.duration_s, midpoint_K, T_K)
+
+        # Measure source depletion at the end of the physical dwell, before
+        # moving-tip translation introduces fresh material into the source zone.
+        source_fraction_pre_advance = state.source_available_fraction()
+
         state.translate_tip(segment.da_m)
         if segment.da_m > 0.0:
             tip_speed = segment.da_m / max(segment.duration_s, 1.0e-30)
@@ -56,6 +61,9 @@ def run_temperature_protocol(
         )
         result.source_available_fraction.append(
             diag["source_available_fraction"]
+        )
+        result.source_available_fraction_pre_advance.append(
+            source_fraction_pre_advance
         )
         result.pi_store_max.append(diag["pi_store_max"])
         result.pi_release_max.append(diag["pi_release_max"])
