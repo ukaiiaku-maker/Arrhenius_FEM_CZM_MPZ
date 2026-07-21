@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "purpose": "Initial mechanism-first search bounds. Cleavage parameters are inherited from the selected base row and K0(T) is not scored.",
+  "search_bounds": {
+    "emit_G00_eV": {"low": 0.8, "high": 5.0, "scale": "linear"},
+    "emit_gT_eV_per_K": {"low": -0.002, "high": 0.006, "scale": "linear"},
+    "emit_exp_a": {"low": 0.05, "high": 2.5, "scale": "log10"},
+    "emit_exp_n": {"low": 0.5, "high": 2.5, "scale": "linear"},
+    "peierls_H0_eV": {"low": 0.2, "high": 6.0, "scale": "linear"},
+    "peierls_activation_entropy_kB": {"low": -20.0, "high": 25.0, "scale": "linear"},
+    "peierls_exp_a": {"low": 0.1, "high": 3.0, "scale": "log10"},
+    "peierls_exp_n": {"low": 0.5, "high": 2.5, "scale": "linear"},
+    "taylor_H0_eV": {"low": 0.4, "high": 12.0, "scale": "linear"},
+    "taylor_activation_entropy_kB": {"low": -20.0, "high": 25.0, "scale": "linear"},
+    "taylor_exp_a": {"low": 0.1, "high": 3.0, "scale": "log10"},
+    "taylor_exp_n": {"low": 0.5, "high": 2.5, "scale": "linear"},
+    "taylor_corr_rho_c_m2": {"low": 1e12, "high": 1e17, "scale": "log10"},
+    "taylor_corr_scale": {"low": 0.1, "high": 10.0, "scale": "log10"},
+    "rho_source0_m2": {"low": 1e11, "high": 1e16, "scale": "log10"},
+    "source_refresh_length_um": {"low": 1.0, "high": 200.0, "scale": "log10"},
+    "recovery_H0_eV": {"low": 0.2, "high": 5.0, "scale": "linear"},
+    "recovery_activation_entropy_kB": {"low": -10.0, "high": 20.0, "scale": "linear"},
+    "recovery_nu0_s": {"low": 1e6, "high": 1e13, "scale": "log10"}
+  },
+  "constraints_to_apply_after_generation": [
+    "Peierls and Taylor barriers must remain positive over the full stress-temperature screening domain.",
+    "The full Peierls barrier surface should not exceed the Taylor barrier surface where the intended mechanism requires transport before release.",
+    "rho_source0_m2 is a physical areal density; source_sites_per_system is not used by the v9.12 constitutive law.",
+    "The slip interaction matrix, mean-free-path coefficient, elastic kernels, source-zone dimensions, and annihilation capture radius are common physics and are not optimized."
+  ]
+}
