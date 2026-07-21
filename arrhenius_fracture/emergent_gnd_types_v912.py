@@ -124,10 +124,14 @@ class CommonPhysics:
     emission_nu0_s: float = 1.0e11
     emission_signs: tuple[int, ...] = (1, -1)
     emission_schmid_factors: tuple[float, ...] = (1.0, 1.0)
-    shielding_orientation_factors: tuple[float, ...] = (1.0, 1.0)
-    slip_interaction_matrix: tuple[tuple[float, ...], ...] = (
+    shielding_orientation_factors: tuple[float, ...] = (1.0, -1.0)
+    forest_interaction_matrix: tuple[tuple[float, ...], ...] = (
         (1.0, 1.0),
         (1.0, 1.0),
+    )
+    gnd_stress_projection_matrix: tuple[tuple[float, ...], ...] = (
+        (1.0, 0.0),
+        (0.0, 1.0),
     )
     max_fractional_state_change: float = 0.05
     min_substep_s: float = 1.0e-12
@@ -142,11 +146,14 @@ class CommonPhysics:
         ):
             if len(values) != self.n_systems:
                 raise ValueError(f"{name} length must equal n_systems")
-        matrix = np.asarray(self.slip_interaction_matrix, dtype=float)
-        if matrix.shape != (self.n_systems, self.n_systems):
-            raise ValueError("slip_interaction_matrix has wrong shape")
-        if np.any(matrix < 0.0):
-            raise ValueError("slip_interaction_matrix must be nonnegative")
+        forest = np.asarray(self.forest_interaction_matrix, dtype=float)
+        if forest.shape != (self.n_systems, self.n_systems):
+            raise ValueError("forest_interaction_matrix has wrong shape")
+        if np.any(forest < 0.0):
+            raise ValueError("forest_interaction_matrix must be nonnegative")
+        gnd = np.asarray(self.gnd_stress_projection_matrix, dtype=float)
+        if gnd.shape != (self.n_systems, self.n_systems):
+            raise ValueError("gnd_stress_projection_matrix has wrong shape")
         if self.active_strip_width_m <= 0.0:
             raise ValueError("active_strip_width_m must be positive")
 
