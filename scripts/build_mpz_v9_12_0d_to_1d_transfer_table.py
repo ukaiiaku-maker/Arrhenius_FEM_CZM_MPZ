@@ -119,6 +119,17 @@ def objective_value(summary: dict[str, Any] | None, key: str) -> float:
         return math.nan
 
 
+def objective_first(
+    summary: dict[str, Any] | None,
+    *keys: str,
+) -> float:
+    for key in keys:
+        value = objective_value(summary, key)
+        if math.isfinite(value):
+            return value
+    return math.nan
+
+
 def log1p_nonnegative(value: float) -> float:
     return math.log1p(max(float(value), 0.0)) if math.isfinite(value) else math.nan
 
@@ -133,7 +144,6 @@ def main() -> int:
     bound_names = list(bounds_payload.get("search_bounds", bounds_payload))
     root0 = Path(a.zero_d_root)
     root1 = Path(a.one_d_root)
-    status0 = read_status(root0)
     status1 = read_status(root1)
 
     records: list[dict[str, Any]] = []
@@ -167,8 +177,12 @@ def main() -> int:
         rec["x_0d__log1p_max_gnd"] = log1p_nonnegative(
             objective_value(summary0, "max_gnd_abs_line_count_per_unit_thickness")
         )
-        rec["x_0d__min_source_available_fraction"] = objective_value(
-            summary0, "min_source_available_fraction"
+        # The overnight 0-D archive predates the pre-advance diagnostic, so use
+        # it when present and otherwise retain the historical post-advance value.
+        rec["x_0d__min_source_available_fraction"] = objective_first(
+            summary0,
+            "min_source_available_fraction_pre_advance",
+            "min_source_available_fraction",
         )
 
         status_one = status1.get(candidate_id, {}).get(
@@ -202,8 +216,42 @@ def main() -> int:
             rec["y__max_tau_gnd_tip_MPa_1d"] = objective_value(
                 summary1, "max_tau_gnd_tip_MPa"
             )
-            rec["y__min_source_available_fraction_1d"] = objective_value(
-                summary1, "min_source_available_fraction"
+            rec["y__min_source_available_fraction_1d"] = objective_first(
+                summary1,
+                "min_source_available_fraction_pre_advance",
+                "min_source_available_fraction",
+            )
+            rec[
+                "y__min_source_available_fraction_pre_advance_developed_window_1d"
+            ] = objective_first(
+                summary1,
+                "min_source_available_fraction_pre_advance_developed_window",
+                "min_source_available_fraction_pre_advance",
+                "min_source_available_fraction",
+            )
+            rec[
+                "y__log1p_median_abs_K_shield_developed_window_1d"
+            ] = log1p_nonnegative(
+                objective_value(
+                    summary1,
+                    "median_abs_K_shield_developed_window_MPa_sqrt_m",
+                )
+            )
+            rec[
+                "y__log1p_median_abs_tau_gnd_tip_developed_window_1d"
+            ] = log1p_nonnegative(
+                objective_value(
+                    summary1,
+                    "median_abs_tau_gnd_tip_developed_window_MPa",
+                )
+            )
+            rec[
+                "y__log1p_median_gnd_abs_line_count_developed_window_1d"
+            ] = log1p_nonnegative(
+                objective_value(
+                    summary1,
+                    "median_gnd_abs_line_count_developed_window_per_unit_thickness",
+                )
             )
         records.append(rec)
 
