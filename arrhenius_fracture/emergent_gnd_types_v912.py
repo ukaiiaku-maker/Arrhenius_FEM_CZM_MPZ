@@ -182,7 +182,11 @@ class TemperatureResult:
     tau_gnd_tip_MPa: list[float] = field(default_factory=list)
     retained_line_count_per_unit_thickness: list[float] = field(default_factory=list)
     gnd_abs_line_count_per_unit_thickness: list[float] = field(default_factory=list)
+    # Historical/post-advance source fraction is retained for compatibility.
     source_available_fraction: list[float] = field(default_factory=list)
+    # Pre-advance value measures source depletion at the end of the loading dwell,
+    # before crack-tip translation introduces fresh material into the source zone.
+    source_available_fraction_pre_advance: list[float] = field(default_factory=list)
     pi_store_max: list[float] = field(default_factory=list)
     pi_release_max: list[float] = field(default_factory=list)
 
