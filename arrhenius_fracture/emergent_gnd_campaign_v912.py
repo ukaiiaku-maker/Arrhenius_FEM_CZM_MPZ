@@ -29,6 +29,7 @@ def run_temperature_protocol(
 ) -> TemperatureResult:
     state = EmergentGNDState(candidate, physics)
     result = TemperatureResult(candidate.candidate_id, float(T_K))
+    result.numerical_integration = state.integration_metadata()
     for segment in protocol:
         midpoint_K = 0.5 * (
             segment.K_start_MPa_sqrt_m + segment.K_end_MPa_sqrt_m
