@@ -1,4 +1,4 @@
-"""Regression tests for near-prefactor v9.12 Arrhenius rates."""
+"""Regression tests for stiff-safe v9.12 Arrhenius state integration."""
 import numpy as np
 
 from arrhenius_fracture.emergent_gnd_dbtt_v912 import (
@@ -39,22 +39,62 @@ def test_near_prefactor_homogeneous_segment_completes():
     assert totals["emitted_per_m"] >= 0.0
 
 
-def test_implicit_transport_handles_large_courant_number():
-    field = np.zeros((1, 2, 16), dtype=float)
-    field[0, 1, :4] = 1.0e14
-    velocity = np.full_like(field, 1.0e3)
-    velocity[:, 0, :] *= -1.0
-
-    transported = EmergentGNDState._advect(
-        field,
-        velocity,
-        dx=1.0e-6,
-        dt=0.1,
+def test_coupled_transport_storage_handles_large_rates():
+    physics = CommonPhysics(
+        n_bins=16,
+        n_systems=2,
+        mpz_length_m=16.0e-6,
+        source_zone_length_m=2.0e-6,
     )
+    state = EmergentGNDState(fast_candidate(), physics)
+    state.mobile_m2[0, 1, :4] = 1.0e14
+    initial = float(np.sum(state.mobile_m2 + state.retained_m2))
 
-    assert np.all(np.isfinite(transported))
-    assert np.all(transported >= 0.0)
-    assert float(np.sum(transported)) <= float(np.sum(field)) * (1.0 + 1.0e-12)
+    rates = {
+        "velocity_m_s": np.vstack(
+            [np.full(16, 1.0e3), np.full(16, 1.0e3)]
+        ),
+        "encounter_s": np.vstack(
+            [np.full(16, 2.0e9), np.full(16, 2.0e9)]
+        ),
+        "taylor_completion_s": np.vstack(
+            [np.full(16, 1.0e8), np.full(16, 1.0e8)]
+        ),
+        "recovery_rate_s": np.asarray(0.0),
+    }
+    state._coupled_mobile_retained(rates, 0.1)
+
+    total = float(np.sum(state.mobile_m2 + state.retained_m2))
+    assert np.all(np.isfinite(state.mobile_m2))
+    assert np.all(np.isfinite(state.retained_m2))
+    assert np.all(state.mobile_m2 >= 0.0)
+    assert np.all(state.retained_m2 >= 0.0)
+    assert total <= initial * (1.0 + 1.0e-12)
+    assert float(np.sum(state.retained_m2)) > 0.0
+
+
+def test_exact_annihilation_preserves_signed_gnd():
+    physics = CommonPhysics(
+        n_bins=4,
+        n_systems=2,
+        mpz_length_m=4.0e-6,
+        source_zone_length_m=1.0e-6,
+    )
+    state = EmergentGNDState(fast_candidate(), physics)
+    state.retained_m2[0, 0] = np.asarray([4.0, 8.0, 2.0, 10.0]) * 1.0e13
+    state.retained_m2[0, 1] = np.asarray([7.0, 3.0, 2.0, 15.0]) * 1.0e13
+    signed_before = state.signed_gnd_m2().copy()
+
+    rates = {
+        "velocity_m_s": np.vstack(
+            [np.full(4, 1.0e3), np.zeros(4)]
+        )
+    }
+    removed = state._annihilate_exact(rates, 0.1)
+
+    assert removed > 0.0
+    assert np.allclose(state.signed_gnd_m2(), signed_before)
+    assert np.all(state.retained_m2 >= 0.0)
 
 
 def test_near_prefactor_spatial_segment_completes():
@@ -72,3 +112,5 @@ def test_near_prefactor_spatial_segment_completes():
     assert np.all(state.mobile_m2 >= 0.0)
     assert np.all(state.retained_m2 >= 0.0)
     assert totals["emitted_per_m"] >= 0.0
+    metadata = state.integration_metadata()
+    assert metadata["spatial_integrator"].startswith("coupled_mobile_retained")
