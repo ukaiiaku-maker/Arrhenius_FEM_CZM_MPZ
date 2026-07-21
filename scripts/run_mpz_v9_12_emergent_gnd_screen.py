@@ -48,10 +48,9 @@ def load_physics(path: str | Path, stage: str) -> CommonPhysics:
     ):
         if key in payload:
             payload[key] = tuple(payload[key])
-    if "slip_interaction_matrix" in payload:
-        payload["slip_interaction_matrix"] = tuple(
-            tuple(row) for row in payload["slip_interaction_matrix"]
-        )
+    for key in ("forest_interaction_matrix", "gnd_stress_projection_matrix"):
+        if key in payload:
+            payload[key] = tuple(tuple(row) for row in payload[key])
     physics = CommonPhysics(**payload)
     if stage == "0d":
         physics = replace(
