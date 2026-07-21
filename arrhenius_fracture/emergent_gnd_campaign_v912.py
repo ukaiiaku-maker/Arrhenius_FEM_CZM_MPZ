@@ -8,7 +8,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .emergent_gnd_state_v912 import EmergentGNDState
+from .emergent_gnd_state_v912_stiff import EmergentGNDState
 from .emergent_gnd_types_v912 import (
     CandidateParameters,
     CommonPhysics,
