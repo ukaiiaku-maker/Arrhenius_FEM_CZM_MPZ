@@ -22,8 +22,9 @@
     "emission_nu0_s": 1e11,
     "emission_signs": [1, -1],
     "emission_schmid_factors": [1.0, 1.0],
-    "shielding_orientation_factors": [1.0, 1.0],
-    "slip_interaction_matrix": [[1.0, 1.0], [1.0, 1.0]],
+    "shielding_orientation_factors": [1.0, -1.0],
+    "forest_interaction_matrix": [[1.0, 1.0], [1.0, 1.0]],
+    "gnd_stress_projection_matrix": [[1.0, 0.0], [0.0, 1.0]],
     "max_fractional_state_change": 0.05,
     "min_substep_s": 1e-12
   },
@@ -33,7 +34,8 @@
     "explicit_N_sat": false,
     "constitutive_K_shield_cap": false,
     "K0_temperature_target": false,
-    "candidate_specific_slip_interaction_matrix": false,
+    "candidate_specific_forest_interaction_matrix": false,
+    "candidate_specific_gnd_stress_projection_matrix": false,
     "candidate_specific_GND_kernel": false,
     "candidate_specific_shielding_kernel": false
   }
