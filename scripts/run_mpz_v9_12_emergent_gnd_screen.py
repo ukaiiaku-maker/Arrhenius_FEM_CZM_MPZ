@@ -34,6 +34,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-amplitude", type=float, default=8.0)
     parser.add_argument("--target-localization", type=float, default=0.50)
     parser.add_argument("--max-width-K", type=float, default=200.0)
+    parser.add_argument(
+        "--compact-output",
+        action="store_true",
+        help=(
+            "Write one candidate_summary.json per candidate but omit the "
+            "per-temperature JSON files. Recommended for large training runs."
+        ),
+    )
+    parser.add_argument(
+        "--quiet-cases",
+        action="store_true",
+        help="Suppress per-temperature CASE_RESULT terminal lines.",
+    )
     return parser.parse_args()
 
 
@@ -133,18 +146,20 @@ def main() -> int:
             results.append(result)
             developed_value = developed_delta_K(result, tuple(args.window_um))
             developed.append(developed_value)
-            dump_result_json(
-                candidate_root / f"T{int(round(T))}K.json",
-                result.as_dict(),
-            )
-            print(
-                "CASE_RESULT "
-                f"candidate={candidate.candidate_id} T={T:g} "
-                f"deltaKmicro={developed_value:.8g} "
-                f"Kshield={result.K_shield_MPa_sqrt_m[-1]:.8g} "
-                f"tauGND_MPa={result.tau_gnd_tip_MPa[-1]:.8g}",
-                flush=True,
-            )
+            if not args.compact_output:
+                dump_result_json(
+                    candidate_root / f"T{int(round(T))}K.json",
+                    result.as_dict(),
+                )
+            if not args.quiet_cases:
+                print(
+                    "CASE_RESULT "
+                    f"candidate={candidate.candidate_id} T={T:g} "
+                    f"deltaKmicro={developed_value:.8g} "
+                    f"Kshield={result.K_shield_MPa_sqrt_m[-1]:.8g} "
+                    f"tauGND_MPa={result.tau_gnd_tip_MPa[-1]:.8g}",
+                    flush=True,
+                )
 
         score = score_microstructural_transition(
             args.temperatures,
@@ -200,6 +215,7 @@ def main() -> int:
                 "K0_target_or_penalty_active": False,
                 "explicit_N_sat_active": False,
                 "independent_backstress_law_active": False,
+                "compact_output": bool(args.compact_output),
             },
         )
         print(
@@ -220,6 +236,7 @@ def main() -> int:
             "temperatures_K": list(args.temperatures),
             "developed_window_um": list(args.window_um),
             "K0_target_or_penalty_active": False,
+            "compact_output": bool(args.compact_output),
             "ranked_candidates": sorted(
                 ranking, key=lambda row: float(row["score"]), reverse=True
             ),
