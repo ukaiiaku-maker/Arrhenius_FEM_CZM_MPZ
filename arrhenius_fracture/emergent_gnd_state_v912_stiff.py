@@ -40,6 +40,13 @@ class EmergentGNDState(_BaseState):
         if remaining <= 0.0:
             return 0.0
 
+        # A final remainder below min_substep_s is a floating-point closure of
+        # the requested physical interval, not an unresolved transport scale.
+        # Advancing that remainder exactly prevents an otherwise harmless tail
+        # such as 1e-14 s after repeated 0.1 s steps from being misclassified.
+        if remaining <= self.c.min_substep_s:
+            return remaining
+
         # Emission, Taylor exchange, and recovery use exact bounded exponential
         # updates in advance_time.  Re-evaluate their state feedback at a common
         # physical interval instead of resolving every elementary attempt.
