@@ -189,6 +189,7 @@ class TemperatureResult:
     source_available_fraction_pre_advance: list[float] = field(default_factory=list)
     pi_store_max: list[float] = field(default_factory=list)
     pi_release_max: list[float] = field(default_factory=list)
+    numerical_integration: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return dict(vars(self))
