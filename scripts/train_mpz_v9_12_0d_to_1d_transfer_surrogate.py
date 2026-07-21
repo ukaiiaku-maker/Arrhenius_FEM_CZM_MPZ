@@ -3,7 +3,7 @@
 
 The model learns spatial attenuation/amplification, 1-D amplitude, transition
 location, persistence, shielding, and the probability of retaining at least
-50 MPa sqrt(m).  Large 0-D responses remain in the training data and are handled
+50 MPa sqrt(m). Large 0-D responses remain in the training data and are handled
 with logarithmic targets rather than removed by an upper-amplitude cutoff.
 """
 from __future__ import annotations
@@ -57,7 +57,11 @@ def main() -> int:
     Xdf = df[features].apply(pd.to_numeric, errors="coerce")
     medians = Xdf.median(axis=0).fillna(0.0)
     X = Xdf.fillna(medians).to_numpy(float)
-    complete = truth(df["y__complete_1d"]) if "y__complete_1d" in df else np.zeros(len(df), dtype=bool)
+    complete = (
+        truth(df["y__complete_1d"])
+        if "y__complete_1d" in df
+        else np.zeros(len(df), dtype=bool)
+    )
     if not np.any(complete):
         raise RuntimeError("no completed 1-D rows in transfer table")
 
@@ -76,7 +80,7 @@ def main() -> int:
     importance = np.zeros(len(features), dtype=float)
     importance_models = 0
 
-    # Numerical feasibility classifier.  It is fitted only when both classes
+    # Numerical feasibility classifier. It is fitted only when both classes
     # exist; otherwise the observed constant class is recorded in the bundle.
     unique_complete = np.unique(complete)
     if unique_complete.size == 2:
@@ -90,8 +94,19 @@ def main() -> int:
             n_jobs=-1,
             random_state=a.seed,
         )
-        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=a.seed)
-        prob = cross_val_predict(classifier, X, complete, cv=cv, method="predict_proba", n_jobs=-1)[:, 1]
+        cv = StratifiedKFold(
+            n_splits=n_splits,
+            shuffle=True,
+            random_state=a.seed,
+        )
+        prob = cross_val_predict(
+            classifier,
+            X,
+            complete,
+            cv=cv,
+            method="predict_proba",
+            n_jobs=-1,
+        )[:, 1]
         pred = prob >= 0.5
         metrics["complete_classifier_cv"] = {
             "folds": n_splits,
@@ -108,7 +123,7 @@ def main() -> int:
         metrics["complete_constant"] = bool(unique_complete[0])
 
     # Primary scientific classifier: whether the 1-D response retains at least
-    # 50 MPa sqrt(m).  Train only on completed 1-D cases.
+    # 50 MPa sqrt(m). Train only on completed 1-D cases.
     threshold_target = "y__retains_50_MPa_sqrt_m_1d"
     if threshold_target in df:
         yclass = truth(df[threshold_target])
@@ -116,7 +131,10 @@ def main() -> int:
         classes = np.unique(yclass[mask])
         if mask.sum() >= 10 and classes.size == 2:
             counts = np.bincount(yclass[mask].astype(int), minlength=2)
-            n_splits = max(2, min(safe_folds(a.folds, int(mask.sum())), int(counts.min())))
+            n_splits = max(
+                2,
+                min(safe_folds(a.folds, int(mask.sum())), int(counts.min())),
+            )
             classifier = ExtraTreesClassifier(
                 n_estimators=a.trees,
                 min_samples_leaf=2,
@@ -125,7 +143,11 @@ def main() -> int:
                 n_jobs=-1,
                 random_state=a.seed + 1,
             )
-            cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=a.seed + 1)
+            cv = StratifiedKFold(
+                n_splits=n_splits,
+                shuffle=True,
+                random_state=a.seed + 1,
+            )
             prob = cross_val_predict(
                 classifier,
                 X[mask],
@@ -139,9 +161,13 @@ def main() -> int:
                 "n": int(mask.sum()),
                 "positive": int(yclass[mask].sum()),
                 "folds": n_splits,
-                "balanced_accuracy": float(balanced_accuracy_score(yclass[mask], pred)),
+                "balanced_accuracy": float(
+                    balanced_accuracy_score(yclass[mask], pred)
+                ),
                 "roc_auc": float(roc_auc_score(yclass[mask], prob)),
-                "average_precision": float(average_precision_score(yclass[mask], prob)),
+                "average_precision": float(
+                    average_precision_score(yclass[mask], prob)
+                ),
             }
             classifier.fit(X[mask], yclass[mask])
             bundle["models"]["retains_50_classifier"] = classifier
@@ -161,6 +187,10 @@ def main() -> int:
         "y__log1p_max_shield_1d",
         "y__max_tau_gnd_tip_MPa_1d",
         "y__min_source_available_fraction_1d",
+        "y__log1p_median_abs_K_shield_developed_window_1d",
+        "y__log1p_median_abs_tau_gnd_tip_developed_window_1d",
+        "y__log1p_median_gnd_abs_line_count_developed_window_1d",
+        "y__min_source_available_fraction_pre_advance_developed_window_1d",
     ]
     for index, target in enumerate(regression_targets):
         if target not in df:
@@ -178,8 +208,18 @@ def main() -> int:
             n_jobs=-1,
             random_state=a.seed + 10 + index,
         )
-        cv = KFold(n_splits=n_splits, shuffle=True, random_state=a.seed + 10 + index)
-        pred = cross_val_predict(regressor, X[mask], y[mask], cv=cv, n_jobs=-1)
+        cv = KFold(
+            n_splits=n_splits,
+            shuffle=True,
+            random_state=a.seed + 10 + index,
+        )
+        pred = cross_val_predict(
+            regressor,
+            X[mask],
+            y[mask],
+            cv=cv,
+            n_jobs=-1,
+        )
         metrics[target] = {
             "n": n,
             "folds": n_splits,
