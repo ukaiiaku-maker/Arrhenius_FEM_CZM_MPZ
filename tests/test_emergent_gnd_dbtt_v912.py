@@ -74,6 +74,21 @@ def test_physical_source_inventory_is_grid_invariant():
     assert math.isclose(total40, total80, rel_tol=1.0e-12)
 
 
+def test_homogeneous_0d_translation_preserves_state_and_refreshes_sources():
+    state = EmergentGNDState(candidate(), CommonPhysics(n_bins=1))
+    state.retained_m2[0, 1, 0] = 2.5e12
+    state.source_available_m2[:] = 0.25 * state.source_capacity_m2
+    retained_before = state.retained_m2.copy()
+    source_before = state.source_available_m2.copy()
+
+    state.translate_tip(1.0e-6)
+
+    assert np.array_equal(state.retained_m2, retained_before)
+    assert np.all(state.source_available_m2 > source_before)
+    assert np.all(state.source_available_m2 <= state.source_capacity_m2)
+    assert math.isclose(state.extension_m, 1.0e-6)
+
+
 def test_objective_uses_only_developed_microstructural_increment():
     T = [300, 400, 500, 600, 700]
     delta = [0.0, 0.1, 0.2, 9.0, 9.2]
