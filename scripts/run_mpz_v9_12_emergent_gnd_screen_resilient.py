@@ -31,6 +31,26 @@ def args() -> argparse.Namespace:
         default=1,
         help="Print aggregate progress every N completed candidates.",
     )
+    p.add_argument(
+        "--compact-output",
+        action="store_true",
+        help="Omit per-temperature JSON files while retaining candidate summaries.",
+    )
+    p.add_argument(
+        "--quiet-inner",
+        action="store_true",
+        help="Suppress successful child-screen output; retain it only for failures.",
+    )
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from resilient_records_checkpoint.csv in the output directory.",
+    )
+    p.add_argument(
+        "--keep-single-registries",
+        action="store_true",
+        help="Keep temporary one-row registries after each candidate.",
+    )
     return p.parse_args()
 
 
@@ -67,6 +87,76 @@ def write_progress(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
+def read_csv_records(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open(newline="") as fp:
+        return list(csv.DictReader(fp))
+
+
+def record_fields(records: list[dict[str, object]], *, include_rank: bool) -> list[str]:
+    fields = ["rank"] if include_rank else []
+    preferred = [
+        "candidate_id",
+        "stage",
+        "status",
+        "failure_reason",
+        "candidate_elapsed_s",
+        "score",
+        "pass",
+        "amplitude_MPa_sqrt_m",
+        "largest_jump_localization",
+        "transition_width_10_90_K",
+        "linear_r2",
+        "max_abs_K_shield_MPa_sqrt_m",
+        "max_tau_gnd_tip_MPa",
+        "max_gnd_abs_line_count_per_unit_thickness",
+        "min_source_available_fraction",
+    ]
+    for key in preferred:
+        if any(key in rec for rec in records) and key not in fields:
+            fields.append(key)
+    for rec in records:
+        for key in rec:
+            if key != "rank" and key not in fields:
+                fields.append(key)
+    return fields
+
+
+def write_checkpoint(path: Path, records: list[dict[str, object]]) -> None:
+    if not records:
+        return
+    fields = record_fields(records, include_rank=False)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", newline="") as fp:
+        writer = csv.DictWriter(fp, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(records)
+    temporary.replace(path)
+
+
+def ordered_records(records: list[dict[str, object]]) -> list[dict[str, object]]:
+    return sorted(
+        records,
+        key=lambda r: (
+            r.get("status") == "complete",
+            float(r.get("score", "-1e300")),
+        ),
+        reverse=True,
+    )
+
+
+def write_ranking(path: Path, records: list[dict[str, object]]) -> None:
+    ordered = ordered_records(records)
+    fields = record_fields(ordered, include_rank=True)
+    with path.open("w", newline="") as fp:
+        writer = csv.DictWriter(fp, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for rank, rec in enumerate(ordered, start=1):
+            clean = {key: value for key, value in rec.items() if key != "rank"}
+            writer.writerow({"rank": rank, **clean})
+
+
 def main() -> int:
     a = args()
     out = Path(a.out)
@@ -75,11 +165,39 @@ def main() -> int:
         reader = csv.DictReader(fp)
         rows = list(reader)
         fields = list(reader.fieldnames or [])
+    if not rows:
+        raise RuntimeError(f"candidate registry is empty: {a.candidate_registry}")
+
     tmp = out / "_single_candidate_registries"
     tmp.mkdir(exist_ok=True)
-    records = []
-    base = Path(__file__).with_name("run_mpz_v9_12_emergent_gnd_screen.py")
+    checkpoint_path = out / "resilient_records_checkpoint.csv"
     progress_path = out / "resilient_progress.json"
+    base = Path(__file__).with_name("run_mpz_v9_12_emergent_gnd_screen.py")
+
+    if a.resume:
+        records: list[dict[str, object]] = list(read_csv_records(checkpoint_path))
+        if not records:
+            print(
+                f"RESILIENT_RESUME_NO_CHECKPOINT path={checkpoint_path}; starting fresh",
+                flush=True,
+            )
+    else:
+        if checkpoint_path.exists():
+            raise RuntimeError(
+                f"checkpoint already exists: {checkpoint_path}; "
+                "use --resume or choose a new output directory"
+            )
+        records = []
+
+    done_ids = {str(rec.get("candidate_id", "")) for rec in records}
+    pending = [
+        row
+        for row in rows
+        if str(row.get("candidate_id", "")) not in done_ids
+    ]
+    prior_elapsed_s = sum(
+        float(rec.get("candidate_elapsed_s", 0.0) or 0.0) for rec in records
+    )
     started_at_utc = utc_now()
     campaign_start = time.perf_counter()
     total = len(rows)
@@ -87,28 +205,32 @@ def main() -> int:
 
     print(
         "RESILIENT_CAMPAIGN_START "
-        f"candidates={total} stage={a.stage} started_at={started_at_utc}",
+        f"candidates={total} already_completed={len(records)} "
+        f"pending={len(pending)} stage={a.stage} started_at={started_at_utc}",
         flush=True,
     )
+    initial_complete = sum(r.get("status") == "complete" for r in records)
     write_progress(
         progress_path,
         progress_payload(
             started_at_utc=started_at_utc,
-            completed=0,
+            completed=len(records),
             total=total,
-            complete_count=0,
-            unresolved_count=0,
-            elapsed_s=0.0,
+            complete_count=initial_complete,
+            unresolved_count=len(records) - initial_complete,
+            elapsed_s=prior_elapsed_s,
         ),
     )
 
-    for i, row in enumerate(rows, start=1):
-        cid = row.get("candidate_id", f"candidate_{i}")
+    for pending_index, row in enumerate(pending, start=1):
+        completed_index = len(records) + 1
+        cid = str(row.get("candidate_id", f"candidate_{completed_index}"))
         one = tmp / f"{cid}.csv"
         with one.open("w", newline="") as fp:
             writer = csv.DictWriter(fp, fieldnames=fields)
             writer.writeheader()
             writer.writerow(row)
+
         cmd = [
             sys.executable,
             "-u",
@@ -136,17 +258,32 @@ def main() -> int:
             "--out",
             str(out),
         ]
+        if a.compact_output:
+            cmd.append("--compact-output")
+        if a.quiet_inner:
+            cmd.append("--quiet-cases")
+
         print(
-            f"RESILIENT_CANDIDATE_START index={i}/{total} candidate={cid}",
+            f"RESILIENT_CANDIDATE_START index={completed_index}/{total} candidate={cid}",
             flush=True,
         )
         candidate_start = time.perf_counter()
-        result = subprocess.run(cmd)
+        if a.quiet_inner:
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        else:
+            result = subprocess.run(cmd)
         candidate_elapsed_s = time.perf_counter() - candidate_start
-        ranking = out / "ranking.csv"
-        if result.returncode == 0 and ranking.exists():
-            with ranking.open(newline="") as fp:
-                rec = next(csv.DictReader(fp))
+
+        child_ranking = out / "ranking.csv"
+        if result.returncode == 0 and child_ranking.exists():
+            with child_ranking.open(newline="") as fp:
+                rec: dict[str, object] = dict(next(csv.DictReader(fp)))
+            rec.pop("rank", None)
             rec["status"] = "complete"
             rec["failure_reason"] = ""
         else:
@@ -158,8 +295,25 @@ def main() -> int:
                 "score": "-1e300",
                 "pass": "False",
             }
+            if a.quiet_inner:
+                failure_root = out / cid
+                failure_root.mkdir(parents=True, exist_ok=True)
+                (failure_root / "candidate_failure.log").write_text(
+                    result.stdout or ""
+                )
+                tail = " | ".join((result.stdout or "").splitlines()[-3:])
+                if tail:
+                    print(
+                        f"RESILIENT_FAILURE_TAIL candidate={cid} {tail}",
+                        flush=True,
+                    )
+
         rec["candidate_elapsed_s"] = f"{candidate_elapsed_s:.9g}"
         records.append(rec)
+        if not a.keep_single_registries:
+            one.unlink(missing_ok=True)
+        write_checkpoint(checkpoint_path, records)
+
         print(
             "RESILIENT_CANDIDATE_RESULT "
             f"candidate={cid} status={rec['status']} "
@@ -167,24 +321,24 @@ def main() -> int:
             flush=True,
         )
 
-        elapsed_s = time.perf_counter() - campaign_start
+        elapsed_s = prior_elapsed_s + (time.perf_counter() - campaign_start)
         complete_count = sum(r.get("status") == "complete" for r in records)
         unresolved_count = len(records) - complete_count
         payload = progress_payload(
             started_at_utc=started_at_utc,
-            completed=i,
+            completed=len(records),
             total=total,
             complete_count=complete_count,
             unresolved_count=unresolved_count,
             elapsed_s=elapsed_s,
         )
         write_progress(progress_path, payload)
-        if i % progress_every == 0 or i == total:
+        if len(records) % progress_every == 0 or len(records) == total:
             eta = payload["eta_s"]
             eta_text = "unknown" if eta is None else f"{float(eta):.1f}"
             print(
                 "RESILIENT_PROGRESS "
-                f"completed={i}/{total} complete={complete_count} "
+                f"completed={len(records)}/{total} complete={complete_count} "
                 f"unresolved={unresolved_count} elapsed_s={elapsed_s:.1f} "
                 f"mean_candidate_s={float(payload['mean_candidate_s']):.3f} "
                 f"candidates_per_min={float(payload['candidates_per_min']):.3f} "
@@ -192,26 +346,8 @@ def main() -> int:
                 flush=True,
             )
 
-    all_fields = ["rank"]
-    for rec in records:
-        for key in rec:
-            if key not in all_fields:
-                all_fields.append(key)
-    ordered = sorted(
-        records,
-        key=lambda r: (
-            r.get("status") == "complete",
-            float(r.get("score", "-1e300")),
-        ),
-        reverse=True,
-    )
-    with (out / "ranking.csv").open("w", newline="") as fp:
-        writer = csv.DictWriter(fp, fieldnames=all_fields)
-        writer.writeheader()
-        for rank, rec in enumerate(ordered, start=1):
-            writer.writerow({"rank": rank, **rec})
-
-    total_elapsed_s = time.perf_counter() - campaign_start
+    write_ranking(out / "ranking.csv", records)
+    total_elapsed_s = prior_elapsed_s + (time.perf_counter() - campaign_start)
     complete_count = sum(r.get("status") == "complete" for r in records)
     unresolved_count = len(records) - complete_count
     final_progress = progress_payload(
@@ -228,7 +364,9 @@ def main() -> int:
             {
                 **final_progress,
                 "candidate_count": len(records),
-                "records": ordered,
+                "checkpoint_csv": str(checkpoint_path.resolve()),
+                "compact_output": bool(a.compact_output),
+                "records": ordered_records(records),
             },
             indent=2,
         )
