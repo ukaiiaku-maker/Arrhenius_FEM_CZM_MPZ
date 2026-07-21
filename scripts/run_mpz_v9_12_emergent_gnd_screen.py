@@ -175,11 +175,17 @@ def main() -> int:
                 min(v for result in results for v in result.source_available_fraction)
             ),
         }
-        mechanism_active = (
+        signed_state_active = (
             record["max_abs_K_shield_MPa_sqrt_m"] > 1.0e-6
-            and record["max_tau_gnd_tip_MPa"] > 1.0e-6
             and record["max_gnd_abs_line_count_per_unit_thickness"] > 0.0
         )
+        spatial_gnd_active = record["max_tau_gnd_tip_MPa"] > 1.0e-6
+        mechanism_active = signed_state_active and (
+            args.stage == "0d" or spatial_gnd_active
+        )
+        record["signed_state_gate_pass"] = signed_state_active
+        record["spatial_gnd_gate_required"] = args.stage == "1d"
+        record["spatial_gnd_gate_pass"] = spatial_gnd_active
         record["mechanism_active"] = mechanism_active
         record["pass"] = bool(record["pass"] and mechanism_active)
         ranking.append(record)
