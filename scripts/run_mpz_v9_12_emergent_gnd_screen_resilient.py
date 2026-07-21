@@ -6,10 +6,30 @@ import argparse
 import csv
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import time
+
+
+CHECKPOINT_FIELDS = [
+    "candidate_id",
+    "stage",
+    "status",
+    "failure_reason",
+    "candidate_elapsed_s",
+    "score",
+    "pass",
+    "amplitude_MPa_sqrt_m",
+    "largest_jump_localization",
+    "transition_width_10_90_K",
+    "linear_r2",
+    "max_abs_K_shield_MPa_sqrt_m",
+    "max_tau_gnd_tip_MPa",
+    "max_gnd_abs_line_count_per_unit_thickness",
+    "min_source_available_fraction",
+]
 
 
 def args() -> argparse.Namespace:
@@ -94,26 +114,24 @@ def read_csv_records(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fp))
 
 
+def append_checkpoint(path: Path, record: dict[str, object]) -> None:
+    new_file = not path.exists() or path.stat().st_size == 0
+    with path.open("a", newline="") as fp:
+        writer = csv.DictWriter(
+            fp,
+            fieldnames=CHECKPOINT_FIELDS,
+            extrasaction="ignore",
+        )
+        if new_file:
+            writer.writeheader()
+        writer.writerow(record)
+        fp.flush()
+        os.fsync(fp.fileno())
+
+
 def record_fields(records: list[dict[str, object]], *, include_rank: bool) -> list[str]:
     fields = ["rank"] if include_rank else []
-    preferred = [
-        "candidate_id",
-        "stage",
-        "status",
-        "failure_reason",
-        "candidate_elapsed_s",
-        "score",
-        "pass",
-        "amplitude_MPa_sqrt_m",
-        "largest_jump_localization",
-        "transition_width_10_90_K",
-        "linear_r2",
-        "max_abs_K_shield_MPa_sqrt_m",
-        "max_tau_gnd_tip_MPa",
-        "max_gnd_abs_line_count_per_unit_thickness",
-        "min_source_available_fraction",
-    ]
-    for key in preferred:
+    for key in CHECKPOINT_FIELDS:
         if any(key in rec for rec in records) and key not in fields:
             fields.append(key)
     for rec in records:
@@ -121,18 +139,6 @@ def record_fields(records: list[dict[str, object]], *, include_rank: bool) -> li
             if key != "rank" and key not in fields:
                 fields.append(key)
     return fields
-
-
-def write_checkpoint(path: Path, records: list[dict[str, object]]) -> None:
-    if not records:
-        return
-    fields = record_fields(records, include_rank=False)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", newline="") as fp:
-        writer = csv.DictWriter(fp, fieldnames=fields, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(records)
-    temporary.replace(path)
 
 
 def ordered_records(records: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -222,7 +228,7 @@ def main() -> int:
         ),
     )
 
-    for pending_index, row in enumerate(pending, start=1):
+    for row in pending:
         completed_index = len(records) + 1
         cid = str(row.get("candidate_id", f"candidate_{completed_index}"))
         one = tmp / f"{cid}.csv"
@@ -310,9 +316,9 @@ def main() -> int:
 
         rec["candidate_elapsed_s"] = f"{candidate_elapsed_s:.9g}"
         records.append(rec)
+        append_checkpoint(checkpoint_path, rec)
         if not a.keep_single_registries:
             one.unlink(missing_ok=True)
-        write_checkpoint(checkpoint_path, records)
 
         print(
             "RESILIENT_CANDIDATE_RESULT "
