@@ -100,6 +100,7 @@ def write_ranking(path: Path, records: list[dict[str, Any]]) -> None:
         "max_tau_gnd_tip_MPa",
         "max_gnd_abs_line_count_per_unit_thickness",
         "min_source_available_fraction",
+        "min_source_available_fraction_pre_advance",
     ]
     ordered = sorted(records, key=lambda row: float(row["score"]), reverse=True)
     with path.open("w", newline="") as fp:
@@ -168,6 +169,11 @@ def main() -> int:
             target_localization=args.target_localization,
             max_width_K=args.max_width_K,
         )
+        pre_advance_source_values = [
+            value
+            for result in results
+            for value in result.source_available_fraction_pre_advance
+        ]
         record = {
             "candidate_id": candidate.candidate_id,
             "stage": args.stage,
@@ -187,6 +193,13 @@ def main() -> int:
             ),
             "min_source_available_fraction": float(
                 min(v for result in results for v in result.source_available_fraction)
+            ),
+            "min_source_available_fraction_pre_advance": float(
+                min(pre_advance_source_values)
+                if pre_advance_source_values
+                else min(
+                    v for result in results for v in result.source_available_fraction
+                )
             ),
         }
         signed_state_active = (
