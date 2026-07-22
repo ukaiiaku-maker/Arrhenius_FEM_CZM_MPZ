@@ -48,6 +48,9 @@ def test_power_snapshot_obeys_stress_decomposition():
     tau_external = np.asarray(
         [[100.0e6, 80.0e6, -60.0e6], [90.0e6, 70.0e6, -50.0e6]]
     )
+    tau_shielding = np.asarray(
+        [[-12.0e6, -8.0e6, 6.0e6], [-10.0e6, -7.0e6, 5.0e6]]
+    )
     tau_gnd = np.asarray(
         [[10.0e6, -5.0e6, 4.0e6], [-8.0e6, 3.0e6, -2.0e6]]
     )
@@ -55,14 +58,16 @@ def test_power_snapshot_obeys_stress_decomposition():
         {
             "velocity_m_s": velocity,
             "tau_external_Pa": tau_external,
+            "tau_nonlocal_shielding_Pa": tau_shielding,
             "tau_gnd_Pa": tau_gnd,
-            "tau_eff_Pa": tau_external + tau_gnd,
+            "tau_eff_Pa": tau_external + tau_shielding + tau_gnd,
         }
     )
 
     assert np.isclose(
         snapshot["effective_plastic_power_J_per_m_s"],
         snapshot["external_plastic_power_J_per_m_s"]
+        + snapshot["nonlocal_shielding_power_J_per_m_s"]
         + snapshot["internal_stress_power_J_per_m_s"],
     )
     assert snapshot["effective_plastic_dissipation_J_per_m_s"] >= 0.0
@@ -85,6 +90,7 @@ def test_spatial_advance_accumulates_finite_diagnostic_work():
 
     for key in (
         "external_plastic_work_J_per_m",
+        "nonlocal_shielding_work_J_per_m",
         "internal_stress_work_J_per_m",
         "effective_plastic_work_J_per_m",
         "effective_plastic_dissipation_J_per_m",
@@ -106,6 +112,7 @@ def test_spatial_advance_accumulates_finite_diagnostic_work():
     assert np.isclose(
         diag["effective_plastic_work_J_per_m"],
         diag["external_plastic_work_J_per_m"]
+        + diag["nonlocal_shielding_work_J_per_m"]
         + diag["internal_stress_work_J_per_m"],
         rtol=1.0e-10,
         atol=1.0e-20,
@@ -133,6 +140,7 @@ def test_temperature_result_serializes_energy_histories():
 
     for key in (
         "external_plastic_work_J_per_m",
+        "nonlocal_shielding_work_J_per_m",
         "internal_stress_work_J_per_m",
         "effective_plastic_work_J_per_m",
         "effective_plastic_dissipation_J_per_m",
