@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from statistics import median
 
 import numpy as np
 import pandas as pd
@@ -13,6 +12,7 @@ import pandas as pd
 
 ENERGY_FIELDS = (
     "external_plastic_work_J_per_m",
+    "nonlocal_shielding_work_J_per_m",
     "internal_stress_work_J_per_m",
     "effective_plastic_work_J_per_m",
     "effective_plastic_dissipation_J_per_m",
@@ -72,7 +72,9 @@ def main() -> int:
     temperature_rows: list[dict[str, object]] = []
     candidate_rows: list[dict[str, object]] = []
     candidate_dirs = sorted(
-        path for path in root.iterdir() if path.is_dir() and not path.name.startswith("_")
+        path
+        for path in root.iterdir()
+        if path.is_dir() and not path.name.startswith("_")
     )
     for candidate_root in candidate_dirs:
         temperature_files = sorted(candidate_root.glob("T*K.json"))
@@ -97,7 +99,8 @@ def main() -> int:
 
             extension = np.asarray(payload["extensions_um"], dtype=float)
             delta_k = np.asarray(
-                payload["delta_K_micro_MPa_sqrt_m"], dtype=float
+                payload["delta_K_micro_MPa_sqrt_m"],
+                dtype=float,
             )
             if extension.size == 0 or delta_k.shape != extension.shape:
                 raise RuntimeError(f"invalid checkpoint arrays in {path}")
@@ -113,9 +116,16 @@ def main() -> int:
                 if field_name not in payload:
                     raise RuntimeError(f"missing {field_name} in {path}")
                 values = np.asarray(payload[field_name], dtype=float)
-                if values.shape != extension.shape or not np.all(np.isfinite(values)):
+                if (
+                    values.shape != extension.shape
+                    or not np.all(np.isfinite(values))
+                ):
                     raise RuntimeError(f"invalid {field_name} in {path}")
-                developed_values = values_in_window(extension, values, window_um)
+                developed_values = values_in_window(
+                    extension,
+                    values,
+                    window_um,
+                )
                 row[f"developed_{field_name}"] = float(
                     np.median(developed_values)
                 )
@@ -181,7 +191,8 @@ def main() -> int:
                 ),
                 "temperature_correlation_delta_K_vs_dissipation": float(
                     pd.Series(delta_k_values).corr(
-                        pd.Series(dissipation), method="spearman"
+                        pd.Series(dissipation),
+                        method="spearman",
                     )
                 ),
             }
@@ -219,7 +230,13 @@ def main() -> int:
                 "reduced 1-D nonnegative Orowan resolved-work proxy per crack area"
             ),
             "external_plastic_work": (
-                "signed reduced external resolved-work proxy per crack area"
+                "signed work from K_applied before shielding"
+            ),
+            "nonlocal_shielding_work": (
+                "signed work associated with the K_shield projection"
+            ),
+            "internal_stress_work": (
+                "signed work associated with the local tau_GND field"
             ),
             "line_energy": (
                 "logarithmic dislocation line-energy proxy per unit front thickness"
@@ -233,7 +250,9 @@ def main() -> int:
         "temperature_csv": str(temperature_path.resolve()),
         "candidate_csv": str(candidate_path.resolve()),
     }
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n"
+    )
     print(
         "ENERGY_ANALYSIS_COMPLETE "
         f"candidates={summary['candidate_count']} "
