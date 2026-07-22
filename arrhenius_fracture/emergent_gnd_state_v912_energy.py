@@ -56,11 +56,15 @@ class EmergentGNDState(_StiffState):
         sigma_open = K_eff * 1.0e6 / math.sqrt(
             2.0 * math.pi * self.c.r0_m
         )
-        tau_external = (
+        tau_gnd = self.tau_gnd_Pa()
+        tau_external_column = (
             np.asarray(self.c.emission_schmid_factors, dtype=float)[:, None]
             * sigma_open
         )
-        tau_gnd = self.tau_gnd_Pa()
+        tau_external = np.broadcast_to(
+            tau_external_column,
+            tau_gnd.shape,
+        ).copy()
         rates["tau_external_Pa"] = tau_external
         rates["tau_gnd_Pa"] = tau_gnd
         rates["tau_eff_Pa"] = tau_external + tau_gnd
