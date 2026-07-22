@@ -113,4 +113,63 @@ def test_near_prefactor_spatial_segment_completes():
     assert np.all(state.retained_m2 >= 0.0)
     assert totals["emitted_per_m"] >= 0.0
     metadata = state.integration_metadata()
-    assert metadata["spatial_integrator"].startswith("coupled_mobile_retained")
+    assert metadata["spatial_integrator"] == (
+        "coupled_mobile_retained_backward_euler_v2_post_emit_refresh"
+    )
+    assert metadata["constitutive_feedback_update"] == (
+        "refresh_after_midpoint_emission"
+    )
+
+
+def test_second_coupled_half_uses_post_emission_rates(monkeypatch):
+    physics = CommonPhysics(
+        n_bins=4,
+        n_systems=2,
+        mpz_length_m=4.0e-6,
+        source_zone_length_m=1.0e-6,
+    )
+    state = EmergentGNDState(fast_candidate(), physics)
+    rate_snapshots = []
+    coupled_mobile_markers = []
+
+    def fake_local_rates(K_MPa_sqrt_m, T_K):
+        del K_MPa_sqrt_m, T_K
+        mobile_total = float(np.sum(state.mobile_m2))
+        rate_snapshots.append(mobile_total)
+        emission = np.zeros(
+            (state.c.n_systems, 2, state.c.n_bins),
+            dtype=float,
+        )
+        # The second local-rate evaluation is the midpoint, before emission.
+        if len(rate_snapshots) == 2:
+            for system, sign in enumerate(state.c.emission_signs):
+                q = 1 if sign > 0 else 0
+                emission[system, q, 0] = 1.0e6
+        marker = np.full(
+            (state.c.n_systems, state.c.n_bins),
+            mobile_total,
+            dtype=float,
+        )
+        return {
+            "velocity_m_s": np.zeros_like(marker),
+            "encounter_s": marker,
+            "taylor_completion_s": np.zeros_like(marker),
+            "emission_rate_s": emission,
+            "recovery_rate_s": np.asarray(0.0),
+        }
+
+    def fake_coupled(rates, dt):
+        del dt
+        coupled_mobile_markers.append(float(rates["encounter_s"][0, 0]))
+
+    monkeypatch.setattr(state, "local_rates", fake_local_rates)
+    monkeypatch.setattr(state, "_coupled_mobile_retained", fake_coupled)
+    monkeypatch.setattr(state, "_annihilate_exact", lambda rates, dt: 0.0)
+
+    state._advance_spatial_step(0.1, 20.0, 900.0)
+
+    assert len(rate_snapshots) == 4
+    assert len(coupled_mobile_markers) == 2
+    assert coupled_mobile_markers[0] == 0.0
+    assert coupled_mobile_markers[1] > 0.0
+    assert rate_snapshots[2] > rate_snapshots[1]
