@@ -36,6 +36,8 @@ exec > >(tee -a "$PIPELINE_LOG") 2>&1
 
 echo "TARGETED_OVERNIGHT_START $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "git_head=$(git rev-parse HEAD)"
+echo "bash_version=${BASH_VERSION}"
+echo "python=$(command -v python)"
 
 for required in \
   "$REGISTRY_20K" "$ROOT_0D_20K" \
@@ -98,35 +100,60 @@ run_resilient () {
   local out="$3"
   local progress_every="$4"
   local compact="$5"
-  local -a resume_args=()
-  local -a compact_args=()
+  local -a cmd
+
+  # Build one nonempty command array. On the macOS Bash 3.2 shipped with
+  # /bin/bash, expanding an empty array under `set -u` can raise an unbound
+  # variable error, so optional flags are appended only when they exist.
+  cmd=(
+    /usr/bin/caffeinate -dimsu
+    /usr/bin/env
+    PYTHONUNBUFFERED=1
+    MPZ_V912_COUPLED_OPERATOR_SUBSTEPS=2
+    MPZ_V912_MAX_FEEDBACK_SUBSTEP_S=0.1
+    python -u scripts/run_mpz_v9_12_emergent_gnd_screen_resilient.py
+  )
 
   if test -f "$out/resilient_records_checkpoint.csv"; then
-    resume_args+=(--resume)
-  fi
-  if test "$compact" = "1"; then
-    compact_args+=(--compact-output)
+    cmd+=(--resume)
   fi
 
-  caffeinate -dimsu env \
-  PYTHONUNBUFFERED=1 \
-  MPZ_V912_COUPLED_OPERATOR_SUBSTEPS=2 \
-  MPZ_V912_MAX_FEEDBACK_SUBSTEP_S=0.1 \
-  python -u scripts/run_mpz_v9_12_emergent_gnd_screen_resilient.py \
-    "${resume_args[@]}" \
-    --stage "$stage" \
-    --candidate-registry "$registry" \
-    --protocol-csv "$PROTOCOL" \
-    --physics-json "$PHYSICS" \
-    --temperatures "${TEMPERATURES[@]}" \
-    --window-um 10 30 \
-    --min-amplitude 50 \
-    --target-localization 0.50 \
-    --max-width-K 200 \
-    "${compact_args[@]}" \
-    --quiet-inner \
-    --progress-every "$progress_every" \
+  cmd+=(
+    --stage "$stage"
+    --candidate-registry "$registry"
+    --protocol-csv "$PROTOCOL"
+    --physics-json "$PHYSICS"
+    --temperatures "${TEMPERATURES[@]}"
+    --window-um 10 30
+    --min-amplitude 50
+    --target-localization 0.50
+    --max-width-K 200
+  )
+
+  if test "$compact" = "1"; then
+    cmd+=(--compact-output)
+  fi
+
+  cmd+=(
+    --quiet-inner
+    --progress-every "$progress_every"
     --out "$out"
+  )
+
+  printf 'RUN_RESILIENT stage=%s candidates=%s out=%s resume=%s compact=%s\n' \
+    "$stage" \
+    "$(python - "$registry" <<'PY'
+import csv
+import sys
+with open(sys.argv[1], newline="") as fp:
+    print(sum(1 for _ in csv.DictReader(fp)))
+PY
+)" \
+    "$out" \
+    "$([[ -f "$out/resilient_records_checkpoint.csv" ]] && echo 1 || echo 0)" \
+    "$compact"
+
+  "${cmd[@]}"
 }
 
 run_resilient 0d "$LOCAL_REGISTRY" "$LOCAL_0D_ROOT" 64 1
