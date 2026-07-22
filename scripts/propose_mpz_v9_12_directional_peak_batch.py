@@ -117,6 +117,16 @@ def main() -> int:
 
     table["candidate_id"] = table["candidate_id"].astype(str)
     registry["candidate_id"] = registry["candidate_id"].astype(str)
+    if (
+        "campaign_parent_family" not in table.columns
+        and "campaign_parent_family" in registry.columns
+    ):
+        table = table.merge(
+            registry[["candidate_id", "campaign_parent_family"]],
+            on="candidate_id",
+            how="left",
+            validate="one_to_one",
+        )
     keep = ~table["candidate_id"].isin(excluded)
     table = table.loc[keep].reset_index(drop=True)
     if table.empty:
