@@ -59,8 +59,9 @@ class EmergentGNDState(_StiffState):
     ) -> dict[str, np.ndarray]:
         rates = dict(super().local_rates(K_MPa_sqrt_m, T_K))
         stress_scale = 1.0e6 / math.sqrt(2.0 * math.pi * self.c.r0_m)
-        K_applied = max(float(K_MPa_sqrt_m), 0.0)
-        K_eff = max(K_applied - self.K_shield_MPa_sqrt_m(), 0.0)
+        K_raw = float(K_MPa_sqrt_m)
+        K_applied = max(K_raw, 0.0)
+        K_eff = max(K_raw - self.K_shield_MPa_sqrt_m(), 0.0)
         sigma_applied = K_applied * stress_scale
         sigma_shielded = K_eff * stress_scale
 
