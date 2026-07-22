@@ -105,11 +105,16 @@ import sys
 root = Path(sys.argv[1])
 expected = sys.argv[2]
 summaries = sorted(root.glob("*/candidate_summary.json"))
+records = sorted(root.glob("*/T*K.json"))
 if len(summaries) != 6:
     raise RuntimeError(f"expected 6 summaries in {root}; found {len(summaries)}")
-for path in summaries:
+if len(records) != 60:
+    raise RuntimeError(
+        f"expected 60 temperature records in {root}; found {len(records)}"
+    )
+for path in records:
     payload = json.loads(path.read_text())
-    metadata = payload.get("integration_metadata", {})
+    metadata = payload.get("numerical_integration", {})
     observed = metadata.get("spatial_integrator")
     if observed != expected:
         raise RuntimeError(
@@ -119,7 +124,10 @@ for path in summaries:
         "refresh_after_midpoint_emission"
     ):
         raise RuntimeError(f"missing post-emission refresh metadata in {path}")
-print(f"INTEGRATOR_METADATA_OK summaries={len(summaries)} root={root}")
+print(
+    f"INTEGRATOR_METADATA_OK summaries={len(summaries)} "
+    f"temperature_records={len(records)} root={root}"
+)
 PY
 }
 
