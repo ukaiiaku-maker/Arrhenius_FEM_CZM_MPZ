@@ -9,9 +9,11 @@ depend on the arbitrary split order and feedback timestep.
 This implementation therefore advances mobile transport, mobile-to-retained
 encounter storage, Taylor release, and first-order recovery in one coupled,
 positivity-preserving backward-Euler finite-volume solve.  Emission is applied
-at the midpoint of a symmetric split, and opposite-sign annihilation uses the
-exact frozen-coefficient pair-reaction solution.  The timestep resolves only
-constitutive feedback, not every Peierls jump or cell transit.
+at the midpoint of a symmetric split, constitutive rates are refreshed from the
+post-emission state before the second coupled half-step, and opposite-sign
+annihilation uses the exact frozen-coefficient pair-reaction solution.  The
+timestep resolves only constitutive feedback, not every Peierls jump or cell
+transit.
 
 No candidate-specific cap, backstress multiplier, shielding coefficient, or
 saturation law is introduced.
@@ -40,11 +42,14 @@ class EmergentGNDState(_BaseState):
 
     def integration_metadata(self) -> dict[str, float | int | str]:
         return {
-            "spatial_integrator": "coupled_mobile_retained_backward_euler_v1",
+            "spatial_integrator": (
+                "coupled_mobile_retained_backward_euler_v2_post_emit_refresh"
+            ),
             "max_feedback_substep_s": float(self.max_feedback_substep_s),
             "coupled_operator_substeps": int(
                 max(self.coupled_operator_substeps, 1)
             ),
+            "constitutive_feedback_update": "refresh_after_midpoint_emission",
         }
 
     def _substep(
@@ -277,7 +282,12 @@ class EmergentGNDState(_BaseState):
 
         rates_mid = self.local_rates(K_MPa_sqrt_m, T_K)
         totals["emitted_per_m"] += self._emit_exact(rates_mid, dt)
-        self._coupled_mobile_retained(rates_mid, 0.5 * dt)
+
+        # Midpoint emission changes mobile density, forest density, signed GND,
+        # and source availability.  Recompute all constitutive rates before the
+        # second coupled half-step rather than reusing the pre-emission rates.
+        rates_post_emit = self.local_rates(K_MPa_sqrt_m, T_K)
+        self._coupled_mobile_retained(rates_post_emit, 0.5 * dt)
 
         rates_end = self.local_rates(K_MPa_sqrt_m, T_K)
         totals["annihilated_per_m"] += self._annihilate_exact(
