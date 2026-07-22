@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "purpose": "State-focused first campaign. EXP-floor shape exponents, Taylor correlation scale, and recovery prefactor are inherited from the selected seed row. Separate seed rows should be used for discrete shallow/base/steep shape families.",
+  "search_bounds": {
+    "emit_G00_eV": {"low": 0.8, "high": 5.0, "scale": "linear"},
+    "emit_gT_eV_per_K": {"low": -0.002, "high": 0.006, "scale": "linear"},
+    "peierls_H0_eV": {"low": 0.2, "high": 6.0, "scale": "linear"},
+    "peierls_activation_entropy_kB": {"low": -20.0, "high": 25.0, "scale": "linear"},
+    "taylor_H0_eV": {"low": 0.4, "high": 12.0, "scale": "linear"},
+    "taylor_activation_entropy_kB": {"low": -20.0, "high": 25.0, "scale": "linear"},
+    "taylor_corr_rho_c_m2": {"low": 1e12, "high": 1e17, "scale": "log10"},
+    "rho_source0_m2": {"low": 1e11, "high": 1e16, "scale": "log10"},
+    "source_refresh_length_um": {"low": 1.0, "high": 200.0, "scale": "log10"},
+    "recovery_H0_eV": {"low": 0.2, "high": 5.0, "scale": "linear"},
+    "recovery_activation_entropy_kB": {"low": -10.0, "high": 20.0, "scale": "linear"}
+  },
+  "fixed_from_seed_row": [
+    "emit_exp_a",
+    "emit_exp_n",
+    "peierls_exp_a",
+    "peierls_exp_n",
+    "taylor_exp_a",
+    "taylor_exp_n",
+    "taylor_corr_scale",
+    "recovery_nu0_s"
+  ],
+  "scientific_notes": [
+    "Cleavage parameters remain inherited and K0(T) is not scored.",
+    "The relevant Arrhenius competition is governed primarily by barrier differences divided by kBT and by dimensionless residence-time groups, not by raw barrier ratios alone.",
+    "Use separate seed rows for distinct barrier-shape families after the first state-focused campaign identifies favorable storage/release regions."
+  ]
+}
