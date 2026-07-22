@@ -24,6 +24,7 @@ class EmergentGNDState(_StiffState):
     def __init__(self, candidate: CandidateParameters, physics: CommonPhysics):
         super().__init__(candidate, physics)
         self.external_plastic_work_J_per_m = 0.0
+        self.nonlocal_shielding_work_J_per_m = 0.0
         self.internal_stress_work_J_per_m = 0.0
         self.effective_plastic_work_J_per_m = 0.0
         self.effective_plastic_dissipation_J_per_m = 0.0
@@ -38,7 +39,12 @@ class EmergentGNDState(_StiffState):
                 "energy_bookkeeping_active": bool(self.c.n_bins > 1),
                 "energy_bookkeeping_feedback_active": False,
                 "energy_units_scope": "per_unit_crack_front_thickness",
-                "external_work_sign_convention": "signed_tau_external_gamma_dot",
+                "external_work_sign_convention": (
+                    "signed_tau_from_K_applied_times_gamma_dot"
+                ),
+                "feedback_work_decomposition": (
+                    "nonlocal_K_shield_projection_plus_local_tau_gnd"
+                ),
                 "effective_dissipation_convention": (
                     "positive_part_tau_effective_gamma_dot"
                 ),
@@ -52,22 +58,28 @@ class EmergentGNDState(_StiffState):
         T_K: float,
     ) -> dict[str, np.ndarray]:
         rates = dict(super().local_rates(K_MPa_sqrt_m, T_K))
-        K_eff = max(K_MPa_sqrt_m - self.K_shield_MPa_sqrt_m(), 0.0)
-        sigma_open = K_eff * 1.0e6 / math.sqrt(
-            2.0 * math.pi * self.c.r0_m
-        )
+        stress_scale = 1.0e6 / math.sqrt(2.0 * math.pi * self.c.r0_m)
+        K_applied = max(float(K_MPa_sqrt_m), 0.0)
+        K_eff = max(K_applied - self.K_shield_MPa_sqrt_m(), 0.0)
+        sigma_applied = K_applied * stress_scale
+        sigma_shielded = K_eff * stress_scale
+
         tau_gnd = self.tau_gnd_Pa()
-        tau_external_column = (
-            np.asarray(self.c.emission_schmid_factors, dtype=float)[:, None]
-            * sigma_open
-        )
-        tau_external = np.broadcast_to(
-            tau_external_column,
+        schmid = np.asarray(
+            self.c.emission_schmid_factors,
+            dtype=float,
+        )[:, None]
+        tau_applied_column = schmid * sigma_applied
+        tau_shielded_column = schmid * sigma_shielded
+        tau_applied = np.broadcast_to(tau_applied_column, tau_gnd.shape).copy()
+        tau_shielded = np.broadcast_to(
+            tau_shielded_column,
             tau_gnd.shape,
         ).copy()
-        rates["tau_external_Pa"] = tau_external
+        rates["tau_external_Pa"] = tau_applied
+        rates["tau_nonlocal_shielding_Pa"] = tau_shielded - tau_applied
         rates["tau_gnd_Pa"] = tau_gnd
-        rates["tau_eff_Pa"] = tau_external + tau_gnd
+        rates["tau_eff_Pa"] = tau_shielded + tau_gnd
         return rates
 
     def _plastic_power_snapshot(
@@ -87,12 +99,17 @@ class EmergentGNDState(_StiffState):
         gamma_dot = self.c.b_m * mobile_total * velocity
 
         tau_external = np.asarray(rates["tau_external_Pa"], dtype=float)
+        tau_shielding = np.asarray(
+            rates["tau_nonlocal_shielding_Pa"],
+            dtype=float,
+        )
         tau_gnd = np.asarray(rates["tau_gnd_Pa"], dtype=float)
         tau_eff = np.asarray(rates["tau_eff_Pa"], dtype=float)
         expected = (self.c.n_systems, self.c.n_bins)
         for array, name in (
             (velocity, "velocity_m_s"),
             (tau_external, "tau_external_Pa"),
+            (tau_shielding, "tau_nonlocal_shielding_Pa"),
             (tau_gnd, "tau_gnd_Pa"),
             (tau_eff, "tau_eff_Pa"),
         ):
@@ -101,11 +118,15 @@ class EmergentGNDState(_StiffState):
 
         area_per_unit_thickness = self.cell_area_m2
         external_density = tau_external * gamma_dot
+        shielding_density = tau_shielding * gamma_dot
         internal_density = tau_gnd * gamma_dot
         effective_density = tau_eff * gamma_dot
         return {
             "external_plastic_power_J_per_m_s": float(
                 np.sum(external_density) * area_per_unit_thickness
+            ),
+            "nonlocal_shielding_power_J_per_m_s": float(
+                np.sum(shielding_density) * area_per_unit_thickness
             ),
             "internal_stress_power_J_per_m_s": float(
                 np.sum(internal_density) * area_per_unit_thickness
@@ -132,6 +153,10 @@ class EmergentGNDState(_StiffState):
             (
                 "external_plastic_work_J_per_m",
                 "external_plastic_power_J_per_m_s",
+            ),
+            (
+                "nonlocal_shielding_work_J_per_m",
+                "nonlocal_shielding_power_J_per_m_s",
             ),
             (
                 "internal_stress_work_J_per_m",
@@ -237,6 +262,9 @@ class EmergentGNDState(_StiffState):
             {
                 "external_plastic_work_J_per_m": float(
                     self.external_plastic_work_J_per_m
+                ),
+                "nonlocal_shielding_work_J_per_m": float(
+                    self.nonlocal_shielding_work_J_per_m
                 ),
                 "internal_stress_work_J_per_m": float(
                     self.internal_stress_work_J_per_m
