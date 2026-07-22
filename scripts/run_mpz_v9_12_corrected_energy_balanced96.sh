@@ -6,7 +6,7 @@ set -euo pipefail
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
 MODE="${MODE:-smoke}"
-REGISTRY_96="${REGISTRY_96:-candidates/v9_12_1d_balanced_promotion_96_registry.csv}"
+REGISTRY_96="${REGISTRY_96:-candidates/v9_12_1d_balanced_pilot_96_registry.csv}"
 SMOKE_REGISTRY="${SMOKE_REGISTRY:-candidates/v9_12_corrected_energy_balanced96_smoke4_registry.csv}"
 PROTOCOL="${PROTOCOL:-mpz_v9_12_protocol_example.csv}"
 PHYSICS="${PHYSICS:-mpz_v9_12_emergent_gnd_common_physics.json}"
@@ -30,7 +30,7 @@ esac
 if test ! -f "$REGISTRY_96"; then
   found="$({
     /usr/bin/find candidates -maxdepth 1 -type f \
-      -name '*96*registry*.csv' -print 2>/dev/null || true
+      -name '*_96_registry.csv' -print 2>/dev/null || true
   } | /usr/bin/head -n 2)"
   found_count="$(printf '%s\n' "$found" | /usr/bin/awk 'NF {n += 1} END {print n + 0}')"
   if test "$found_count" = "1"; then
@@ -50,6 +50,24 @@ for required in "$REGISTRY_96" "$PROTOCOL" "$PHYSICS"; do
     exit 1
   }
 done
+
+"$PYTHON_BIN" - "$REGISTRY_96" <<'PY'
+import sys
+import pandas as pd
+
+path = sys.argv[1]
+frame = pd.read_csv(path, low_memory=False)
+if "candidate_id" not in frame.columns:
+    raise RuntimeError(f"registry lacks candidate_id column: {path}")
+rows = len(frame)
+unique = frame["candidate_id"].astype(str).nunique()
+if rows != 96 or unique != 96:
+    raise RuntimeError(
+        f"balanced pilot registry must contain 96 unique candidates; "
+        f"found rows={rows}, unique={unique}, path={path}"
+    )
+print(f"BALANCED_96_REGISTRY_OK rows={rows} unique={unique} path={path}")
+PY
 
 "$PYTHON_BIN" -m py_compile \
   arrhenius_fracture/emergent_gnd_state_v912_energy.py \
