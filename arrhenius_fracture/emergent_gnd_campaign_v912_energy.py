@@ -21,6 +21,7 @@ from .emergent_gnd_types_v912 import (
 
 ENERGY_RESULT_FIELDS = (
     "external_plastic_work_J_per_m",
+    "nonlocal_shielding_work_J_per_m",
     "internal_stress_work_J_per_m",
     "effective_plastic_work_J_per_m",
     "effective_plastic_dissipation_J_per_m",
