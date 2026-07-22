@@ -150,12 +150,17 @@ def test_second_coupled_half_uses_post_emission_rates(monkeypatch):
             mobile_total,
             dtype=float,
         )
+        zeros = np.zeros_like(marker)
         return {
-            "velocity_m_s": np.zeros_like(marker),
+            "velocity_m_s": zeros,
             "encounter_s": marker,
-            "taylor_completion_s": np.zeros_like(marker),
+            "taylor_completion_s": zeros,
             "emission_rate_s": emission,
             "recovery_rate_s": np.asarray(0.0),
+            "tau_external_Pa": zeros,
+            "tau_nonlocal_shielding_Pa": zeros,
+            "tau_gnd_Pa": zeros,
+            "tau_eff_Pa": zeros,
         }
 
     def fake_coupled(rates, dt):
