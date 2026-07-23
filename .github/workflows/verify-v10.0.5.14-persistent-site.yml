@@ -1,4 +1,4 @@
-name: Verify v10.0.5.14.1 persistent-site kernel-family parity
+name: Verify v10.0.5.14.2 persistent-site kernel-family parity
 
 on:
   push:
@@ -30,7 +30,10 @@ jobs:
             arrhenius_fracture/persistent_site_front_engine_v100514.py \
             arrhenius_fracture/anisotropic_two_channel_drive_v100514.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_persistent_site.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_2_persistent_site_family.py
+      - name: Test stiff implicit transport
+        run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005142.py
       - name: Test PF kernel-family contract
         run: python -m pytest -q --tb=short tests/test_signed_kernel_family_v1005141.py
       - name: Contract exact registry
