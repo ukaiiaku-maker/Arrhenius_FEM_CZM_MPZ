@@ -52,12 +52,24 @@ the calibrated event exponent \(p=0.95\) and a cleavage-hazard increment of
 calibration setting; promoted candidates must be rerun with 0.05.
 
 First check out this branch and refresh the editable installation in the active
-conda environment:
+conda environment. The explicit refspec is required for clones whose fetch
+configuration tracks only the branch originally cloned:
 
 ```bash
-git fetch origin v9.13-dbtt-4096-autonomous-search
-git switch --track origin/v9.13-dbtt-4096-autonomous-search
+BRANCH=v9.13-dbtt-4096-autonomous-search
+git fetch origin \
+  "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  git switch "$BRANCH"
+  git merge --ff-only "origin/$BRANCH"
+else
+  git switch -c "$BRANCH" --track "origin/$BRANCH"
+fi
+
 "$CONDA_PREFIX/bin/python" -m pip install -e .
+
+test -f scripts/run_v913_autonomous_dbtt_4096_wave1.sh
 ```
 
 Then run from the repository root:
