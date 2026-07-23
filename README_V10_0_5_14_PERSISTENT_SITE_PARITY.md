@@ -1,11 +1,12 @@
-# v10.0.5.14 — PF v10.2.22 persistent-site parity for FEM/CZM
+# v10.0.5.14.1 — PF v10.2.22 persistent-site and kernel-family parity
 
 ## Scope
 
-This version ports the front-local plastic/source closure from
+This point release ports the front-local plastic/source closure from
 `PF-fracture-fatigue` commit
 `198ece3aeb1d193a8c1c4857676fba720c088d27` onto the validated
-v10.0.5.13.5 full 2-D FEM/CZM mechanics.
+v10.0.5.13.5 full 2-D FEM/CZM mechanics and consumes the actual PF v10.2.14
+crack-extension-indexed signed shielding atlas.
 
 Preserved unchanged:
 
@@ -17,9 +18,10 @@ Preserved unchanged:
 - stochastic cleavage/first-passage law inherited by the selected entry;
 - elastic continuum bulk under `bulk_plasticity_mode=tip_only`.
 
-The changed component is the moving crack-tip MPZ constitutive state.
+The changed component is the moving crack-tip MPZ constitutive state and its
+signed shielding artifact loader.
 
-## Ported physics
+## Ported persistent-site physics
 
 - two reduced BCC slip channels;
 - separate positive/negative mobile, retained, and accumulated-slip fields;
@@ -40,53 +42,57 @@ The changed component is the moving crack-tip MPZ constitutive state.
 The exact five v10.2.22 rows are included in
 `arrhenius_fracture/data/mpz_v10_0_5_14/`.
 
-## Signed shielding operator
+## PF signed-kernel family
 
-The handoff does not contain the numerical signed shielding influence operator or
-activation-to-line conversion. Production therefore fails closed unless
-`--signed-shielding-kernel` points to a mechanically derived JSON artifact.
+The production input is the actual candidate-independent PF atlas:
 
-Accepted schemas:
-
-- `v10.2.5_2d_unit_signed_shielding_kernel` from the PF signed-kernel workflow;
-- `v10.0.5.14_signed_shielding_kernel` with the same required fields.
-
-Required metadata:
-
-```json
-{
-  "candidate_independent": true,
-  "counts_are_signed_burgers_lines": true,
-  "normalization_is_mechanically_derived": true
-}
+```text
+schema = v10.2.14_active_only_real_signed_2d_shielding_atlas
 ```
 
-The active kernel must have shape `2 x 80`; one positive
-`activation_to_line_content_by_system` value is required for each channel. The
-FEM/CZM port does not create an analytical or fitted production substitute.
+It contains mechanically measured signed-Burgers kernels at cumulative
+crack-path extensions of 0, 200, 500, and 800 micrometres. Each source state has
+two slip systems on a 40-point physical active grid. The family-level
+activation-to-line conversion is used both for line insertion and for the
+Taylor-backstress density increment.
 
-## Install
+The FEM/CZM runtime performs:
+
+1. exact selection at a measured crack-extension state;
+2. inverse-distance interpolation between family states, using the atlas
+   `neighbors` and `power` values;
+3. piecewise-linear projection of the measured physical kernel onto the runtime
+   80-bin MPZ coordinates;
+4. mode-I signed shielding from the interpolated active kernel;
+5. zero wake shielding, matching the active-only PF benchmark.
+
+No crack-extension extrapolation is allowed. No constitutive shielding cap is
+applied. A proposed cohesive advance beyond the family envelope is rejected
+before the committed moving-frame state is changed.
+
+The static `--signed-shielding-kernel` interface remains available only for
+legacy unit tests or an explicitly documented fixed-kernel approximation. PF
+parity runs must use `--signed-kernel-family`.
+
+## Update an existing v10.0.5.14 installation
 
 ```bash
-cd /Volumes/Data/Data/Nanopillar_calculation
+ROOT=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_14_persistent_sites
 
-DEST=Arrhenius_FEM_CZM_MPZ_v10_0_5_14_persistent_sites
-
-git clone \
-  --branch v10.0.5.14-persistent-sites-v10222-parity \
-  --single-branch \
-  https://github.com/ukaiiaku-maker/Arrhenius_FEM_CZM_MPZ.git \
-  "$DEST"
-
-cd "$DEST"
+cd "$ROOT"
 conda activate arrhenius-fem-czm
-python -m pip install -e "$PWD" --no-deps
+
+git pull --ff-only origin \
+  v10.0.5.14-persistent-sites-v10222-parity
+
+python -m pip install -e "$ROOT" --no-deps
 ```
 
 ## Focused verification
 
 ```bash
 python -m pytest -q \
+  tests/test_signed_kernel_family_v1005141.py \
   tests/test_persistent_site_v100514.py \
   tests/test_v100513_barrier_only.py \
   tests/test_v1005131_preserved_state.py \
@@ -94,18 +100,51 @@ python -m pytest -q \
   tests/test_v1005133_tip_only_ramp.py \
   tests/test_v1005134_tip_only_policy_propagation.py \
   tests/test_v1005135_long_corridor.py \
-  tests/test_v1005123_phase_c_repairs.py
+  tests/test_v1005123_phase_c_repairs.py \
+  tests/test_mpz_v9_10_unified_transport.py \
+  tests/test_v100510_refinement_support.py \
+  tests/test_v100511_same_mesh_energy.py
+```
+
+## Validate the actual PF family
+
+```bash
+PFROOT=/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1
+FAMILY_JSON="$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json"
+
+python - <<'PY'
+from pathlib import Path
+from arrhenius_fracture.signed_kernel_family_v1005141 import (
+    SignedShieldingKernelFamilyV1005141,
+)
+
+path = Path(
+    "/Volumes/Data/Data/Nanopillar_calculation/"
+    "PF-fracture-fatigue_v10_2_21_persistent_sites_top1/"
+    "runtime_inputs/v10_2_17/"
+    "v10_2_14_active_only_campaign_family.json"
+)
+
+family = SignedShieldingKernelFamilyV1005141.from_json(path)
+print(family.audit_payload())
+PY
 ```
 
 ## Candidate 0118 smoke command
 
 ```bash
-KERNEL=/absolute/path/to/mechanically_derived_signed_kernel.json
-OUT=/absolute/path/to/runs/v10_0_5_14_0118_700K_20um_smoke_v1
+ROOT=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_14_persistent_sites
+PFROOT=/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1
+FAMILY_JSON="$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json"
+OUT="$ROOT/runs/v10_0_5_14_1_0118_700K_20um_family_smoke_v1"
 
-python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_14_persistent_site \
+cd "$ROOT"
+conda activate arrhenius-fem-czm
+rm -rf "$OUT"
+
+python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_14_1_persistent_site_family \
   --persistent-site-option v912_peak_0118_persistent_sites \
-  --signed-shielding-kernel "$KERNEL" \
+  --signed-kernel-family "$FAMILY_JSON" \
   --tip-refinement-radius-um 330 \
   --selected-cluster-J-outer-um 240 \
   --local-J-outer-um 100 \
@@ -126,7 +165,8 @@ python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_14_persistent_site \
   --czm-max-angle-error-deg 35 --j-decomposition cluster \
   --mpz-length-um 50 --mpz-n-bins 80 \
   --save-snapshots 2 --snapshot-cols 2 \
-  --snapshot-by-crack-extension-um 10 --no-plots --out "$OUT"
+  --snapshot-by-crack-extension-um 10 --no-plots --out "$OUT" \
+  2>&1 | tee "$OUT.console.log"
 ```
 
 ## Mandatory runtime invariants
@@ -140,7 +180,13 @@ Every accepted increment and production manifest must record:
 - `source_sites_refreshed = 0`;
 - `front_width_grid_independent = true`;
 - `ahead_of_tip_dx_used_as_front_width_floor = false`;
-- `two_channel_drive_reliable = true`.
+- `two_channel_drive_reliable = true`;
+- `kernel_artifact_kind = crack_extension_family`;
+- `kernel_interpolation_coordinate = cumulative_crack_path_extension_m`;
+- `kernel_extrapolation_allowed = false`;
+- `wake_kernel_forced_zero = true`;
+- `constitutive_K_shield_cap = false`.
 
-A failed tensor probe, kernel mismatch, nonzero transferred recovery, or invalid
-persistent-source row aborts the run.
+A failed tensor probe, atlas mismatch, nonzero transferred recovery, invalid
+persistent-source row, or crack extension outside the atlas envelope aborts the
+run.
