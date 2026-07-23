@@ -1,10 +1,19 @@
-"""Peierls--Taylor transport mixin for persistent signed MPZ state."""
+"""Peierls--Taylor transport mixin for the persistent signed MPZ state.
+
+v10.0.5.14.2 keeps the same finite-volume upwind transport equations used by
+v10.0.5.14.1 but replaces explicit CFL microstepping with an adaptive,
+L-stable backward-Euler solve of the coupled mobile/retained system.  The
+change is numerical only: Peierls glide, encounter storage, Taylor release,
+and absorbing escape at the outer MPZ boundary are unchanged.
+"""
 from __future__ import annotations
 
 import copy
 from typing import Any, Callable
 
 import numpy as np
+from scipy.sparse import csc_matrix, eye, lil_matrix
+from scipy.sparse.linalg import spsolve
 
 from .emission_derived_plasticity import (
     CorrelatedTaylorConfig,
@@ -18,6 +27,13 @@ from .emission_derived_plasticity_v9102 import (
 
 
 class PersistentSiteSignedTransportMixin:
+    _TRANSPORT_ARRAY_NAMES = (
+        "mobile_positive",
+        "mobile_negative",
+        "retained_positive",
+        "retained_negative",
+    )
+
     def _pt_model(self) -> EmissionDerivedPeierlsTaylorModel:
         c = self.candidate
         parent = ExpFloorSurface(
@@ -70,146 +86,330 @@ class PersistentSiteSignedTransportMixin:
             )
         )
 
-    @staticmethod
-    def _exchange(
-        mobile: np.ndarray,
-        retained: np.ndarray,
-        encounter: np.ndarray,
-        release: np.ndarray,
-        dt: float,
-    ) -> tuple[np.ndarray, np.ndarray, float, float]:
-        ke = np.maximum(np.asarray(encounter, dtype=float), 0.0)[None, :]
-        kt = np.maximum(np.asarray(release, dtype=float), 0.0)[None, :]
-        total = np.maximum(mobile, 0.0) + np.maximum(retained, 0.0)
-        rate = ke + kt
-        frac_r = np.divide(ke, rate, out=np.zeros_like(rate), where=rate > 0.0)
-        equilibrium = frac_r * total
-        decay = np.exp(-np.minimum(rate * max(float(dt), 0.0), 700.0))
-        new_r = np.clip(
-            equilibrium + (retained - equilibrium) * decay, 0.0, total
+    def _transport_snapshot(self) -> dict[str, np.ndarray]:
+        return {
+            name: np.asarray(getattr(self, name), dtype=float).copy()
+            for name in self._TRANSPORT_ARRAY_NAMES
+        }
+
+    def _restore_transport_snapshot(self, snapshot: dict[str, np.ndarray]) -> None:
+        for name in self._TRANSPORT_ARRAY_NAMES:
+            setattr(self, name, np.asarray(snapshot[name], dtype=float).copy())
+
+    def _forest_from_snapshot(self, snapshot: dict[str, np.ndarray]) -> np.ndarray:
+        width = max(self.blunting_length_m, self.dx)
+        unsigned = np.sum(
+            snapshot["mobile_positive"]
+            + snapshot["mobile_negative"]
+            + snapshot["retained_positive"]
+            + snapshot["retained_negative"],
+            axis=0,
         )
-        new_m = total - new_r
-        trapped = float(np.sum(np.maximum(new_r - retained, 0.0)))
-        released = float(np.sum(np.maximum(retained - new_r, 0.0)))
-        return new_m, new_r, trapped, released
+        return np.maximum(
+            float(self.candidate.rho_forest_floor_m2)
+            + unsigned / max(self.dx * width, 1.0e-30),
+            1.0,
+        )
 
     @staticmethod
-    def _advect_forward(
-        field: np.ndarray,
-        velocity_m_s: np.ndarray,
-        dx: float,
-        dt: float,
-    ) -> tuple[np.ndarray, float]:
-        source = np.asarray(field, dtype=float)
-        velocity = np.asarray(velocity_m_s, dtype=float).reshape(-1)
-        out = source.copy()
-        escaped = 0.0
-        for system in range(source.shape[0]):
-            f = source[system]
-            v = np.maximum(velocity, 0.0)
-            face_v = np.empty(f.size + 1)
-            face_v[1:-1] = 0.5 * (v[:-1] + v[1:])
-            face_v[0], face_v[-1] = v[0], v[-1]
-            flux = np.zeros(f.size + 1)
-            for j in range(1, f.size):
-                flux[j] = face_v[j] * f[j - 1]
-            flux[-1] = face_v[-1] * f[-1]
-            out[system] = np.maximum(
-                f - float(dt) * (flux[1:] - flux[:-1]) / float(dx), 0.0
+    def _snapshot_mass(snapshot: dict[str, np.ndarray]) -> float:
+        return float(sum(np.sum(snapshot[name]) for name in snapshot))
+
+    @staticmethod
+    def _snapshot_difference(
+        first: dict[str, np.ndarray], second: dict[str, np.ndarray]
+    ) -> float:
+        return float(
+            sum(
+                np.sum(np.abs(first[name] - second[name]))
+                for name in PersistentSiteSignedTransportMixin._TRANSPORT_ARRAY_NAMES
             )
-            escaped += max(float(dt) * flux[-1] / float(dx), 0.0)
-        return out, escaped
+        )
+
+    def _frozen_transport_step(
+        self,
+        snapshot: dict[str, np.ndarray],
+        *,
+        dt_s: float,
+        T_K: float,
+        opening_stress_Pa: float,
+    ) -> tuple[dict[str, np.ndarray], dict[str, float]]:
+        """Advance one frozen-coefficient coupled transport interval implicitly."""
+        dt = max(float(dt_s), 0.0)
+        if dt <= 0.0:
+            return copy.deepcopy(snapshot), {
+                "dN_trapped": 0.0,
+                "dN_detrapped": 0.0,
+                "dN_escaped": 0.0,
+                "max_frozen_courant": 0.0,
+            }
+
+        forest = self._forest_from_snapshot(snapshot)
+        radius = self.blunted_radius()
+        stress = max(float(opening_stress_Pa), 0.0) * np.sqrt(
+            radius / np.maximum(radius + self.x, radius)
+        )
+        rates = self._pt_model().rates(stress, forest, T_K, self.b_m)
+        peierls = np.maximum(
+            np.asarray(rates["peierls_rate_s"], dtype=float).reshape(-1), 0.0
+        )
+        release_rate = np.maximum(
+            np.asarray(rates["taylor_completion_rate_s"], dtype=float).reshape(-1),
+            0.0,
+        )
+        jump = np.maximum(
+            np.asarray(rates["jump_length_m"], dtype=float).reshape(-1), self.b_m
+        )
+        if not (
+            peierls.shape == release_rate.shape == jump.shape == (self.n_bins,)
+        ):
+            raise RuntimeError("Peierls--Taylor transport rates do not match MPZ bins")
+        if not (
+            np.all(np.isfinite(peierls))
+            and np.all(np.isfinite(release_rate))
+            and np.all(np.isfinite(jump))
+        ):
+            raise RuntimeError("nonfinite Peierls--Taylor transport coefficients")
+
+        velocity = jump * peierls
+        encounter = (
+            float(self.candidate.encounter_efficiency)
+            * velocity
+            * np.sqrt(np.maximum(forest, 0.0))
+        )
+        n = self.n_bins
+        face_velocity = np.empty(n + 1, dtype=float)
+        face_velocity[1:-1] = 0.5 * (velocity[:-1] + velocity[1:])
+        face_velocity[0] = velocity[0]
+        face_velocity[-1] = velocity[-1]
+
+        # y = [mobile bins, retained bins, cumulative trapped, cumulative
+        #      detrapped, cumulative escaped].  The generator is Metzler and
+        # conserves line content when the absorbing escape accumulator is included.
+        dim = 2 * n + 3
+        generator = lil_matrix((dim, dim), dtype=float)
+        trap_row = 2 * n
+        release_row = 2 * n + 1
+        escape_row = 2 * n + 2
+        for i in range(n):
+            outflow = face_velocity[i + 1] / max(self.dx, 1.0e-30)
+            generator[i, i] -= outflow + encounter[i]
+            if i > 0:
+                generator[i, i - 1] += face_velocity[i] / max(self.dx, 1.0e-30)
+            generator[i, n + i] += release_rate[i]
+            generator[n + i, i] += encounter[i]
+            generator[n + i, n + i] -= release_rate[i]
+            generator[trap_row, i] += encounter[i]
+            generator[release_row, n + i] += release_rate[i]
+        generator[escape_row, n - 1] += face_velocity[-1] / max(self.dx, 1.0e-30)
+
+        n_columns = 2 * self.n_systems
+        initial = np.zeros((dim, n_columns), dtype=float)
+        for system in range(self.n_systems):
+            initial[:n, system] = snapshot["mobile_positive"][system]
+            initial[n : 2 * n, system] = snapshot["retained_positive"][system]
+            negative_column = self.n_systems + system
+            initial[:n, negative_column] = snapshot["mobile_negative"][system]
+            initial[n : 2 * n, negative_column] = snapshot["retained_negative"][system]
+
+        system_matrix = eye(dim, format="csc") - dt * csc_matrix(generator)
+        advanced = np.asarray(spsolve(system_matrix, initial), dtype=float)
+        if advanced.ndim == 1:
+            advanced = advanced[:, None]
+        if not np.all(np.isfinite(advanced)):
+            raise RuntimeError("implicit persistent-site transport produced nonfinite state")
+        magnitude = max(float(np.max(np.abs(advanced))), 1.0)
+        negative_tolerance = 1.0e-11 * magnitude
+        if float(np.min(advanced)) < -negative_tolerance:
+            raise RuntimeError(
+                "implicit persistent-site transport violated nonnegative state: "
+                f"minimum={float(np.min(advanced)):.6e}"
+            )
+        advanced = np.maximum(advanced, 0.0)
+
+        result = {
+            name: np.zeros_like(snapshot[name]) for name in self._TRANSPORT_ARRAY_NAMES
+        }
+        for system in range(self.n_systems):
+            result["mobile_positive"][system] = advanced[:n, system]
+            result["retained_positive"][system] = advanced[n : 2 * n, system]
+            negative_column = self.n_systems + system
+            result["mobile_negative"][system] = advanced[:n, negative_column]
+            result["retained_negative"][system] = advanced[
+                n : 2 * n, negative_column
+            ]
+
+        trapped = float(np.sum(advanced[trap_row]))
+        released = float(np.sum(advanced[release_row]))
+        escaped = float(np.sum(advanced[escape_row]))
+        initial_mass = self._snapshot_mass(snapshot)
+        final_mass = self._snapshot_mass(result)
+        conservation_error = abs(initial_mass - final_mass - escaped)
+        conservation_scale = max(initial_mass, final_mass + escaped, 1.0)
+        if conservation_error > 1.0e-8 * conservation_scale:
+            raise RuntimeError(
+                "implicit persistent-site transport failed line-content conservation: "
+                f"error={conservation_error:.6e}, scale={conservation_scale:.6e}"
+            )
+
+        diagnostics = {
+            "dN_trapped": trapped,
+            "dN_detrapped": released,
+            "dN_escaped": escaped,
+            "peierls_rate_min_s": float(np.min(peierls)),
+            "peierls_rate_max_s": float(np.max(peierls)),
+            "taylor_completion_rate_min_s": float(np.min(release_rate)),
+            "taylor_completion_rate_max_s": float(np.max(release_rate)),
+            "encounter_rate_min_s": float(np.min(encounter)),
+            "encounter_rate_max_s": float(np.max(encounter)),
+            "glide_velocity_max_m_s": float(np.max(velocity)),
+            "rho_forest_min_m2": float(np.min(forest)),
+            "rho_forest_max_m2": float(np.max(forest)),
+            "max_frozen_courant": float(
+                np.max(velocity) * dt / max(self.dx, 1.0e-30)
+            ),
+            "line_content_conservation_error": conservation_error,
+        }
+        return result, diagnostics
+
+    @staticmethod
+    def _combine_transport_diagnostics(
+        diagnostics: list[dict[str, float]],
+    ) -> dict[str, float]:
+        if not diagnostics:
+            return {}
+        summed = {
+            key: float(sum(item.get(key, 0.0) for item in diagnostics))
+            for key in (
+                "dN_trapped",
+                "dN_detrapped",
+                "dN_escaped",
+            )
+        }
+        minima = {
+            key: float(min(item[key] for item in diagnostics if key in item))
+            for key in (
+                "peierls_rate_min_s",
+                "taylor_completion_rate_min_s",
+                "encounter_rate_min_s",
+                "rho_forest_min_m2",
+            )
+        }
+        maxima = {
+            key: float(max(item[key] for item in diagnostics if key in item))
+            for key in (
+                "peierls_rate_max_s",
+                "taylor_completion_rate_max_s",
+                "encounter_rate_max_s",
+                "glide_velocity_max_m_s",
+                "rho_forest_max_m2",
+                "max_frozen_courant",
+                "line_content_conservation_error",
+            )
+        }
+        return {**summed, **minima, **maxima}
 
     def transport(
         self, *, dt_s: float, T_K: float, opening_stress_Pa: float
     ) -> dict[str, Any]:
         dt_total = max(float(dt_s), 0.0)
-        remaining = dt_total
-        trapped = released = escaped = 0.0
-        substeps = 0
-        last: dict[str, Any] = {}
-        while remaining > 0.0:
-            substeps += 1
-            if substeps > self.max_transport_substeps:
-                raise RuntimeError("persistent-site transport exceeded max substeps")
-            forest = self.forest_density_profile_m2()
-            radius = self.blunted_radius()
-            stress = max(float(opening_stress_Pa), 0.0) * np.sqrt(
-                radius / np.maximum(radius + self.x, radius)
-            )
-            rates = self._pt_model().rates(stress, forest, T_K, self.b_m)
-            peierls = np.maximum(
-                np.asarray(rates["peierls_rate_s"], dtype=float).reshape(-1),
-                0.0,
-            )
-            release_rate = np.maximum(
-                np.asarray(
-                    rates["taylor_completion_rate_s"], dtype=float
-                ).reshape(-1),
-                0.0,
-            )
-            jump = np.maximum(
-                np.asarray(rates["jump_length_m"], dtype=float).reshape(-1),
-                self.b_m,
-            )
-            velocity = jump * peierls
-            encounter = (
-                float(self.candidate.encounter_efficiency)
-                * velocity
-                * np.sqrt(np.maximum(forest, 0.0))
-            )
-            max_rate = max(
-                float(np.max(encounter)),
-                float(np.max(release_rate)),
-                float(np.max(velocity)) / max(self.dx, 1.0e-30),
-            )
-            dt = (
-                remaining
-                if max_rate <= 0.0
-                else min(remaining, self.max_transport_cfl / max_rate)
-            )
-            for m_name, r_name in (
-                ("mobile_positive", "retained_positive"),
-                ("mobile_negative", "retained_negative"),
-            ):
-                m, r, t, rel = self._exchange(
-                    getattr(self, m_name),
-                    getattr(self, r_name),
-                    encounter,
-                    release_rate,
-                    dt,
-                )
-                setattr(self, m_name, m)
-                setattr(self, r_name, r)
-                trapped += t
-                released += rel
-                m, esc = self._advect_forward(
-                    getattr(self, m_name), velocity, self.dx, dt
-                )
-                setattr(self, m_name, m)
-                escaped += esc
-            remaining -= dt
-            last = {
-                "peierls_rate_min_s": float(np.min(peierls)),
-                "peierls_rate_max_s": float(np.max(peierls)),
-                "taylor_completion_rate_min_s": float(np.min(release_rate)),
-                "taylor_completion_rate_max_s": float(np.max(release_rate)),
-                "encounter_rate_min_s": float(np.min(encounter)),
-                "encounter_rate_max_s": float(np.max(encounter)),
-                "glide_velocity_max_m_s": float(np.max(velocity)),
-                "rho_forest_min_m2": float(np.min(forest)),
-                "rho_forest_max_m2": float(np.max(forest)),
+        initial = self._transport_snapshot()
+        if dt_total <= 0.0 or self._snapshot_mass(initial) <= 0.0:
+            out = {
+                "dN_trapped": 0.0,
+                "dN_detrapped": 0.0,
+                "dN_escaped": 0.0,
+                "dN_recovered": 0.0,
+                "transport_substeps": 0,
+                "transport_attempted_linear_solves": 0,
+                "transport_rejected_intervals": 0,
+                "transport_integrator": "adaptive_backward_euler_upwind_v10_0_5_14_2",
+                "transport_cfl_limited": False,
+                "explicit_recovery_active": False,
             }
+            self.last_transport = copy.deepcopy(out)
+            return out
+
+        nonlinear_rtol = max(
+            float(getattr(self, "transport_nonlinear_rtol", 1.0e-3)), 1.0e-10
+        )
+        max_solves = max(int(self.max_transport_substeps), 12)
+        minimum_interval = max(
+            float(getattr(self, "transport_min_interval_s", 1.0e-12)),
+            np.finfo(float).eps * max(dt_total, 1.0),
+        )
+        attempted_solves = 0
+        rejected_intervals = 0
+        accepted_diagnostics: list[dict[str, float]] = []
+        maximum_error = 0.0
+
+        def integrate_interval(
+            snapshot: dict[str, np.ndarray], interval: float
+        ) -> dict[str, np.ndarray]:
+            nonlocal attempted_solves, rejected_intervals, maximum_error
+            if attempted_solves + 3 > max_solves:
+                raise RuntimeError(
+                    "persistent-site implicit transport exceeded nonlinear solve budget: "
+                    f"attempted={attempted_solves}, limit={max_solves}, "
+                    f"interval_s={interval:.6e}, max_error={maximum_error:.6e}"
+                )
+            full, _ = self._frozen_transport_step(
+                snapshot,
+                dt_s=interval,
+                T_K=T_K,
+                opening_stress_Pa=opening_stress_Pa,
+            )
+            half, first_diag = self._frozen_transport_step(
+                snapshot,
+                dt_s=0.5 * interval,
+                T_K=T_K,
+                opening_stress_Pa=opening_stress_Pa,
+            )
+            two_half, second_diag = self._frozen_transport_step(
+                half,
+                dt_s=0.5 * interval,
+                T_K=T_K,
+                opening_stress_Pa=opening_stress_Pa,
+            )
+            attempted_solves += 3
+            scale = max(
+                self._snapshot_mass(snapshot),
+                self._snapshot_mass(two_half),
+                1.0e-30,
+            )
+            error = self._snapshot_difference(full, two_half) / scale
+            maximum_error = max(maximum_error, error)
+            if error <= nonlinear_rtol or interval <= minimum_interval:
+                accepted_diagnostics.extend((first_diag, second_diag))
+                return two_half
+            rejected_intervals += 1
+            midpoint = integrate_interval(snapshot, 0.5 * interval)
+            return integrate_interval(midpoint, 0.5 * interval)
+
+        final = integrate_interval(initial, dt_total)
+        self._restore_transport_snapshot(final)
+        accepted = self._combine_transport_diagnostics(accepted_diagnostics)
+        escaped = float(accepted.get("dN_escaped", 0.0))
         self.time_s += dt_total
         self.escaped_total += escaped
         out = {
-            "dN_trapped": trapped,
-            "dN_detrapped": released,
+            "dN_trapped": float(accepted.get("dN_trapped", 0.0)),
+            "dN_detrapped": float(accepted.get("dN_detrapped", 0.0)),
             "dN_escaped": escaped,
             "dN_recovered": 0.0,
-            "transport_substeps": substeps,
+            "transport_substeps": len(accepted_diagnostics),
+            "transport_attempted_linear_solves": attempted_solves,
+            "transport_rejected_intervals": rejected_intervals,
+            "transport_nonlinear_error_max": maximum_error,
+            "transport_nonlinear_rtol": nonlinear_rtol,
+            "transport_integrator": "adaptive_backward_euler_upwind_v10_0_5_14_2",
+            "transport_cfl_limited": False,
             "explicit_recovery_active": False,
-            **last,
+            **{
+                key: value
+                for key, value in accepted.items()
+                if key not in {"dN_trapped", "dN_detrapped", "dN_escaped"}
+            },
         }
         self.last_transport = copy.deepcopy(out)
         return out
