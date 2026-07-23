@@ -16,9 +16,6 @@ from .persistent_site_complementarity_v100514 import (
     solve_backstress_limited_activations,
 )
 
-# Install the audited endpoint treatment before the core mixin imports the
-# support symbol. This mirrors the PF v10.2.22 audited wrapper while keeping the
-# correction explicit in the versioned FEM/CZM state entry.
 _support.solve_backstress_limited_activations = solve_backstress_limited_activations
 
 from .persistent_site_signed_support_v100514 import (  # noqa: E402
@@ -39,6 +36,32 @@ from .persistent_site_signed_io_v100514 import (  # noqa: E402
 )
 from .persistent_site_signed_transport_v100514 import (  # noqa: E402
     PersistentSiteSignedTransportMixin,
+)
+
+
+def _shared_family_deepcopy(self, memo):
+    """Validated kernel families are immutable and shared across trial states."""
+    return self
+
+
+SignedShieldingKernelFamilyV1005141.__deepcopy__ = _shared_family_deepcopy
+
+_RUNTIME_METADATA_KEYS = (
+    "schema",
+    "interaction_integral_schema",
+    "normalization_sha256",
+    "normalization_source",
+    "active_kernel_mechanically_measured",
+    "kernel_from_signed_interaction_integral",
+    "candidate_independent",
+    "counts_are_signed_burgers_lines",
+    "signed_burgers_population_required",
+    "normalization_is_mechanically_derived",
+    "crack_extension_m_semantics",
+    "wake_kernel_forced_zero",
+    "wake_shielding_supported",
+    "constitutive_K_shield_cap",
+    "constitutive_K_shield_cap_present",
 )
 
 
@@ -87,7 +110,13 @@ class PersistentSiteSignedMPZStateV100514(
 
         self.kernel_family: SignedShieldingKernelFamilyV1005141 | None = None
         if isinstance(kernel, SignedShieldingKernelFamilyV1005141):
-            self.kernel_family = copy.deepcopy(kernel)
+            compact_metadata = {
+                key: copy.deepcopy(kernel.metadata.get(key))
+                for key in _RUNTIME_METADATA_KEYS
+                if key in kernel.metadata
+            }
+            object.__setattr__(kernel, "metadata", compact_metadata)
+            self.kernel_family = kernel
             self.kernel_family.validate(
                 self.n_systems,
                 self.n_bins,
@@ -169,7 +198,6 @@ class PersistentSiteSignedMPZStateV100514(
         self.last_advance: dict[str, Any] = {}
 
     def current_kernel_snapshot(self) -> SignedShieldingKernelV100514:
-        """Return the mode-I signed kernel at the committed crack-path extension."""
         if self.kernel_family is None:
             return self.kernel
         self.kernel = self.kernel_family.snapshot(
@@ -180,7 +208,6 @@ class PersistentSiteSignedMPZStateV100514(
         return self.kernel
 
     def advance(self, distance_m: float) -> dict[str, float]:
-        """Preflight the family envelope before mutating the moving-frame state."""
         distance = max(float(distance_m), 0.0)
         if self.kernel_family is not None:
             self.kernel_family.snapshot(
@@ -191,7 +218,6 @@ class PersistentSiteSignedMPZStateV100514(
         return super().advance(distance)
 
     def split(self, daughter_fraction: float) -> "PersistentSiteSignedMPZStateV100514":
-        """A daughter inherits the parent's cumulative crack-path coordinate."""
         parent_extension = self.advance_total_m
         child = super().split(daughter_fraction)
         child.advance_total_m = parent_extension
