@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.13.5"
-description = "Full 2-D Arrhenius FEM/CZM barrier transfer with tip-only moving-MPZ state, long-corridor startup repair, and rate-preserving macro-ramp"
+version = "10.0.5.14"
+description = "Full 2-D Arrhenius FEM/CZM with PF v10.2.22 persistent-site signed moving-MPZ parity"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
@@ -23,4 +23,8 @@ dev = [
 include = ["arrhenius_fracture*"]
 
 [tool.setuptools.package-data]
-arrhenius_fracture = ["data/mpz_v9_11_1/*.json"]
+arrhenius_fracture = [
+  "data/mpz_v9_11_1/*.json",
+  "data/mpz_v10_0_5_14/*.csv",
+  "data/mpz_v10_0_5_14/*.json",
+]
