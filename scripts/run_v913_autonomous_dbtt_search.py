@@ -10,8 +10,9 @@ Candidate parameter rows are read-only.
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 import csv
+from datetime import datetime, timezone
 import hashlib
 import json
 import multiprocessing
@@ -96,6 +97,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--translation-action-exponent", type=float, default=0.95)
     parser.add_argument("--max-hazard-increment", type=float, default=0.05)
     parser.add_argument("--jobs", type=int, default=1)
+    parser.add_argument(
+        "--progress-interval-s",
+        type=float,
+        default=60.0,
+        help=(
+            "Maximum time between aggregate progress heartbeats while cases "
+            "are running."
+        ),
+    )
     parser.add_argument("--promote-count", type=int, default=48)
     parser.add_argument("--low-max-K", type=float, default=700.0)
     parser.add_argument("--high-min-K", type=float, default=1000.0)
@@ -138,6 +148,80 @@ def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
         writer.writeheader()
         writer.writerows(rows)
     temporary.replace(path)
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _write_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    )
+    temporary.replace(path)
+
+
+def _progress_payload(
+    *,
+    state: str,
+    phase: str,
+    started_at_utc: str,
+    elapsed_s: float,
+    completed_cases: int,
+    resumed_cases: int,
+    total_cases: int,
+    jobs: int,
+    contract_sha256: str,
+    last_case: Mapping[str, Any] | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    new_cases = max(int(completed_cases) - int(resumed_cases), 0)
+    rate_per_s = new_cases / elapsed_s if elapsed_s > 0.0 else 0.0
+    remaining = max(int(total_cases) - int(completed_cases), 0)
+    eta_s = remaining / rate_per_s if rate_per_s > 0.0 else None
+    active_workers = min(max(int(jobs), 0), remaining)
+    payload: dict[str, Any] = {
+        "schema": "v9.13_autonomous_dbtt_progress_v1",
+        "state": str(state),
+        "phase": str(phase),
+        "started_at_utc": str(started_at_utc),
+        "updated_at_utc": _utc_now(),
+        "run_contract_sha256": str(contract_sha256),
+        "completed_cases": int(completed_cases),
+        "resumed_cases": int(resumed_cases),
+        "newly_completed_cases": new_cases,
+        "remaining_cases": remaining,
+        "total_cases": int(total_cases),
+        "progress_fraction": (
+            float(completed_cases) / float(total_cases)
+            if total_cases
+            else 1.0
+        ),
+        "active_workers_upper_bound": active_workers,
+        "elapsed_s": float(elapsed_s),
+        "new_cases_per_hour": 3600.0 * rate_per_s,
+        "eta_s": eta_s,
+        "last_case": dict(last_case) if last_case is not None else None,
+        "error": error,
+    }
+    return payload
+
+
+def _progress_line(payload: Mapping[str, Any]) -> str:
+    eta = payload.get("eta_s")
+    eta_text = "unknown" if eta is None else f"{float(eta):.1f}"
+    return (
+        "V913_DBTT_PROGRESS "
+        f"state={payload['state']} phase={payload['phase']} "
+        f"completed={payload['completed_cases']}/{payload['total_cases']} "
+        f"resumed={payload['resumed_cases']} "
+        f"remaining={payload['remaining_cases']} "
+        f"active_lte={payload['active_workers_upper_bound']} "
+        f"elapsed_s={float(payload['elapsed_s']):.1f} "
+        f"new_cases_per_hour={float(payload['new_cases_per_hour']):.3f} "
+        f"eta_s={eta_text}"
+    )
 
 
 def _temperature_tag(temperature_K: float) -> str:
@@ -409,6 +493,12 @@ def _run_case(
     if _WORKER_LOADING_MAP is None or _WORKER_PHYSICS is None:
         raise RuntimeError("worker was not initialized")
     started = time.perf_counter()
+    print(
+        "V913_DBTT_CASE_START "
+        f"candidate={row['candidate_id']} T={float(temperature_K):g} "
+        f"worker_pid={os.getpid()}",
+        flush=True,
+    )
     candidate = candidate_from_registry_row(row)
     result = run_autonomous_rcurve(
         candidate,
@@ -531,6 +621,8 @@ def main() -> int:
         raise ValueError("checkpoint extension must not exceed target extension")
     if int(args.jobs) < 1:
         raise ValueError("--jobs must be at least one")
+    if not np.isfinite(args.progress_interval_s) or args.progress_interval_s <= 0.0:
+        raise ValueError("--progress-interval-s must be positive and finite")
     args.out.mkdir(parents=True, exist_ok=True)
     case_root = args.out / "cases"
     case_root.mkdir(parents=True, exist_ok=True)
@@ -601,12 +693,45 @@ def main() -> int:
             else:
                 pending.append((row, temperature))
 
+    progress_path = args.out / "autonomous_dbtt_progress.json"
+    total_cases = len(selected_rows) * len(temperatures)
+    resumed_cases = len(payloads)
+    search_started_at_utc = _utc_now()
+    search_started = time.perf_counter()
+    last_case: dict[str, Any] | None = None
+
+    def report_progress(
+        *,
+        state: str = "running",
+        phase: str = "cases",
+        emit: bool = True,
+        error: str | None = None,
+    ) -> dict[str, Any]:
+        progress = _progress_payload(
+            state=state,
+            phase=phase,
+            started_at_utc=search_started_at_utc,
+            elapsed_s=time.perf_counter() - search_started,
+            completed_cases=len(payloads),
+            resumed_cases=resumed_cases,
+            total_cases=total_cases,
+            jobs=int(args.jobs),
+            contract_sha256=contract_sha256,
+            last_case=last_case,
+            error=error,
+        )
+        _write_json_atomic(progress_path, progress)
+        if emit:
+            print(_progress_line(progress), flush=True)
+        return progress
+
     print(
         "V913_DBTT_SEARCH_START "
-        f"selected={len(selected_rows)} cases={len(selected_rows) * len(temperatures)} "
+        f"selected={len(selected_rows)} cases={total_cases} "
         f"resumed={len(payloads)} pending={len(pending)} jobs={args.jobs}",
         flush=True,
     )
+    report_progress()
     initializer_args = (
         str(args.base_physics_json),
         str(args.loading_map),
@@ -614,6 +739,7 @@ def main() -> int:
     )
 
     def accept(payload: dict[str, Any], wall_s: float) -> None:
+        nonlocal last_case
         key = (str(payload["candidate_id"]), float(payload["temperature_K"]))
         payload["run_contract_sha256"] = contract_sha256
         _validate_resumed_payload(
@@ -629,6 +755,16 @@ def main() -> int:
         temporary = path.with_suffix(path.suffix + ".tmp")
         temporary.write_text(json.dumps(payload, indent=2) + "\n")
         temporary.replace(path)
+        last_case = {
+            "candidate_id": key[0],
+            "temperature_K": key[1],
+            "status": str(payload["status"]),
+            "K_checkpoint_MPa_sqrt_m": _checkpoint_from_payload(
+                payload,
+                args.checkpoint_um,
+            ),
+            "case_wall_s": float(wall_s),
+        }
         records = [
             _case_record(item, checkpoint_um=args.checkpoint_um)
             for item in payloads.values()
@@ -645,16 +781,12 @@ def main() -> int:
             f"candidate={key[0]} T={key[1]:g} status={payload['status']} "
             f"K={_checkpoint_from_payload(payload, args.checkpoint_um):.8g} "
             f"wall_s={wall_s:.3f} complete={len(payloads)}/"
-            f"{len(selected_rows) * len(temperatures)}",
+            f"{total_cases}",
             flush=True,
         )
+        report_progress(emit=False)
 
-    if pending and int(args.jobs) <= 1:
-        _initialize_worker(*initializer_args)
-        for row, temperature in pending:
-            payload, wall_s = _run_case(row, temperature)
-            accept(payload, wall_s)
-    elif pending:
+    if pending:
         context = multiprocessing.get_context("spawn")
         with ProcessPoolExecutor(
             max_workers=max(int(args.jobs), 1),
@@ -669,10 +801,46 @@ def main() -> int:
                 )
                 for row, temperature in pending
             }
-            for future in as_completed(futures):
-                payload, wall_s = future.result()
-                accept(payload, wall_s)
+            remaining = set(futures)
+            heartbeat_deadline = (
+                time.perf_counter() + float(args.progress_interval_s)
+            )
+            while remaining:
+                timeout_s = max(heartbeat_deadline - time.perf_counter(), 0.0)
+                done, remaining = wait(
+                    remaining,
+                    timeout=timeout_s,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not done:
+                    report_progress()
+                    heartbeat_deadline = (
+                        time.perf_counter() + float(args.progress_interval_s)
+                    )
+                    continue
+                for future in done:
+                    candidate_id, temperature = futures[future]
+                    try:
+                        payload, wall_s = future.result()
+                    except Exception as exc:
+                        message = (
+                            f"{type(exc).__name__}: {exc}; "
+                            f"candidate={candidate_id}; T={temperature:g}"
+                        )
+                        report_progress(
+                            state="failed",
+                            phase="cases",
+                            error=message,
+                        )
+                        raise
+                    accept(payload, wall_s)
+                if time.perf_counter() >= heartbeat_deadline:
+                    report_progress()
+                    heartbeat_deadline = (
+                        time.perf_counter() + float(args.progress_interval_s)
+                    )
 
+    report_progress(phase="postprocess")
     case_records = [
         _case_record(payload, checkpoint_um=args.checkpoint_um)
         for payload in payloads.values()
@@ -732,7 +900,7 @@ def main() -> int:
     promoted = promoted.sort_values("search_rank")
     promoted.to_csv(args.out / "promoted_registry.csv", index=False)
 
-    expected_cases = len(selected_rows) * len(temperatures)
+    expected_cases = total_cases
     complete_grid = (
         len(payloads) == expected_cases
         and all(str(payload.get("status")) == "complete" for payload in payloads.values())
@@ -792,6 +960,10 @@ def main() -> int:
         f"peak_like={manifest['peak_like_count']} promoted={promote_count} "
         f"out={args.out}",
         flush=True,
+    )
+    report_progress(
+        state="complete" if complete_grid else "failed",
+        phase="complete",
     )
     return 0 if complete_grid else 2
 

@@ -23,8 +23,11 @@ from scripts.augment_mpz_v9_12_directional_peak_targets import (
 )
 from scripts.run_v913_autonomous_dbtt_search import (
     _establish_run_contract,
+    _progress_line,
+    _progress_payload,
     _select_rows,
     _validate_resumed_payload,
+    _write_json_atomic,
 )
 
 
@@ -203,3 +206,39 @@ def test_resume_payload_requires_exact_contract_case_and_seed():
             contract_sha256="contract",
             loading_map_seed=3621,
         )
+
+
+def test_progress_payload_reports_resume_rate_eta_and_last_case():
+    payload = _progress_payload(
+        state="running",
+        phase="cases",
+        started_at_utc="2026-07-23T00:00:00+00:00",
+        elapsed_s=1800.0,
+        completed_cases=14,
+        resumed_cases=4,
+        total_cases=100,
+        jobs=4,
+        contract_sha256="contract",
+        last_case={
+            "candidate_id": "candidate",
+            "temperature_K": 900.0,
+        },
+    )
+    assert payload["newly_completed_cases"] == 10
+    assert payload["remaining_cases"] == 86
+    assert payload["active_workers_upper_bound"] == 4
+    assert payload["progress_fraction"] == pytest.approx(0.14)
+    assert payload["new_cases_per_hour"] == pytest.approx(20.0)
+    assert payload["eta_s"] == pytest.approx(15480.0)
+    assert payload["last_case"]["candidate_id"] == "candidate"
+    line = _progress_line(payload)
+    assert "completed=14/100" in line
+    assert "eta_s=15480.0" in line
+
+
+def test_progress_json_is_written_atomically(tmp_path: Path):
+    path = tmp_path / "autonomous_dbtt_progress.json"
+    payload = {"state": "running", "completed_cases": 1}
+    _write_json_atomic(path, payload)
+    assert json.loads(path.read_text()) == payload
+    assert not path.with_suffix(".json.tmp").exists()

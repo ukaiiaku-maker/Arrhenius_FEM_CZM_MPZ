@@ -343,7 +343,16 @@ def _run_sentinels(
         raise RuntimeError("sentinel reference does not define the exact cases")
 
     by_id = {row["candidate_id"]: row for row in top5_rows}
-    for candidate_id, temperature_K in SENTINEL_CASES:
+    for index, (candidate_id, temperature_K) in enumerate(
+        SENTINEL_CASES,
+        start=1,
+    ):
+        print(
+            "V913_DBTT_SENTINEL_START "
+            f"index={index}/{len(SENTINEL_CASES)} "
+            f"candidate={candidate_id} T={temperature_K:g}",
+            flush=True,
+        )
         result = run_autonomous_rcurve(
             candidate_from_registry_row(by_id[candidate_id]),
             physics,
@@ -408,10 +417,19 @@ def _run_sentinels(
                 atol=2.0e-9,
                 rtol=2.0e-11,
             )
+        print(
+            "V913_DBTT_SENTINEL_COMPLETE "
+            f"index={index}/{len(SENTINEL_CASES)} "
+            f"candidate={candidate_id} T={temperature_K:g} "
+            f"events={len(result.events)} "
+            f"K25={result.checkpoint_K(25.0e-6):.8g}",
+            flush=True,
+        )
 
 
 def main() -> int:
     args = parse_args()
+    print("V913_DBTT_PREFLIGHT_START", flush=True)
     pool_rows = _read_csv(args.candidate_registry)
     top5_rows = _read_csv(args.top5_registry)
     _validate_pool(
@@ -419,13 +437,26 @@ def main() -> int:
         top5_rows,
         pool_path=args.candidate_registry,
     )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK "
+        f"name=candidate_contract status=ok pool_rows={len(pool_rows)}",
+        flush=True,
+    )
     physics, loading_map = _validate_physics(
         args.base_physics_json,
         args.loading_map,
     )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK name=physics_loading_map status=ok",
+        flush=True,
+    )
     _validate_calibration(
         target_manifest_path=args.target_manifest,
         accepted_summary_path=args.accepted_summary,
+    )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK name=accepted_calibration status=ok",
+        flush=True,
     )
     if args.run_sentinels:
         _run_sentinels(
