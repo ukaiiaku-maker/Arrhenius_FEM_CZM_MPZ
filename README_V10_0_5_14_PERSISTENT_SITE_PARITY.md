@@ -1,4 +1,4 @@
-# v10.0.5.14.2 — PF persistent-site and signed-kernel-family parity
+# v10.0.5.14.3 — PF persistent-site and signed-kernel-family parity
 
 This point release ports the audited PF v10.2.22 persistent-site signed MPZ and
 the actual v10.2.14 crack-extension-indexed shielding atlas onto the validated
@@ -44,22 +44,30 @@ method. The family-level activation-to-line conversion is retained. Wake
 shielding and constitutive shielding caps remain disabled, and extrapolation
 outside the measured extension envelope is rejected.
 
-## v10.0.5.14.2 transport correction
+## Transport corrections
 
-v10.0.5.14.1 retained an explicit upwind CFL loop. At the physically admissible
-Arrhenius Peierls rates and the rate-preserving 840-s macrostep, this could imply
-an impractical number of microsteps and caused:
+v10.0.5.14.1 retained explicit CFL microstepping and failed at the admissible
+Peierls rates. v10.0.5.14.2 replaced this with backward Euler, but step-doubling
+continued to resolve the numerical stiff tail even after nearly all mobile
+content had escaped. The candidate-0118 700 K smoke therefore exhausted 2,000
+linear solves at an interval of approximately 5.4e-4 s.
 
-```text
-persistent-site transport exceeded max substeps
-```
+v10.0.5.14.3 preserves the same finite-volume equations but advances each
+frozen transport generator with a dense scaling-and-squaring matrix exponential.
+The frozen linear Peierls/encounter/Taylor/escape system is therefore solved
+without CFL or backward-Euler stiff-tail error. Step doubling remains only for
+the nonlinear change of state-dependent coefficients between intervals. Error
+normalization uses the line content at the beginning of the accepted macrostep,
+so an insignificant residual tail does not force unbounded refinement.
 
-v10.0.5.14.2 advances the same coupled finite-volume mobile/retained equations
-with adaptive, L-stable backward Euler and step-doubling error control. The
-Peierls, encounter, Taylor-release, and absorbing escape equations are unchanged;
-only the time integrator changed. The solver records the frozen Courant number,
-linear solve count, rejected nonlinear intervals, conservation error, and
-accepted transport substeps.
+The transport equations and constitutive rates are unchanged. Runtime records:
+
+- `transport_integrator`;
+- `transport_attempted_exponentials`;
+- `transport_rejected_intervals`;
+- `transport_nonlinear_error_max`;
+- `max_frozen_courant`;
+- `line_content_conservation_error`.
 
 ## Install or update
 
@@ -71,12 +79,13 @@ git pull --ff-only origin v10.0.5.14-persistent-sites-v10222-parity
 python -m pip install -e "$ROOT" --no-deps
 ```
 
-Expected package version: `10.0.5.14.2`.
+Expected package version: `10.0.5.14.3`.
 
 ## Verification
 
 ```bash
 python -m pytest -q \
+  tests/test_persistent_site_transport_v1005143.py \
   tests/test_persistent_site_transport_v1005142.py \
   tests/test_signed_kernel_family_v1005141.py \
   tests/test_persistent_site_v100514.py \
@@ -100,7 +109,7 @@ The versioned runner creates the output directory before opening its log:
 ROOT=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_14_persistent_sites
 cd "$ROOT"
 conda activate arrhenius-fem-czm
-bash run_v10_0_5_14_2_0118_family_smoke.sh
+bash run_v10_0_5_14_3_0118_family_smoke.sh
 ```
 
 Optional environment overrides include `PFROOT`, `FAMILY_JSON`, `OUTROOT`,
@@ -116,5 +125,5 @@ Optional environment overrides include `PFROOT`, `FAMILY_JSON`, `OUTROOT`,
 - `front_width_grid_independent = true`;
 - `ahead_of_tip_dx_used_as_front_width_floor = false`;
 - `two_channel_drive_reliable = true`;
-- `transport_integrator = adaptive_backward_euler_upwind_v10_0_5_14_2`;
+- `transport_integrator = adaptive_frozen_generator_exponential_v10_0_5_14_3`;
 - `transport_cfl_limited = false`.
