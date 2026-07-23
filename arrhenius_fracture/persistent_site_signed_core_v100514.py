@@ -131,6 +131,7 @@ class PersistentSiteSignedCoreMixin:
         nu: float | None = None,
         b: float | None = None,
     ) -> float:
+        kernel = self.current_kernel_snapshot()
         signed_active = self.retained_positive - self.retained_negative
         if self.candidate.mobile_shield_fraction != 0.0:
             signed_active = signed_active + self.candidate.mobile_shield_fraction * (
@@ -138,7 +139,7 @@ class PersistentSiteSignedCoreMixin:
             )
         K = float(
             np.sum(
-                self.kernel.active_kernel_Pa_sqrt_m_per_signed_line
+                kernel.active_kernel_Pa_sqrt_m_per_signed_line
                 * signed_active
             )
         )
@@ -150,7 +151,7 @@ class PersistentSiteSignedCoreMixin:
                     + self.candidate.mobile_shield_fraction
                     * (self.wake_mobile_positive - self.wake_mobile_negative)
                 )
-            wake_kernel = self.kernel.wake_kernel_Pa_sqrt_m_per_signed_line
+            wake_kernel = kernel.wake_kernel_Pa_sqrt_m_per_signed_line
             n = min(wake_kernel.shape[1], signed_wake.shape[1])
             K += float(np.sum(wake_kernel[:, :n] * signed_wake[:, :n]))
         return K
@@ -166,7 +167,7 @@ class PersistentSiteSignedCoreMixin:
         nsrc = self._source_bin_count()
         source_weight = float(np.sum(q[:nsrc])) / float(nsrc)
         return (
-            float(self.kernel.activation_to_line_content_by_system[int(system)])
+            float(self.activation_to_line_content_by_system[int(system)])
             * source_weight
             / max(norm * self.dx * width, 1.0e-30)
         )
@@ -238,7 +239,7 @@ class PersistentSiteSignedCoreMixin:
             blocking[system] = block
             blocked[system] = is_blocked
             line_content[system] = activation * float(
-                self.kernel.activation_to_line_content_by_system[system]
+                self.activation_to_line_content_by_system[system]
             )
             rho_final = rho0[system] + rho_per * activation
             sigma_final[system] = max(
@@ -258,6 +259,7 @@ class PersistentSiteSignedCoreMixin:
         self.tip_source_activity = np.ones(self.n_systems)
         emitted = float(np.sum(line_content))
         self.emitted_total += emitted
+        kernel_audit = self.kernel_artifact_audit()
         out = {
             "dN_emit": emitted,
             "source_activations": float(np.sum(activations)),
@@ -265,6 +267,9 @@ class PersistentSiteSignedCoreMixin:
             "blocking_activations_by_system": blocking,
             "mechanical_blocking_active_by_system": blocked,
             "line_content_by_system": line_content,
+            "activation_to_line_content_by_system": (
+                self.activation_to_line_content_by_system.copy()
+            ),
             "burgers_sign_by_system": signs,
             "drive_stress_by_system_Pa": drive,
             "rho_back_initial_by_system_m2": rho0,
@@ -275,6 +280,7 @@ class PersistentSiteSignedCoreMixin:
             "rate_final_by_system_s": rates_final,
             "aggregate_hazard_initial_by_system_s": multiplicity * rates_initial,
             "persistent_site_geometry": geometry,
+            "signed_kernel_artifact": kernel_audit,
             "source_sites_refreshed": 0.0,
             "available_site_fraction": 1.0,
             "finite_source_inventory_active": False,
