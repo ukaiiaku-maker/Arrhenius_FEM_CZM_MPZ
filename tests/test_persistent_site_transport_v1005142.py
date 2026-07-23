@@ -116,7 +116,7 @@ def test_stiff_release_and_escape_remain_nonnegative_and_conservative():
     )
 
 
-def test_small_courant_limit_matches_first_order_upwind():
+def test_small_courant_limit_matches_two_half_step_backward_euler():
     state = make_state(encounter_efficiency=0.0)
     state.mobile_positive[0, 0] = 1.0
     velocity = 1.0e-9
@@ -132,13 +132,14 @@ def test_small_courant_limit_matches_first_order_upwind():
 
     result = state.transport(dt_s=dt, T_K=700.0, opening_stress_Pa=1.0e9)
 
-    expected_cell0 = 1.0 - courant
-    expected_cell1 = courant
+    half_courant = 0.5 * courant
+    expected_cell0 = 1.0 / (1.0 + half_courant) ** 2
+    expected_cell1 = courant / (1.0 + half_courant) ** 3
     assert state.mobile_positive[0, 0] == pytest.approx(
-        expected_cell0, rel=1.0e-8, abs=1.0e-12
+        expected_cell0, rel=1.0e-11, abs=1.0e-13
     )
     assert state.mobile_positive[0, 1] == pytest.approx(
-        expected_cell1, rel=1.0e-8, abs=1.0e-12
+        expected_cell1, rel=1.0e-11, abs=1.0e-13
     )
     assert result["dN_escaped"] == pytest.approx(0.0, abs=1.0e-12)
 
