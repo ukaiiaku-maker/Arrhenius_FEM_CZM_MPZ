@@ -11,17 +11,32 @@ from typing import Any
 import numpy as np
 
 from .persistent_site_registry_v100514 import PersistentSiteRowV100514
-from .persistent_site_signed_support_v100514 import (
+from . import persistent_site_signed_support_v100514 as _support
+from .persistent_site_complementarity_v100514 import (
+    solve_backstress_limited_activations,
+)
+
+# Install the audited endpoint treatment before the core mixin imports the
+# support symbol. This mirrors the PF v10.2.22 audited wrapper while keeping the
+# correction explicit in the versioned FEM/CZM state entry.
+_support.solve_backstress_limited_activations = (
+    solve_backstress_limited_activations
+)
+
+from .persistent_site_signed_support_v100514 import (  # noqa: E402
     KERNEL_SCHEMA,
     MODEL_ID,
     SignedShieldingKernelV100514,
     effective_front_width_m,
     persistent_site_multiplicity,
-    solve_backstress_limited_activations,
 )
-from .persistent_site_signed_core_v100514 import PersistentSiteSignedCoreMixin
-from .persistent_site_signed_io_v100514 import PersistentSiteSignedIOMixin
-from .persistent_site_signed_transport_v100514 import (
+from .persistent_site_signed_core_v100514 import (  # noqa: E402
+    PersistentSiteSignedCoreMixin,
+)
+from .persistent_site_signed_io_v100514 import (  # noqa: E402
+    PersistentSiteSignedIOMixin,
+)
+from .persistent_site_signed_transport_v100514 import (  # noqa: E402
     PersistentSiteSignedTransportMixin,
 )
 
