@@ -58,7 +58,7 @@ configuration tracks only the branch originally cloned:
 ```bash
 BRANCH=v9.13-dbtt-4096-autonomous-search
 git fetch origin \
-  "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+  "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
 
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   git switch "$BRANCH"
