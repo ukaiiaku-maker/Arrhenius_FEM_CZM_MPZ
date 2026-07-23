@@ -32,6 +32,7 @@ jobs:
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_persistent_site.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_2_persistent_site_family.py
+          bash -n run_v10_0_5_14_2_0118_family_smoke.sh
       - name: Stiff transport macrostep
         run: python -m pytest -q tests/test_persistent_site_transport_v1005142.py::test_stiff_macro_transport_completes_without_cfl_microsteps
       - name: Stiff release and escape
