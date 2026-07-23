@@ -51,6 +51,10 @@ PERSISTENT_FIELDS = (
     "persistent_site_multiplicity_per_system",
     "persistent_site_source_area_m2",
     "persistent_site_front_width_m",
+    "persistent_physical_minimum_front_width_m",
+    "persistent_front_width_to_minimum_ratio",
+    "persistent_front_width_at_minimum",
+    "persistent_front_width_grid_coupling_active",
     "persistent_site_width_density_m2",
     "persistent_tip_radius_m",
     "persistent_rho_back_mean_m2",
@@ -58,8 +62,15 @@ PERSISTENT_FIELDS = (
     "persistent_backstress_drive_ratio_max",
     "persistent_last_source_activations",
     "persistent_last_line_content",
+    "persistent_interval_source_activations",
+    "persistent_interval_line_content",
+    "persistent_cumulative_source_activations",
+    "persistent_cumulative_line_content",
     "persistent_local_accumulated_slip_count",
     "tip_resharpening_by_advance_m",
+    "interval_tip_radius_max_m",
+    "interval_tip_resharpening_m",
+    "interval_translation_steps",
 )
 
 
@@ -88,10 +99,15 @@ def load_physics(path: Path) -> tuple[CommonPhysics, dict[str, Any]]:
         "emission_schmid_factors",
         "shielding_orientation_factors",
         "activation_to_line_content_per_system",
+        "emission_geometry_extension_m",
     ):
         if key in common:
             common[key] = tuple(common[key])
-    for key in ("forest_interaction_matrix", "gnd_stress_projection_matrix"):
+    for key in (
+        "forest_interaction_matrix",
+        "gnd_stress_projection_matrix",
+        "emission_geometry_factors",
+    ):
         if key in common:
             common[key] = tuple(tuple(row) for row in common[key])
     physics = CommonPhysics(**common)
@@ -275,6 +291,14 @@ def main() -> int:
                     max(
                         v
                         for result in results
+                        for v in result.interval_tip_radius_max_m
+                    )
+                    * 1e6
+                ),
+                "maximum_post_advance_tip_radius_um": float(
+                    max(
+                        v
+                        for result in results
                         for v in result.persistent_tip_radius_m
                     )
                     * 1e6
@@ -287,6 +311,19 @@ def main() -> int:
                     )
                     * 1e6
                 ),
+                "physical_minimum_front_width_um": float(
+                    physics.minimum_front_width_m * 1e6
+                ),
+                "front_width_floor_fraction": float(
+                    np.mean(
+                        [
+                            v
+                            for result in results
+                            for v in result.persistent_front_width_at_minimum
+                        ]
+                    )
+                ),
+                "front_width_grid_coupling_active": False,
                 "minimum_multiplicity_per_system": float(
                     min(
                         v
@@ -313,9 +350,23 @@ def main() -> int:
                     max(
                         v
                         for result in results
-                        for v in result.tip_resharpening_by_advance_m
+                        for v in result.interval_tip_resharpening_m
                     )
                     * 1e6
+                ),
+                "maximum_cumulative_source_activations": float(
+                    max(
+                        v
+                        for result in results
+                        for v in result.persistent_cumulative_source_activations
+                    )
+                ),
+                "maximum_cumulative_line_content": float(
+                    max(
+                        v
+                        for result in results
+                        for v in result.persistent_cumulative_line_content
+                    )
                 ),
                 "finite_source_inventory": False,
                 "source_refresh_active": False,

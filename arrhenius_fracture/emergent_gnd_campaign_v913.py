@@ -31,6 +31,11 @@ PERSISTENT_RESULT_FIELDS = (
     "persistent_site_multiplicity_per_system",
     "persistent_site_source_area_m2",
     "persistent_site_front_width_m",
+    "persistent_physical_minimum_front_width_m",
+    "persistent_physical_maximum_front_width_m",
+    "persistent_front_width_to_minimum_ratio",
+    "persistent_front_width_at_minimum",
+    "persistent_front_width_grid_coupling_active",
     "persistent_site_width_density_m2",
     "persistent_tip_radius_m",
     "persistent_rho_back_mean_m2",
@@ -39,10 +44,20 @@ PERSISTENT_RESULT_FIELDS = (
     "persistent_backstress_drive_ratio_max",
     "persistent_last_source_activations",
     "persistent_last_line_content",
+    "persistent_interval_source_activations",
+    "persistent_interval_line_content",
+    "persistent_cumulative_source_activations",
+    "persistent_cumulative_line_content",
     "persistent_local_accumulated_slip_count",
     "tip_radius_before_advance_m",
     "tip_radius_after_advance_m",
     "tip_resharpening_by_advance_m",
+    "interval_tip_radius_start_m",
+    "interval_tip_radius_max_m",
+    "interval_tip_radius_end_m",
+    "interval_tip_resharpening_m",
+    "interval_translation_steps",
+    "interval_crack_advance_m",
 )
 
 
@@ -127,9 +142,22 @@ def run_temperature_protocol(
         midpoint_K = 0.5 * (
             segment.K_start_MPa_sqrt_m + segment.K_end_MPa_sqrt_m
         )
-        state.advance_time(segment.duration_s, midpoint_K, T_K)
-        source_fraction_pre_advance = state.source_available_fraction()
-        state.translate_tip(segment.da_m)
+        if physics.coupled_moving_tip_enabled:
+            state.advance_coupled_segment(
+                duration_s=segment.duration_s,
+                da_m=segment.da_m,
+                K_start_MPa_sqrt_m=segment.K_start_MPa_sqrt_m,
+                K_end_MPa_sqrt_m=segment.K_end_MPa_sqrt_m,
+                T_K=T_K,
+            )
+            # Persistent sites are never consumed.  Translation is
+            # interleaved, so there is no single coarse pre-advance state.
+            source_fraction_pre_advance = state.source_available_fraction()
+        else:
+            state.begin_diagnostic_interval()
+            state.advance_time(segment.duration_s, midpoint_K, T_K)
+            source_fraction_pre_advance = state.source_available_fraction()
+            state.translate_tip(segment.da_m)
 
         if segment.da_m > 0.0:
             tip_speed = segment.da_m / max(segment.duration_s, 1.0e-30)

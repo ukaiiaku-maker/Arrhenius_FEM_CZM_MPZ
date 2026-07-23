@@ -8,6 +8,16 @@ PROTOCOL=${PROTOCOL:-mpz_v9_12_protocol_example.csv}
 BASE_PHYSICS=${BASE_PHYSICS:-mpz_v9_13_persistent_sites_common_physics.json}
 SIGNED_KERNEL_FAMILY_JSON=${SIGNED_KERNEL_FAMILY_JSON:-}
 ALLOW_UNIT_LINE_CONVERSION=${ALLOW_UNIT_LINE_CONVERSION:-0}
+PHYSICAL_MIN_FRONT_WIDTH_NM=${PHYSICAL_MIN_FRONT_WIDTH_NM:-}
+COUPLED_MOVING_TIP_AUDIT=${COUPLED_MOVING_TIP_AUDIT:-0}
+
+case "$COUPLED_MOVING_TIP_AUDIT" in
+  0|1) ;;
+  *)
+    echo "ERROR: COUPLED_MOVING_TIP_AUDIT must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
 
 case "$MODE" in
   smoke)
@@ -69,6 +79,43 @@ EOF
   exit 2
 else
   echo "WARNING: using legacy 1-D unit activation-to-line conversion" >&2
+fi
+
+if test -n "$PHYSICAL_MIN_FRONT_WIDTH_NM" \
+  || test "$COUPLED_MOVING_TIP_AUDIT" = 1; then
+  CONFIGURED_PHYSICS="$OUT/runtime_inputs/v9_13_configured_physics.json"
+  "$PYTHON_BIN" - \
+    "$RUN_PHYSICS" \
+    "$CONFIGURED_PHYSICS" \
+    "$PHYSICAL_MIN_FRONT_WIDTH_NM" \
+    "$COUPLED_MOVING_TIP_AUDIT" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+source, target, width_nm, coupled = sys.argv[1:]
+payload = json.loads(Path(source).read_text())
+common = payload.setdefault("common_physics", {})
+if width_nm:
+    width_m = float(width_nm) * 1.0e-9
+    if not width_m > 0.0:
+        raise ValueError("PHYSICAL_MIN_FRONT_WIDTH_NM must be positive")
+    common["minimum_front_width_m"] = width_m
+    payload["front_width_provenance"] = (
+        f"explicit_physical_sensitivity_{float(width_nm):g}_nm"
+    )
+if coupled not in {"0", "1"}:
+    raise ValueError("COUPLED_MOVING_TIP_AUDIT must be 0 or 1")
+common["coupled_moving_tip_enabled"] = coupled == "1"
+Path(target).write_text(json.dumps(payload, indent=2) + "\n")
+print(
+    "V913_CONFIGURED_PHYSICS "
+    f"minimum_front_width_m={common.get('minimum_front_width_m')} "
+    f"coupled_moving_tip_enabled={common['coupled_moving_tip_enabled']} "
+    f"out={target}"
+)
+PY
+  RUN_PHYSICS="$CONFIGURED_PHYSICS"
 fi
 
 RUN_REGISTRY="$OUT/runtime_inputs/selected_registry.csv"
