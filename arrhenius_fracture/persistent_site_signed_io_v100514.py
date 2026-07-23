@@ -13,6 +13,10 @@ from .persistent_site_signed_support_v100514 import (
     _shift_wake_forward,
     _translate_toward_tip,
 )
+from .signed_kernel_family_v1005141 import (
+    SignedShieldingKernelFamilyV1005141,
+    load_signed_shielding_artifact_v1005141,
+)
 
 
 class PersistentSiteSignedIOMixin:
@@ -47,6 +51,9 @@ class PersistentSiteSignedIOMixin:
         self.tip_source_activity = np.ones(self.n_systems)
         self.advance_total_m += distance
         self.wake_discarded_total += discarded
+        # Evaluate the new family state immediately.  This fails closed if an
+        # accepted crack advance would require forbidden atlas extrapolation.
+        kernel_audit = self.kernel_artifact_audit()
         radius_after = self.blunted_radius()
         geometry = self.source_geometry()
         out = {
@@ -66,6 +73,8 @@ class PersistentSiteSignedIOMixin:
                 geometry["multiplicity_per_system"]
             ),
             "fractional_moving_frame": 1.0,
+            "cumulative_crack_path_extension_m": self.advance_total_m,
+            "signed_kernel_artifact": kernel_audit,
         }
         self.last_advance = copy.deepcopy(out)
         return out
@@ -93,6 +102,7 @@ class PersistentSiteSignedIOMixin:
         child.available_sites = child.site_capacity.copy()
         self.available_sites = self.site_capacity.copy()
         child.advance_total_m = 0.0
+        child.current_kernel_snapshot()
         return child
 
     def diagnostics(
@@ -101,6 +111,7 @@ class PersistentSiteSignedIOMixin:
         geometry = self.source_geometry()
         rho, sigma_back = self.backstress()
         signed_retained = self.retained_positive - self.retained_negative
+        kernel_audit = self.kernel_artifact_audit()
         return {
             "state_model": self.state_model,
             "persistent_site_density_m2": self.candidate.rho_source0_m2,
@@ -140,7 +151,9 @@ class PersistentSiteSignedIOMixin:
             "mobile_shield_fraction": self.candidate.mobile_shield_fraction,
             "time_s": self.time_s,
             "advance_total_m": self.advance_total_m,
-            "kernel_source": self.kernel.source_path,
+            "cumulative_crack_path_extension_m": self.advance_total_m,
+            "kernel_source": self.kernel_source_path,
+            "signed_kernel_artifact": kernel_audit,
         }
 
     def _validate_state_arrays(self) -> None:
@@ -172,6 +185,7 @@ class PersistentSiteSignedIOMixin:
             setattr(self, name, np.maximum(array, 0.0))
         self.available_sites = self.site_capacity.copy()
         self.tip_source_activity = np.ones(self.n_systems, dtype=float)
+        self.current_kernel_snapshot()
 
     def state_dict(self) -> dict[str, Any]:
         arrays = {
@@ -192,9 +206,10 @@ class PersistentSiteSignedIOMixin:
             )
         }
         return {
-            "schema": "persistent_site_signed_mpz_v10_0_5_14",
+            "schema": "persistent_site_signed_mpz_v10_0_5_14_1",
             "candidate": asdict(self.candidate),
-            "kernel_source": self.kernel.source_path,
+            "kernel_source": self.kernel_source_path,
+            "kernel_artifact": self.kernel_artifact_audit(),
             "state_config": {
                 "G_Pa": self.G_Pa,
                 "nu": self.nu,
@@ -218,9 +233,16 @@ class PersistentSiteSignedIOMixin:
     def from_state_dict(
         cls,
         payload: dict[str, Any],
-        kernel: SignedShieldingKernelV100514 | None = None,
+        kernel: (
+            SignedShieldingKernelV100514
+            | SignedShieldingKernelFamilyV1005141
+            | None
+        ) = None,
     ) -> "PersistentSiteSignedMPZStateV100514":
-        if payload.get("schema") != "persistent_site_signed_mpz_v10_0_5_14":
+        if payload.get("schema") not in {
+            "persistent_site_signed_mpz_v10_0_5_14",
+            "persistent_site_signed_mpz_v10_0_5_14_1",
+        }:
             raise ValueError("unsupported persistent-site restart schema")
         candidate = PersistentSiteRowV100514(
             **dict(payload["candidate"])
@@ -228,8 +250,8 @@ class PersistentSiteSignedIOMixin:
         if kernel is None:
             source = str(payload.get("kernel_source", ""))
             if not source:
-                raise ValueError("restart requires a signed shielding kernel")
-            kernel = SignedShieldingKernelV100514.from_json(source)
+                raise ValueError("restart requires a signed shielding artifact")
+            kernel = load_signed_shielding_artifact_v1005141(source)
         config = dict(payload.get("state_config", {}))
         required = ("G_Pa", "nu", "b_m", "r0_m")
         missing = [name for name in required if name not in config]
