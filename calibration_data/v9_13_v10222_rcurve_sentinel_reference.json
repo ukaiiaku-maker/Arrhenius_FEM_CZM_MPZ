@@ -1,0 +1,137 @@
+{
+  "schema": "v9.13_autonomous_R_curve_sentinel_reference_v1",
+  "source": "runs/v9_13_v10222_rcurve_alpha0p95_all50_v1",
+  "translation_action_exponent": 0.95,
+  "max_hazard_increment": 0.05,
+  "seed": 3621,
+  "cases": [
+    {
+      "candidate_id": "v912_targeted_local_peak_013476_0368",
+      "temperature_K": 900.0,
+      "predicted": {
+        "K_first": 28.545464751367057,
+        "K_10um": 30.553134428908567,
+        "K_25um": 55.82005863172092
+      },
+      "target_2d": {
+        "K_first": 28.60878234963409,
+        "K_10um": 30.61013208694005,
+        "K_25um": 56.45861173006284
+      },
+      "events_through_25um": [
+        {
+          "event_index": 0,
+          "threshold_action": 0.5296494184524981,
+          "cumulative_projected_extension_m": 2.4335696912706475e-06,
+          "K_MPa_sqrt_m": 28.545464751367057
+        },
+        {
+          "event_index": 1,
+          "threshold_action": 1.270133354524103,
+          "cumulative_projected_extension_m": 8.269426255548096e-06,
+          "K_MPa_sqrt_m": 28.986578533501866
+        },
+        {
+          "event_index": 2,
+          "threshold_action": 0.3747792998336802,
+          "cumulative_projected_extension_m": 1.0566766351172998e-05,
+          "K_MPa_sqrt_m": 30.553134428908567
+        },
+        {
+          "event_index": 3,
+          "threshold_action": 0.9220170678657782,
+          "cumulative_projected_extension_m": 1.480313990889011e-05,
+          "K_MPa_sqrt_m": 30.610968145225286
+        },
+        {
+          "event_index": 4,
+          "threshold_action": 0.907530957796216,
+          "cumulative_projected_extension_m": 1.8914682684690004e-05,
+          "K_MPa_sqrt_m": 32.34338891612376
+        },
+        {
+          "event_index": 5,
+          "threshold_action": 0.9705690875311566,
+          "cumulative_projected_extension_m": 2.2411475066426803e-05,
+          "K_MPa_sqrt_m": 46.73784480578257
+        },
+        {
+          "event_index": 6,
+          "threshold_action": 0.05992034728703238,
+          "cumulative_projected_extension_m": 2.4691815553413076e-05,
+          "K_MPa_sqrt_m": 57.640647281598454
+        },
+        {
+          "event_index": 7,
+          "threshold_action": 1.5130544416197773,
+          "cumulative_projected_extension_m": 3.0977903897115534e-05,
+          "K_MPa_sqrt_m": 55.82005863172092
+        }
+      ]
+    },
+    {
+      "candidate_id": "v912_targeted_local_peak_005518_0118",
+      "temperature_K": 1200.0,
+      "predicted": {
+        "K_first": 35.25291640008713,
+        "K_10um": 53.63769678478054,
+        "K_25um": 62.14791607420688
+      },
+      "target_2d": {
+        "K_first": 35.25074874862068,
+        "K_10um": 53.84472798807985,
+        "K_25um": 62.387795099826796
+      },
+      "events_through_25um": [
+        {
+          "event_index": 0,
+          "threshold_action": 0.5296494184524981,
+          "cumulative_projected_extension_m": 2.4335696912706475e-06,
+          "K_MPa_sqrt_m": 35.25291640008713
+        },
+        {
+          "event_index": 1,
+          "threshold_action": 1.270133354524103,
+          "cumulative_projected_extension_m": 8.269426255548096e-06,
+          "K_MPa_sqrt_m": 37.04097237337331
+        },
+        {
+          "event_index": 2,
+          "threshold_action": 0.3747792998336802,
+          "cumulative_projected_extension_m": 1.0566766351172998e-05,
+          "K_MPa_sqrt_m": 53.63769678478054
+        },
+        {
+          "event_index": 3,
+          "threshold_action": 0.9220170678657782,
+          "cumulative_projected_extension_m": 1.480313990889011e-05,
+          "K_MPa_sqrt_m": 53.73921105964306
+        },
+        {
+          "event_index": 4,
+          "threshold_action": 0.907530957796216,
+          "cumulative_projected_extension_m": 1.8914682684690004e-05,
+          "K_MPa_sqrt_m": 56.780569407796214
+        },
+        {
+          "event_index": 5,
+          "threshold_action": 0.9705690875311566,
+          "cumulative_projected_extension_m": 2.2411475066426803e-05,
+          "K_MPa_sqrt_m": 52.036126942474965
+        },
+        {
+          "event_index": 6,
+          "threshold_action": 0.05992034728703238,
+          "cumulative_projected_extension_m": 2.4691815553413076e-05,
+          "K_MPa_sqrt_m": 64.17488978020144
+        },
+        {
+          "event_index": 7,
+          "threshold_action": 1.5130544416197773,
+          "cumulative_projected_extension_m": 3.0977903897115534e-05,
+          "K_MPa_sqrt_m": 62.14791607420688
+        }
+      ]
+    }
+  ]
+}

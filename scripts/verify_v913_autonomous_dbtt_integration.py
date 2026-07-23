@@ -92,19 +92,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--accepted-checkpoints",
+        "--sentinel-reference",
         type=Path,
         default=Path(
-            "runs/v9_13_v10222_rcurve_alpha0p95_all50_v1/"
-            "R_curve_checkpoint_comparison.csv"
-        ),
-    )
-    parser.add_argument(
-        "--accepted-events",
-        type=Path,
-        default=Path(
-            "runs/v9_13_v10222_rcurve_alpha0p95_all50_v1/"
-            "R_curve_event_predictions.csv"
+            "calibration_data/"
+            "v9_13_v10222_rcurve_sentinel_reference.json"
         ),
     )
     parser.add_argument(
@@ -320,29 +312,47 @@ def _validate_calibration(
     )
 
 
-def _sentinel_rows(
-    rows: list[Mapping[str, str]],
-    candidate_id: str,
-    temperature_K: float,
-) -> list[Mapping[str, str]]:
-    return [
-        row
-        for row in rows
-        if row["candidate_id"] == candidate_id
-        and np.isclose(float(row["temperature_K"]), temperature_K)
-    ]
-
-
 def _run_sentinels(
     *,
     top5_rows: list[dict[str, str]],
     physics: Any,
     loading_map: RCurveLoadingMap,
-    checkpoint_rows: list[dict[str, str]],
-    accepted_event_rows: list[dict[str, str]],
+    reference: Mapping[str, Any],
 ) -> None:
+    if reference.get("schema") != (
+        "v9.13_autonomous_R_curve_sentinel_reference_v1"
+    ):
+        raise RuntimeError("sentinel reference has the wrong schema")
+    _assert_close(
+        float(reference["translation_action_exponent"]),
+        0.95,
+        name="sentinel translation exponent",
+    )
+    _assert_close(
+        float(reference["max_hazard_increment"]),
+        0.05,
+        name="sentinel hazard increment",
+    )
+    if int(reference["seed"]) != loading_map.seed:
+        raise RuntimeError("sentinel reference seed differs from loading map")
+    reference_by_case = {
+        (str(row["candidate_id"]), float(row["temperature_K"])): row
+        for row in reference["cases"]
+    }
+    if set(reference_by_case) != set(SENTINEL_CASES):
+        raise RuntimeError("sentinel reference does not define the exact cases")
+
     by_id = {row["candidate_id"]: row for row in top5_rows}
-    for candidate_id, temperature_K in SENTINEL_CASES:
+    for index, (candidate_id, temperature_K) in enumerate(
+        SENTINEL_CASES,
+        start=1,
+    ):
+        print(
+            "V913_DBTT_SENTINEL_START "
+            f"index={index}/{len(SENTINEL_CASES)} "
+            f"candidate={candidate_id} T={temperature_K:g}",
+            flush=True,
+        )
         result = run_autonomous_rcurve(
             candidate_from_registry_row(by_id[candidate_id]),
             physics,
@@ -357,14 +367,7 @@ def _run_sentinels(
             raise RuntimeError(
                 f"sentinel {candidate_id}:{temperature_K:g} did not complete"
             )
-        reference = _sentinel_rows(
-            checkpoint_rows,
-            candidate_id,
-            temperature_K,
-        )
-        if len(reference) != 1:
-            raise RuntimeError("accepted checkpoint table is missing a sentinel")
-        reference_row = reference[0]
+        reference_row = reference_by_case[(candidate_id, temperature_K)]
         for label, actual in (
             ("K_first", result.checkpoint_K(0.0)),
             ("K_10um", result.checkpoint_K(10.0e-6)),
@@ -372,23 +375,38 @@ def _run_sentinels(
         ):
             _assert_close(
                 actual,
-                float(reference_row[f"predicted_{label}_MPa_sqrt_m"]),
+                float(reference_row["predicted"][label]),
                 name=f"sentinel {candidate_id}:{temperature_K:g} {label}",
                 atol=2.0e-9,
                 rtol=2.0e-11,
             )
 
-        reference_events = _sentinel_rows(
-            accepted_event_rows,
-            candidate_id,
-            temperature_K,
-        )
-        expected_prefix = reference_events[: len(result.events)]
+        expected_prefix = reference_row["events_through_25um"]
         if len(expected_prefix) != len(result.events):
             raise RuntimeError("accepted event table is missing a sentinel prefix")
         for actual, expected in zip(result.events, expected_prefix):
             if actual.event_index != int(expected["event_index"]):
                 raise RuntimeError("sentinel event index changed")
+            _assert_close(
+                actual.threshold_action,
+                float(expected["threshold_action"]),
+                name=(
+                    f"sentinel {candidate_id}:{temperature_K:g} "
+                    f"event {actual.event_index} threshold"
+                ),
+                atol=1.0e-14,
+                rtol=1.0e-14,
+            )
+            _assert_close(
+                actual.cumulative_projected_extension_m,
+                float(expected["cumulative_projected_extension_m"]),
+                name=(
+                    f"sentinel {candidate_id}:{temperature_K:g} "
+                    f"event {actual.event_index} extension"
+                ),
+                atol=1.0e-18,
+                rtol=1.0e-12,
+            )
             _assert_close(
                 actual.K_MPa_sqrt_m,
                 float(expected["K_MPa_sqrt_m"]),
@@ -399,10 +417,19 @@ def _run_sentinels(
                 atol=2.0e-9,
                 rtol=2.0e-11,
             )
+        print(
+            "V913_DBTT_SENTINEL_COMPLETE "
+            f"index={index}/{len(SENTINEL_CASES)} "
+            f"candidate={candidate_id} T={temperature_K:g} "
+            f"events={len(result.events)} "
+            f"K25={result.checkpoint_K(25.0e-6):.8g}",
+            flush=True,
+        )
 
 
 def main() -> int:
     args = parse_args()
+    print("V913_DBTT_PREFLIGHT_START", flush=True)
     pool_rows = _read_csv(args.candidate_registry)
     top5_rows = _read_csv(args.top5_registry)
     _validate_pool(
@@ -410,21 +437,33 @@ def main() -> int:
         top5_rows,
         pool_path=args.candidate_registry,
     )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK "
+        f"name=candidate_contract status=ok pool_rows={len(pool_rows)}",
+        flush=True,
+    )
     physics, loading_map = _validate_physics(
         args.base_physics_json,
         args.loading_map,
     )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK name=physics_loading_map status=ok",
+        flush=True,
+    )
     _validate_calibration(
         target_manifest_path=args.target_manifest,
         accepted_summary_path=args.accepted_summary,
+    )
+    print(
+        "V913_DBTT_PREFLIGHT_CHECK name=accepted_calibration status=ok",
+        flush=True,
     )
     if args.run_sentinels:
         _run_sentinels(
             top5_rows=top5_rows,
             physics=physics,
             loading_map=loading_map,
-            checkpoint_rows=_read_csv(args.accepted_checkpoints),
-            accepted_event_rows=_read_csv(args.accepted_events),
+            reference=json.loads(args.sentinel_reference.read_text()),
         )
     print(
         "V913_DBTT_INTEGRATION_OK "

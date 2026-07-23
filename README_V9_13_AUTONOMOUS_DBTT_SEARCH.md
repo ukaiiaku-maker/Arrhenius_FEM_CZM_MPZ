@@ -73,13 +73,30 @@ test -f scripts/run_v913_autonomous_dbtt_4096_wave1.sh
 test -f candidates/v9_12_targeted_local_4096_registry.csv.gz
 ```
 
-Then run from the repository root:
+Then run from the repository root. For a long run, detach all three standard
+streams from the terminal; this prevents macOS job control from stopping the
+background process:
 
 ```bash
-REGISTRY=candidates/v9_12_targeted_local_4096_registry.csv \
-MAX_JOBS=4 \
-OUT=runs/v9_13_autonomous_dbtt_4096_peak_wave1_v1 \
-bash scripts/run_v913_autonomous_dbtt_4096_wave1.sh
+OUT=runs/v9_13_autonomous_dbtt_4096_peak_wave1_v1
+mkdir -p "$OUT"
+
+# Some interactive shells enable TOSTOP, which suspends background jobs that
+# touch the controlling terminal. Disable it before launching this detached job.
+stty -tostop 2>/dev/null || true
+
+nohup /usr/bin/caffeinate -dimsu \
+  /usr/bin/env \
+    PYTHON_BIN="$CONDA_PREFIX/bin/python" \
+    MAX_JOBS=4 \
+    PROGRESS_INTERVAL_S=60 \
+    OUT="$OUT" \
+  bash scripts/run_v913_autonomous_dbtt_4096_wave1.sh \
+  </dev/null >"$OUT/driver.log" 2>&1 &
+
+PID=$!
+echo "$PID" | tee "$OUT/driver.pid"
+disown
 ```
 
 The launcher first materializes the exact 4,096-row CSV from its versioned gzip
@@ -92,8 +109,41 @@ and schedules only missing pairs. Any changed input, code, temperature grid,
 runtime, or numerical setting fails closed instead of mixing stale and current
 results.
 
+### Progress and health reporting
+
+Follow the live stage, sentinel, case-start, case-completion, and 60-second
+heartbeat messages with:
+
+```bash
+tail -f "$OUT/driver.log"
+```
+
+The expected sequence begins with `candidate_registry`, `required_inputs`,
+`import_validation`, `focused_tests`, and `integration_sentinels`. The search
+then prints four `V913_DBTT_CASE_START` records when `MAX_JOBS=4`. While those
+cases are running it prints `V913_DBTT_PROGRESS` at least once per configured
+interval, including completed cases, remaining cases, throughput, and ETA.
+The final stages are `surrogate_fit` and `active_batch_proposal`.
+
+Two atomic JSON status files permit a snapshot without parsing the log:
+
+```bash
+"$CONDA_PREFIX/bin/python" -m json.tool "$OUT/wave1_status.json"
+"$CONDA_PREFIX/bin/python" -m json.tool \
+  "$OUT/autonomous_dbtt_progress.json"
+```
+
+`wave1_status.json` reports the current pipeline stage and changes to
+`state=failed` with the exit code if any stage exits unsuccessfully.
+`autonomous_dbtt_progress.json` reports the run-contract hash, resumed and
+newly completed cases, active-worker upper bound, rate, ETA, and last completed
+case. A changing `updated_at_utc` is the heartbeat that distinguishes a
+working long case from a stalled launcher.
+
 Primary outputs are:
 
+- `wave1_status.json`: current launcher stage and success/failure state;
+- `autonomous_dbtt_progress.json`: live case progress, rate, ETA, and heartbeat;
 - `case_results_checkpoint.csv`: one row per candidate and temperature;
 - `R_curve_events.csv`: complete accepted event trajectories;
 - `autonomous_dbtt_training_table.csv`: exact existing objective applied to
