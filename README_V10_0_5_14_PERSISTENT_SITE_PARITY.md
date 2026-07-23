@@ -132,3 +132,7 @@ Optional environment overrides include `PFROOT`, `FAMILY_JSON`, `OUTROOT`,
 - `two_channel_drive_reliable = true`;
 - `transport_integrator = adaptive_frozen_generator_exponential_v10_0_5_14_3`;
 - `transport_cfl_limited = false`.
+
+The remaining promotion gate is the full candidate-0118, 700 K, 20 µm 2-D
+smoke using the production PF atlas. The PR remains draft until that runtime
+output is reviewed.
