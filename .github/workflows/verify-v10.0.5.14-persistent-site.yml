@@ -37,7 +37,7 @@ jobs:
       - name: Stiff release and escape
         run: python -m pytest -q tests/test_persistent_site_transport_v1005142.py::test_stiff_release_and_escape_remain_nonnegative_and_conservative
       - name: Small-Courant transport limit
-        run: python -m pytest -q tests/test_persistent_site_transport_v1005142.py::test_small_courant_limit_matches_first_order_upwind
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005142.py::test_small_courant_limit_matches_two_half_step_backward_euler
       - name: Zero-content transport
         run: python -m pytest -q tests/test_persistent_site_transport_v1005142.py::test_zero_content_transport_is_a_noop
       - name: Test PF kernel-family contract
