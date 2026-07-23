@@ -128,8 +128,8 @@ def anchored_cleavage_pivot_row(
     """Tilt only the linear cleavage surface about a fixed high-T anchor.
 
     At ``anchor_temperature_K`` the complete cleavage barrier is unchanged for
-    every applied stress.  At ``shelf_temperature_K`` the zero-stress energy and
-    characteristic stress are multiplied by the requested factors.  Emission,
+    every applied stress. At ``shelf_temperature_K`` the zero-stress energy and
+    characteristic stress are multiplied by the requested factors. Emission,
     Peierls, Taylor, source, shielding, backstress, and geometry parameters are
     untouched.
     """
@@ -137,7 +137,10 @@ def anchored_cleavage_pivot_row(
     anchor_temperature = float(anchor_temperature_K)
     energy_factor = float(shelf_energy_factor)
     stress_factor = float(shelf_stress_factor)
-    if not math.isfinite(shelf_temperature) or not math.isfinite(anchor_temperature):
+    if (
+        not math.isfinite(shelf_temperature)
+        or not math.isfinite(anchor_temperature)
+    ):
         raise ValueError("pivot temperatures must be finite")
     if shelf_temperature >= anchor_temperature:
         raise ValueError("shelf temperature must be below anchor temperature")
@@ -146,9 +149,15 @@ def anchored_cleavage_pivot_row(
 
     out = _normalized_row(row)
     tref = float(out["Tref_K"])
-    energy_shelf, stress_shelf = surface_linear_values(out, "cleave", shelf_temperature)
+    energy_shelf, stress_shelf = surface_linear_values(
+        out,
+        "cleave",
+        shelf_temperature,
+    )
     energy_anchor, stress_anchor = surface_linear_values(
-        out, "cleave", anchor_temperature
+        out,
+        "cleave",
+        anchor_temperature,
     )
     delta_temperature = anchor_temperature - shelf_temperature
 
