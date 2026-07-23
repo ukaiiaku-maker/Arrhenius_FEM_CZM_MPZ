@@ -51,7 +51,16 @@ the calibrated event exponent \(p=0.95\) and a cleavage-hazard increment of
 0.25. This is a five-times-coarser search approximation than the accepted
 calibration setting; promoted candidates must be rerun with 0.05.
 
-Run from the repository root:
+First check out this branch and refresh the editable installation in the active
+conda environment:
+
+```bash
+git fetch origin v9.13-dbtt-4096-autonomous-search
+git switch --track origin/v9.13-dbtt-4096-autonomous-search
+"$CONDA_PREFIX/bin/python" -m pip install -e .
+```
+
+Then run from the repository root:
 
 ```bash
 REGISTRY=candidates/v9_12_targeted_local_4096_registry.csv \
