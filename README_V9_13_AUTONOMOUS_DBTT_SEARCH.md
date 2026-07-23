@@ -81,6 +81,10 @@ background process:
 OUT=runs/v9_13_autonomous_dbtt_4096_peak_wave1_v1
 mkdir -p "$OUT"
 
+# Some interactive shells enable TOSTOP, which suspends background jobs that
+# touch the controlling terminal. Disable it before launching this detached job.
+stty -tostop 2>/dev/null || true
+
 nohup /usr/bin/caffeinate -dimsu \
   /usr/bin/env \
     PYTHON_BIN="$CONDA_PREFIX/bin/python" \
