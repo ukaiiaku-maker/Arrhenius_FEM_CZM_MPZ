@@ -28,8 +28,32 @@ jobs:
             arrhenius_fracture/persistent_site_front_engine_v100514.py \
             arrhenius_fracture/anisotropic_two_channel_drive_v100514.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_persistent_site.py
-      - name: Test persistent-source physics contract
-        run: python -m pytest -q --tb=short tests/test_persistent_site_v100514.py
+      - name: Contract exact registry
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_exact_registry_contract_and_candidate_0118
+      - name: Contract persistent source
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_persistent_source_invariance_after_emission
+      - name: Contract width grid independence
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_grid_independent_width_and_multiplicity
+      - name: Contract interior implicit root
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_interior_implicit_root
+      - name: Contract blocking complementarity
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_mechanical_blocking_complementarity
+      - name: Contract zero-drive gate
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_zero_drive_gate
+      - name: Contract sign reversal
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_burgers_sign_reversal_equal_magnitude
+      - name: Contract moving-frame resharpening
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_crack_advance_resharpens_without_refresh
+      - name: Contract unsigned backstress signed shielding
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_unsigned_backstress_survives_signed_shielding_cancellation
+      - name: Contract trial isolation
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_trial_copy_does_not_mutate_committed_state
+      - name: Contract two-channel tensor drive
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_two_channel_tensor_drive_has_signed_channels
+      - name: Contract restart round trip
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_restart_round_trip_preserves_signed_state_and_full_sources
+      - name: Contract distinct channel tensors
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_two_channel_resolution_uses_distinct_channel_tensors
       - name: Test inherited barrier and state contracts
         run: |
           python -m pytest -q --tb=short \
