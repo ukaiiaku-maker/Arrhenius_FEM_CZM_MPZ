@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Add direction-aware DBTT and genuine-peak targets to a v9.12 transfer table."""
+
 from __future__ import annotations
 
 import argparse
@@ -47,9 +48,11 @@ def add_trajectory_metrics(
     if not columns:
         return
     temperatures = np.asarray([item[0] for item in columns], dtype=float)
-    values = df[[item[1] for item in columns]].apply(
-        pd.to_numeric, errors="coerce"
-    ).to_numpy(float)
+    values = (
+        df[[item[1] for item in columns]]
+        .apply(pd.to_numeric, errors="coerce")
+        .to_numpy(float)
+    )
 
     low_mask = temperatures <= float(low_max_K)
     high_mask = temperatures >= float(high_min_K)
@@ -73,9 +76,8 @@ def add_trajectory_metrics(
     prepeak_baseline = np.nanmedian(values[:, prepeak_mask], axis=1)
     peak_rise = peak - prepeak_baseline
     peak_drop = peak - final
-    peak_in_window = (
-        (peak_temperature >= float(peak_min_K))
-        & (peak_temperature <= float(peak_max_K))
+    peak_in_window = (peak_temperature >= float(peak_min_K)) & (
+        peak_temperature <= float(peak_max_K)
     )
     peak_prominence = np.where(
         peak_in_window,
@@ -86,7 +88,9 @@ def add_trajectory_metrics(
     differences = np.diff(values, axis=1)
     positive = np.maximum(differences, 0.0)
     jump_index = np.argmax(np.where(np.isfinite(positive), positive, -np.inf), axis=1)
-    jump_high_temperature = temperatures[np.minimum(jump_index + 1, len(temperatures) - 1)]
+    jump_high_temperature = temperatures[
+        np.minimum(jump_index + 1, len(temperatures) - 1)
+    ]
     persistence = np.divide(
         final,
         peak,
@@ -98,18 +102,51 @@ def add_trajectory_metrics(
     df[f"{out_prefix}high_temperature_plateau"] = high
     df[f"{out_prefix}directional_dbtt_gain"] = gain
     df[f"{out_prefix}directional_dbtt_gain_positive"] = gain_positive
-    df[f"{out_prefix}log1p_directional_dbtt_gain_positive"] = np.log1p(
-        gain_positive
-    )
+    df[f"{out_prefix}log1p_directional_dbtt_gain_positive"] = np.log1p(gain_positive)
     df[f"{out_prefix}peak_temperature_K"] = peak_temperature
     df[f"{out_prefix}peak_rise"] = peak_rise
     df[f"{out_prefix}peak_drop"] = peak_drop
     df[f"{out_prefix}peak_prominence"] = peak_prominence
     df[f"{out_prefix}log1p_peak_prominence"] = np.log1p(peak_prominence)
-    df[f"{out_prefix}largest_positive_jump_high_temperature_K"] = (
-        jump_high_temperature
-    )
+    df[f"{out_prefix}largest_positive_jump_high_temperature_K"] = jump_high_temperature
     df[f"{out_prefix}persistence_from_trajectory"] = persistence
+
+
+def add_directional_peak_classifications(
+    df: pd.DataFrame,
+    *,
+    out_prefix: str,
+    peak_min_K: float,
+    direction_threshold: float,
+    peak_threshold: float,
+) -> None:
+    """Apply the established v9.12 directional and peak acceptance labels."""
+    directional_gain = f"{out_prefix}directional_dbtt_gain"
+    if directional_gain in df:
+        direction_correct = pd.to_numeric(df[directional_gain], errors="coerce") > 0.0
+        peak_temperature = f"{out_prefix}peak_temperature_K"
+        if peak_temperature in df:
+            direction_correct &= (
+                pd.to_numeric(df[peak_temperature], errors="coerce") >= peak_min_K
+            )
+        jump_temperature = f"{out_prefix}largest_positive_jump_high_temperature_K"
+        if jump_temperature in df:
+            direction_correct &= (
+                pd.to_numeric(df[jump_temperature], errors="coerce") >= peak_min_K
+            )
+        persistence = f"{out_prefix}persistence_from_trajectory"
+        if persistence in df:
+            direction_correct &= pd.to_numeric(df[persistence], errors="coerce") >= 0.70
+        df[f"{out_prefix}direction_correct_1d"] = direction_correct
+        df[f"{out_prefix}directional_dbtt_ge_threshold_1d"] = direction_correct & (
+            pd.to_numeric(df[directional_gain], errors="coerce") >= direction_threshold
+        )
+
+    peak_prominence = f"{out_prefix}peak_prominence"
+    if peak_prominence in df:
+        df[f"{out_prefix}peak_like_1d"] = (
+            pd.to_numeric(df[peak_prominence], errors="coerce") >= peak_threshold
+        )
 
 
 def main() -> int:
@@ -135,53 +172,19 @@ def main() -> int:
         peak_max_K=a.peak_max_K,
     )
 
-    if "y__directional_dbtt_gain" in df:
-        direction_correct = (
-            pd.to_numeric(df["y__directional_dbtt_gain"], errors="coerce") > 0.0
-        )
-        if "y__peak_temperature_K" in df:
-            direction_correct &= (
-                pd.to_numeric(df["y__peak_temperature_K"], errors="coerce")
-                >= a.peak_min_K
-            )
-        if "y__largest_positive_jump_high_temperature_K" in df:
-            direction_correct &= (
-                pd.to_numeric(
-                    df["y__largest_positive_jump_high_temperature_K"],
-                    errors="coerce",
-                )
-                >= a.peak_min_K
-            )
-        if "y__persistence_from_trajectory" in df:
-            direction_correct &= (
-                pd.to_numeric(
-                    df["y__persistence_from_trajectory"], errors="coerce"
-                )
-                >= 0.70
-            )
-        df["y__direction_correct_1d"] = direction_correct
-        df["y__directional_dbtt_ge_threshold_1d"] = (
-            direction_correct
-            & (
-                pd.to_numeric(
-                    df["y__directional_dbtt_gain"], errors="coerce"
-                )
-                >= a.direction_threshold
-            )
-        )
-
-    if "y__peak_prominence" in df:
-        df["y__peak_like_1d"] = (
-            pd.to_numeric(df["y__peak_prominence"], errors="coerce")
-            >= a.peak_threshold
-        )
+    add_directional_peak_classifications(
+        df,
+        out_prefix="y__",
+        peak_min_K=a.peak_min_K,
+        direction_threshold=a.direction_threshold,
+        peak_threshold=a.peak_threshold,
+    )
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False)
     print(
-        "DIRECTIONAL_PEAK_TABLE "
-        f"rows={len(df)} columns={len(df.columns)} out={out}",
+        f"DIRECTIONAL_PEAK_TABLE rows={len(df)} columns={len(df.columns)} out={out}",
         flush=True,
     )
     return 0

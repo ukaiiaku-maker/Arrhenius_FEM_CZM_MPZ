@@ -94,6 +94,13 @@ def solve_backstress_limited_activations(
         return 0.0
 
     def residual(value: float) -> float:
+        # ``upper`` is the exact mechanical-blocking state.  Roundoff in
+        # rho0 + rho_per * upper can otherwise leave an infinitesimal positive
+        # drive and a finite zero-stress Arrhenius rate, falsely destroying the
+        # bracket.  At the blocking state the net forward emission rate is zero
+        # by construction.
+        if float(value) >= upper:
+            return float(value)
         rho = rho0 + rho_per * max(float(value), 0.0)
         sigma_eff = drive - kback * math.sqrt(max(rho, 0.0))
         rate = (
@@ -107,8 +114,23 @@ def solve_backstress_limited_activations(
 
     lo = 0.0
     hi = upper
-    if residual(hi) < 0.0:
-        raise RuntimeError("failed to bracket persistent-site backstress root")
+    residual_lo = residual(lo)
+    residual_hi = residual(hi)
+    if not math.isfinite(residual_lo) or not math.isfinite(residual_hi):
+        raise RuntimeError(
+            "nonfinite persistent-site backstress residual: "
+            f"residual_lo={residual_lo!r}, residual_hi={residual_hi!r}, "
+            f"multiplicity={M:.17g}, dt_s={dt:.17g}, "
+            f"drive_stress_Pa={drive:.17g}, rho_initial_m2={rho0:.17g}, "
+            f"rho_increment_per_activation_m2={rho_per:.17g}, "
+            f"backstress_prefactor={kback:.17g}, upper={upper:.17g}"
+        )
+    if residual_lo > 0.0 or residual_hi < 0.0:
+        raise RuntimeError(
+            "invalid persistent-site backstress bracket: "
+            f"residual_lo={residual_lo:.17g}, "
+            f"residual_hi={residual_hi:.17g}, upper={upper:.17g}"
+        )
     scale = max(upper, 1.0)
     for _ in range(int(max_iterations)):
         mid = 0.5 * (lo + hi)
@@ -146,8 +168,12 @@ class EmergentGNDState(_EnergyState):
         self.last_sigma_effective_final_Pa = np.zeros(self.c.n_systems)
         self.last_rate_initial_s = np.zeros(self.c.n_systems)
         self.last_rate_final_s = np.zeros(self.c.n_systems)
+        self._emission_geometry_extension_override_m: float | None = None
         self.last_tip_radius_before_advance_m = self.tip_radius_m()
         self.last_tip_radius_after_advance_m = self.last_tip_radius_before_advance_m
+        self.cumulative_source_activations = np.zeros(self.c.n_systems)
+        self.cumulative_line_content = np.zeros(self.c.n_systems)
+        self.begin_diagnostic_interval()
 
     @property
     def state_strip_width_m(self) -> float:
@@ -178,6 +204,10 @@ class EmergentGNDState(_EnergyState):
                 "front_width_state": (
                     "reference_width*sqrt(reference_density/rho_unsigned)"
                 ),
+                "front_width_minimum_contract": (
+                    "max(configured_physical_minimum,b); independent_of_dx"
+                ),
+                "front_width_grid_spacing_coupling_active": False,
                 "backstress_population": "unsigned_mobile_plus_retained",
                 "shielding_population": "signed_retained",
                 "emission_integrator": "implicit_backward_euler_backstress_root",
@@ -189,16 +219,75 @@ class EmergentGNDState(_EnergyState):
                     self.c.reference_front_width_m
                 ),
                 "reference_density_m2": float(self.c.reference_density_m2),
+                "minimum_front_width_m": float(
+                    self.physical_minimum_front_width_m()
+                ),
+                "maximum_front_width_m": float(
+                    self.physical_maximum_front_width_m()
+                ),
+                "moving_tip_cfl": float(self.c.moving_tip_cfl),
+                "coupled_moving_tip_enabled": bool(
+                    self.c.coupled_moving_tip_enabled
+                ),
+                "moving_tip_integration": (
+                    "coupled_linear_K_uniform_velocity_translation"
+                    if self.c.coupled_moving_tip_enabled
+                    else "discrete_protocol_event_translation"
+                ),
                 "active_arc_factor": float(self._active_arc_factor),
                 "activation_to_line_content_per_system": list(
                     self.c.activation_to_line_content_per_system
                 ),
+                "encounter_efficiency": float(self.c.encounter_efficiency),
+                "taylor_phi_max": float(self.c.taylor_phi_max),
+                "mobile_transport_velocity_scale": float(
+                    self.c.mobile_transport_velocity_scale
+                ),
+                "emission_geometry_schedule_active": bool(
+                    self.c.emission_geometry_extension_m
+                ),
+                "emission_geometry_extension_m": list(
+                    self.c.emission_geometry_extension_m
+                ),
+                "emission_geometry_factors": [
+                    list(row) for row in self.c.emission_geometry_factors
+                ],
             }
         )
         return metadata
 
     def source_available_fraction(self) -> float:
         return 1.0
+
+    def begin_diagnostic_interval(self) -> None:
+        """Reset diagnostics accumulated over one reported protocol interval."""
+        radius = self.tip_radius_m()
+        self.interval_source_activations = np.zeros(self.c.n_systems)
+        self.interval_line_content = np.zeros(self.c.n_systems)
+        self.interval_tip_radius_start_m = radius
+        self.interval_tip_radius_max_m = radius
+        self.interval_tip_radius_end_m = radius
+        self.interval_resharpening_m = 0.0
+        self.interval_translation_steps = 0
+        self.interval_crack_advance_m = 0.0
+
+    def physical_minimum_front_width_m(self) -> float:
+        """Mesh-independent lower bound for the along-front source width."""
+        return max(
+            float(self.c.minimum_front_width_m),
+            abs(float(self.c.b_m)),
+            1.0e-30,
+        )
+
+    def physical_maximum_front_width_m(self) -> float:
+        """Physical upper bound; never infer it from the ahead-tip MPZ length."""
+        configured = float(self.c.maximum_front_width_m)
+        if configured > 0.0:
+            return max(configured, self.physical_minimum_front_width_m())
+        return max(
+            float(self.c.reference_front_width_m),
+            self.physical_minimum_front_width_m(),
+        )
 
     def _source_zone_bin_count(self) -> int:
         length = max(float(self.c.source_zone_length_m), float(self.dx))
@@ -211,6 +300,37 @@ class EmergentGNDState(_EnergyState):
         length = self.state_strip_width_m
         weights = np.exp(-np.asarray(self.x, dtype=float) / length)
         return weights, max(float(np.sum(weights)), 1.0e-30)
+
+    def emission_drive_factors(self) -> np.ndarray:
+        """Return the constant or extension-resolved reduced 2-D projection."""
+        breakpoints = np.asarray(
+            self.c.emission_geometry_extension_m,
+            dtype=float,
+        )
+        if breakpoints.size == 0:
+            return np.asarray(
+                self.c.emission_schmid_factors,
+                dtype=float,
+            )
+        factors = np.asarray(
+            self.c.emission_geometry_factors,
+            dtype=float,
+        )
+        extension = (
+            float(self._emission_geometry_extension_override_m)
+            if self._emission_geometry_extension_override_m is not None
+            else float(self.extension_m)
+        )
+        index = int(
+            np.searchsorted(
+                breakpoints,
+                max(extension, 0.0),
+                side="right",
+            )
+            - 1
+        )
+        index = min(max(index, 0), breakpoints.size - 1)
+        return factors[index].copy()
 
     def unsigned_tip_density_by_system_m2(self) -> np.ndarray:
         weights, norm = self._tip_weights()
@@ -247,16 +367,8 @@ class EmergentGNDState(_EnergyState):
             float(self.c.rho_forest_floor_m2) + float(np.sum(rho_by_system)),
             float(self.c.reference_density_m2),
         )
-        minimum = max(
-            float(self.c.minimum_front_width_m),
-            float(self.dx),
-            abs(float(self.c.b_m)),
-        )
-        maximum = (
-            float(self.c.maximum_front_width_m)
-            if self.c.maximum_front_width_m > 0.0
-            else float(self.c.mpz_length_m)
-        )
+        minimum = self.physical_minimum_front_width_m()
+        maximum = self.physical_maximum_front_width_m()
         width = effective_front_width_m(
             rho_width,
             reference_width_m=self.c.reference_front_width_m,
@@ -274,6 +386,12 @@ class EmergentGNDState(_EnergyState):
         return {
             "tip_radius_m": radius,
             "front_width_m": width,
+            "minimum_front_width_m": minimum,
+            "maximum_front_width_m": maximum,
+            "front_width_to_minimum_ratio": width / minimum,
+            "front_width_at_minimum": float(
+                width <= minimum * (1.0 + 16.0 * np.finfo(float).eps)
+            ),
             "rho_width_m2": rho_width,
             "source_area_m2": self._active_arc_factor * radius * width,
             "multiplicity_per_system": multiplicity,
@@ -321,10 +439,8 @@ class EmergentGNDState(_EnergyState):
         sigma_applied = K_applied * stress_scale
         sigma_shielded = K_eff * stress_scale
 
-        schmid = np.asarray(
-            self.c.emission_schmid_factors,
-            dtype=float,
-        )[:, None]
+        drive_factors = self.emission_drive_factors()
+        schmid = drive_factors[:, None]
         tau_external = schmid * sigma_shielded
         tau_gnd = self.tau_gnd_Pa()
         tau_eff = tau_external + tau_gnd
@@ -340,14 +456,23 @@ class EmergentGNDState(_EnergyState):
             T_K,
             self.p.peierls.nu0_s,
         )
-        velocity = jump * peierls
+        peierls_velocity = jump * peierls
+        velocity = (
+            max(float(self.c.mobile_transport_velocity_scale), 0.0)
+            * peierls_velocity
+        )
 
         t_surface = self.p.taylor.surface(self.p.emission)
+        taylor_phi = spacing / max(self.c.b_m, 1.0e-30)
+        if math.isfinite(float(self.c.taylor_phi_max)):
+            taylor_phi = np.minimum(
+                taylor_phi,
+                float(self.c.taylor_phi_max),
+            )
         taylor_stress = (
             self.p.taylor.stress_fraction
             * tau_eff
-            * spacing
-            / max(self.c.b_m, 1.0e-30)
+            * taylor_phi
         )
         taylor_single = np.maximum(
             self._signed_rate(
@@ -364,12 +489,16 @@ class EmergentGNDState(_EnergyState):
         order = 1.0 + 2.0 * corr_length * np.sqrt(forest)
         taylor = taylor_single / np.maximum(order, 1.0)
         mfp = self.c.mean_free_path_coefficient / np.sqrt(forest)
-        encounter = np.abs(velocity) / np.maximum(mfp, 1.0e-30)
+        encounter = (
+            max(float(self.c.encounter_efficiency), 0.0)
+            * np.abs(peierls_velocity)
+            / np.maximum(mfp, 1.0e-30)
+        )
 
         rho_back, tau_back, sigma_back = self.backstress_state()
         drive = np.maximum(
             np.abs(
-                np.asarray(self.c.emission_schmid_factors, dtype=float)
+                drive_factors
             )
             * sigma_shielded,
             0.0,
@@ -403,6 +532,7 @@ class EmergentGNDState(_EnergyState):
 
         return {
             "velocity_m_s": velocity,
+            "peierls_velocity_m_s": peierls_velocity,
             "taylor_completion_s": taylor,
             "encounter_s": encounter,
             "emission_rate_s": emission,
@@ -484,17 +614,27 @@ class EmergentGNDState(_EnergyState):
                 0.0,
             )
             rates_initial[system] = rate_at(sigma_initial)
-            activations[system] = solve_backstress_limited_activations(
-                multiplicity=multiplicity,
-                dt_s=dt,
-                drive_stress_Pa=float(drive[system]),
-                rho_initial_m2=float(rho0[system]),
-                rho_increment_per_activation_m2=rho_per,
-                backstress_prefactor_Pa_sqrt_m2=backstress_prefactor,
-                rate_function=rate_at,
-                tolerance=self.c.implicit_tolerance,
-                max_iterations=self.c.implicit_max_iterations,
-            )
+            try:
+                activations[system] = solve_backstress_limited_activations(
+                    multiplicity=multiplicity,
+                    dt_s=dt,
+                    drive_stress_Pa=float(drive[system]),
+                    rho_initial_m2=float(rho0[system]),
+                    rho_increment_per_activation_m2=rho_per,
+                    backstress_prefactor_Pa_sqrt_m2=backstress_prefactor,
+                    rate_function=rate_at,
+                    tolerance=self.c.implicit_tolerance,
+                    max_iterations=self.c.implicit_max_iterations,
+                )
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    f"{exc}; system={system}, temperature_K={T_K:.17g}, "
+                    f"multiplicity={multiplicity:.17g}, dt_s={dt:.17g}, "
+                    f"drive_stress_Pa={float(drive[system]):.17g}, "
+                    f"rho_initial_m2={float(rho0[system]):.17g}, "
+                    f"rho_increment_per_activation_m2={rho_per:.17g}, "
+                    f"backstress_prefactor={backstress_prefactor:.17g}"
+                ) from exc
             line_by_system[system] = (
                 activations[system] * conversion[system]
             )
@@ -526,6 +666,14 @@ class EmergentGNDState(_EnergyState):
         self.last_sigma_effective_final_Pa = sigma_final
         self.last_rate_initial_s = rates_initial
         self.last_rate_final_s = rates_final
+        self.cumulative_source_activations += activations
+        self.cumulative_line_content += line_by_system
+        self.interval_source_activations += activations
+        self.interval_line_content += line_by_system
+        self.interval_tip_radius_max_m = max(
+            float(self.interval_tip_radius_max_m),
+            float(self.tip_radius_m()),
+        )
         self.source_available_m2[...] = self.p.rho_source0_m2
 
         return float(
@@ -572,6 +720,10 @@ class EmergentGNDState(_EnergyState):
         if da <= 0.0:
             return
         self.last_tip_radius_before_advance_m = self.tip_radius_m()
+        self.interval_tip_radius_max_m = max(
+            float(self.interval_tip_radius_max_m),
+            float(self.last_tip_radius_before_advance_m),
+        )
         for name in (
             "mobile_m2",
             "retained_m2",
@@ -591,6 +743,81 @@ class EmergentGNDState(_EnergyState):
         self.source_capacity_m2[...] = self.p.rho_source0_m2
         self.extension_m += da
         self.last_tip_radius_after_advance_m = self.tip_radius_m()
+        self.interval_tip_radius_end_m = self.last_tip_radius_after_advance_m
+        self.interval_resharpening_m += max(
+            float(self.last_tip_radius_before_advance_m)
+            - float(self.last_tip_radius_after_advance_m),
+            0.0,
+        )
+        self.interval_translation_steps += 1
+        self.interval_crack_advance_m += da
+
+    def advance_coupled_segment(
+        self,
+        *,
+        duration_s: float,
+        da_m: float,
+        K_start_MPa_sqrt_m: float,
+        K_end_MPa_sqrt_m: float,
+        T_K: float,
+        geometry_extension_override_m: float | None = None,
+    ) -> dict[str, float]:
+        """Evolve kinetics and moving-frame translation within one interval.
+
+        The protocol interval is an output/coarse-graining interval.  It is not
+        applied as one instantaneous crack jump.  Translation is interleaved
+        with kinetic evolution so that no coupled substep moves the tip by more
+        than ``moving_tip_cfl * dx``.
+        """
+        duration = max(float(duration_s), 0.0)
+        da = max(float(da_m), 0.0)
+        max_translation = max(
+            float(self.c.moving_tip_cfl) * float(self.dx),
+            1.0e-30,
+        )
+        translation_steps = (
+            max(int(math.ceil(da / max_translation)), 1)
+            if da > 0.0
+            else 1
+        )
+        dt = duration / float(translation_steps)
+        da_step = da / float(translation_steps)
+        K_start = float(K_start_MPa_sqrt_m)
+        K_end = float(K_end_MPa_sqrt_m)
+        self.begin_diagnostic_interval()
+        totals = {
+            "emitted_per_m": 0.0,
+            "annihilated_per_m": 0.0,
+            "coupled_translation_steps": float(translation_steps),
+        }
+        # A 2-D mechanics projection is held fixed over one accepted crack
+        # event and recomputed only after that event has committed.  Freezing
+        # the reduced schedule at the segment-start extension preserves the
+        # same operator order while translation and kinetics are interleaved.
+        previous_override = self._emission_geometry_extension_override_m
+        self._emission_geometry_extension_override_m = (
+            float(self.extension_m)
+            if geometry_extension_override_m is None
+            else max(float(geometry_extension_override_m), 0.0)
+        )
+        try:
+            for step in range(translation_steps):
+                fraction = (float(step) + 0.5) / float(translation_steps)
+                K_mid = K_start + fraction * (K_end - K_start)
+                if dt > 0.0:
+                    increment = self.advance_time(dt, K_mid, T_K)
+                    totals["emitted_per_m"] += increment["emitted_per_m"]
+                    totals["annihilated_per_m"] += increment["annihilated_per_m"]
+                if da_step > 0.0:
+                    self.translate_tip(da_step)
+        finally:
+            self._emission_geometry_extension_override_m = previous_override
+        self.interval_tip_radius_end_m = self.tip_radius_m()
+        self.interval_tip_radius_max_m = max(
+            float(self.interval_tip_radius_max_m),
+            float(self.interval_tip_radius_end_m),
+        )
+        return totals
 
     def advance_time(
         self,
@@ -685,6 +912,19 @@ class EmergentGNDState(_EnergyState):
                 "persistent_site_front_width_m": float(
                     geometry["front_width_m"]
                 ),
+                "persistent_physical_minimum_front_width_m": float(
+                    geometry["minimum_front_width_m"]
+                ),
+                "persistent_physical_maximum_front_width_m": float(
+                    geometry["maximum_front_width_m"]
+                ),
+                "persistent_front_width_to_minimum_ratio": float(
+                    geometry["front_width_to_minimum_ratio"]
+                ),
+                "persistent_front_width_at_minimum": float(
+                    geometry["front_width_at_minimum"]
+                ),
+                "persistent_front_width_grid_coupling_active": 0.0,
                 "persistent_site_width_density_m2": float(
                     geometry["rho_width_m2"]
                 ),
@@ -702,6 +942,18 @@ class EmergentGNDState(_EnergyState):
                 "persistent_last_line_content": float(
                     np.sum(self.last_line_content)
                 ),
+                "persistent_interval_source_activations": float(
+                    np.sum(self.interval_source_activations)
+                ),
+                "persistent_interval_line_content": float(
+                    np.sum(self.interval_line_content)
+                ),
+                "persistent_cumulative_source_activations": float(
+                    np.sum(self.cumulative_source_activations)
+                ),
+                "persistent_cumulative_line_content": float(
+                    np.sum(self.cumulative_line_content)
+                ),
                 "persistent_local_accumulated_slip_count": float(
                     self.local_accumulated_slip_count()
                 ),
@@ -715,6 +967,24 @@ class EmergentGNDState(_EnergyState):
                     float(self.last_tip_radius_before_advance_m)
                     - float(self.last_tip_radius_after_advance_m),
                     0.0,
+                ),
+                "interval_tip_radius_start_m": float(
+                    self.interval_tip_radius_start_m
+                ),
+                "interval_tip_radius_max_m": float(
+                    self.interval_tip_radius_max_m
+                ),
+                "interval_tip_radius_end_m": float(
+                    self.interval_tip_radius_end_m
+                ),
+                "interval_tip_resharpening_m": float(
+                    self.interval_resharpening_m
+                ),
+                "interval_translation_steps": float(
+                    self.interval_translation_steps
+                ),
+                "interval_crack_advance_m": float(
+                    self.interval_crack_advance_m
                 ),
             }
         )

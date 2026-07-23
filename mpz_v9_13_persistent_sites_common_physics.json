@@ -34,8 +34,10 @@
     "blunting_length_m": 5e-7,
     "blunting_slip_fraction": 1.0,
     "persistent_backstress_scale": 1.0,
-    "minimum_front_width_m": 0.0,
-    "maximum_front_width_m": 0.0,
+    "minimum_front_width_m": 1e-8,
+    "maximum_front_width_m": 1e-5,
+    "coupled_moving_tip_enabled": false,
+    "moving_tip_cfl": 0.25,
     "activation_to_line_content_per_system": [1.0, 1.0],
     "implicit_tolerance": 1e-10,
     "implicit_max_iterations": 96
@@ -48,6 +50,9 @@
     "persistent_multiplicity": true,
     "dynamic_tip_radius": true,
     "dynamic_front_width": true,
+    "front_width_independent_of_ahead_tip_mesh": true,
+    "coupled_moving_tip_audit_available": true,
+    "coupled_moving_tip_default": false,
     "implicit_backstress_limited_emission": true
   }
 }

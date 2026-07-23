@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "model": "v9.13_persistent_site_backstress_blunting",
+  "conversion_provenance": "v10.2.22_archive_signed_kernel_activation_to_line_content",
+  "common_physics": {
+    "G_Pa": 160156250000.0,
+    "nu": 0.28,
+    "b_m": 2.74e-10,
+    "r0_m": 1e-06,
+    "mpz_length_m": 5e-05,
+    "active_strip_width_m": 1e-05,
+    "n_bins": 80,
+    "n_systems": 2,
+    "source_zone_length_m": 2e-06,
+    "rho_forest_floor_m2": 5000000000000.0,
+    "mean_free_path_coefficient": 1.0,
+    "jump_fraction_of_forest_spacing": 1.0,
+    "annihilation_capture_radius_b": 5.0,
+    "core_regularization_b": 5.0,
+    "cleavage_nu0_s": 1000000000000.0,
+    "cleavage_hits": 3.0,
+    "cleavage_correlation_time_s": 1e-06,
+    "emission_nu0_s": 100000000000.0,
+    "emission_signs": [
+      1,
+      -1
+    ],
+    "emission_schmid_factors": [
+      0.07665031895930559,
+      0.004991199340349577
+    ],
+    "shielding_orientation_factors": [
+      0.0,
+      0.0
+    ],
+    "forest_interaction_matrix": [
+      [
+        1.0,
+        1.0
+      ],
+      [
+        1.0,
+        1.0
+      ]
+    ],
+    "gnd_stress_projection_matrix": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "max_fractional_state_change": 0.05,
+    "min_substep_s": 1e-12,
+    "reference_source_area_m2": 2.5e-11,
+    "reference_front_width_m": 1e-05,
+    "reference_density_m2": 5000000000000.0,
+    "blunting_length_m": 5e-07,
+    "blunting_slip_fraction": 1.0,
+    "persistent_backstress_scale": 1.0,
+    "minimum_front_width_m": 2.74e-10,
+    "maximum_front_width_m": 5e-05,
+    "coupled_moving_tip_enabled": true,
+    "moving_tip_cfl": 0.15999999999999998,
+    "activation_to_line_content_per_system": [
+      0.9124087591240877,
+      0.9124087591240877
+    ],
+    "implicit_tolerance": 1e-10,
+    "implicit_max_iterations": 96,
+    "encounter_efficiency": 9.160246308716648,
+    "taylor_phi_max": 20.0,
+    "mobile_transport_velocity_scale": 0.0,
+    "emission_geometry_extension_m": [
+      0.0,
+      2.433569691270587e-06,
+      8.269426255547918e-06,
+      1.0566766351172788e-05,
+      1.4803139908889841e-05,
+      1.8972954423622028e-05,
+      2.3432408984334797e-05,
+      2.5729749079959662e-05,
+      3.26817503511525e-05,
+      3.497909044677733e-05,
+      4.0121044516183204e-05,
+      4.241838461180804e-05,
+      4.471572470743283e-05,
+      4.701306480305769e-05,
+      5.039551527368882e-05,
+      5.339185890882292e-05
+    ],
+    "emission_geometry_factors": [
+      [
+        0.07665031895930559,
+        0.004991199340349577
+      ],
+      [
+        0.16945468459897245,
+        0.006556774727632557
+      ],
+      [
+        0.5586799710775829,
+        0.009419299808054093
+      ],
+      [
+        0.5363003498393252,
+        0.007692919501431182
+      ],
+      [
+        0.7883473664044734,
+        0.025282117919834465
+      ],
+      [
+        0.8343904194588475,
+        0.014120019126573536
+      ],
+      [
+        0.5283337858047438,
+        0.001198738961482486
+      ],
+      [
+        0.5582540213199871,
+        0.0032092048498331104
+      ],
+      [
+        0.5658204201286452,
+        0.047232715716007345
+      ],
+      [
+        0.5139791029071795,
+        0.054900469928781476
+      ],
+      [
+        0.4093006922583901,
+        0.10731278748076033
+      ],
+      [
+        0.44116380666132016,
+        0.07262865859915303
+      ],
+      [
+        0.35736072158728,
+        0.13176464758753542
+      ],
+      [
+        0.55308259535749,
+        0.00804021122192659
+      ],
+      [
+        0.577070898103571,
+        0.004044810274856119
+      ],
+      [
+        0.5497770421299663,
+        0.008004820984133729
+      ]
+    ]
+  },
+  "fixed_contract": {
+    "finite_source_inventory": false,
+    "source_depletion_on_emission": false,
+    "source_refresh_on_crack_advance": false,
+    "explicit_recovery": false,
+    "persistent_multiplicity": true,
+    "dynamic_tip_radius": true,
+    "dynamic_front_width": true,
+    "front_width_independent_of_ahead_tip_mesh": true,
+    "coupled_moving_tip_audit_available": true,
+    "coupled_moving_tip_default": false,
+    "implicit_backstress_limited_emission": true
+  },
+  "transfer_calibration": {
+    "source_archive": "v10_2_22_top5_dbtt_physical_width_50um_theta45_crn3621_v1(1).zip",
+    "candidate_parameters_refit": false,
+    "geometry_reference_member": "v10_2_22_top5_dbtt_physical_width_50um_theta45_crn3621_v1/v912_top1_peak_persistent_sites/T300K_th45_seed3621/v10_2_17_final_signed_stochastic_stack.json",
+    "geometry_reference_candidate": "v912_targeted_local_peak_013476_0368",
+    "geometry_reference_temperature_K": 300,
+    "geometry_reference_reason": "plastic_free_2d_trajectory",
+    "emission_projection": "piecewise_constant_in_cumulative_crack_extension",
+    "projection_recomputed": "after_each_accepted_crack_event",
+    "analytical_1d_signed_shielding_active": false,
+    "shielding_reason": "measured_2d_signed_kernel_is_negligible_relative_to_toughness",
+    "holdout_definition": "all candidate/temperature histories except the single 300 K geometry reference"
+  }
+}

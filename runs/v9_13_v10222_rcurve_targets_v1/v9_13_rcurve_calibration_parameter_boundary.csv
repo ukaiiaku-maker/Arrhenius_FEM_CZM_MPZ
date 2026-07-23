@@ -1,0 +1,9 @@
+group,name,treatment,nominal,lower_bound,upper_bound,reason
+candidate_parameterization,all_candidate_registry_fields,fixed_exactly,candidate_registry,,,These are the parameters passed unchanged from 1-D to 2-D.
+shared_loading_geometry,K_geometry_scale,calibratable_shared,1.0,0.95,1.05,Common reduced displacement-to-K normalization.
+shared_source_geometry,reference_source_area_scale,calibratable_shared,1.0,0.5,2.0,One-dimensional active-arc representation of 2-D site area.
+shared_emission_geometry,emission_geometry_scale,calibratable_shared,1.0,0.5,2.0,Common reduction of the two 2-D slip-trace projections.
+shared_line_normalization,activation_to_line_content_scale,calibratable_shared,1.0,0.5,2.0,Shared aggregate-activation to represented-line conversion.
+shared_backstress_mapping,persistent_backstress_scale,calibratable_shared,1.0,0.5,2.0,One-dimensional homogenization of the 2-D Taylor backstress.
+shared_blunting_mapping,blunting_slip_fraction_scale,calibratable_shared,1.0,0.5,2.0,Shared conversion from accumulated line content to tip radius.
+shared_event_geometry,translation_action_exponent,calibratable_shared,1.0,0.25,2.0,Distributes one accepted event advance over its autonomous cleavage-action interval; one value is shared by all cases.

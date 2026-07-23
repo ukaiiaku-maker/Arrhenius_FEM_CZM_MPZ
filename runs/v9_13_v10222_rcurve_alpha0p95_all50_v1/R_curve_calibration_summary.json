@@ -1,0 +1,428 @@
+{
+  "schema": "v9.13_autonomous_R_curve_calibration",
+  "mode": "evaluate",
+  "candidate_parameters_refit": false,
+  "candidate_registry_sha256": "a8befb167c06289fc0b19bc1452f6744501fa09647ac2c242efd9fbb846e137f",
+  "n_candidate_rows": 5,
+  "optimized_parameters": [
+    "translation_action_exponent"
+  ],
+  "shared_calibration": {
+    "K_geometry_scale": 1.0,
+    "reference_source_area_scale": 1.0,
+    "emission_geometry_scale": 1.0,
+    "activation_to_line_content_scale": 1.0,
+    "persistent_backstress_scale": 1.0,
+    "blunting_slip_fraction_scale": 1.0,
+    "translation_action_exponent": 0.95
+  },
+  "translation_mode": "hazard_coupled",
+  "training_cases": [
+    [
+      "v912_targeted_local_peak_005518_0118",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      900.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1200.0
+    ]
+  ],
+  "final_cases": [
+    [
+      "v912_targeted_local_peak_005518_0118",
+      300.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      400.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      500.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      600.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      700.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      800.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_005518_0118",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      300.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      400.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      500.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      600.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      700.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      800.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0162",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      300.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      400.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      500.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      600.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      700.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      800.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0314",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      300.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      400.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      500.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      600.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      700.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      800.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      900.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_peak_013476_0368",
+      1200.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      300.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      400.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      500.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      600.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      700.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      800.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      900.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1000.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1100.0
+    ],
+    [
+      "v912_targeted_local_plateau_010759_0403",
+      1200.0
+    ]
+  ],
+  "optimizer": {
+    "success": true,
+    "status": 0,
+    "message": "evaluation_only",
+    "nfev": 0
+  },
+  "metrics": {
+    "n_cases": 50,
+    "K_first_MPa_sqrt_m": {
+      "mean_error": -0.0028932116198583913,
+      "MAE": 0.017242422908559263,
+      "RMSE": 0.022289612513447014,
+      "max_absolute_error": 0.06331759826703376
+    },
+    "K_10um_MPa_sqrt_m": {
+      "mean_error": 0.1341731498116731,
+      "MAE": 0.21969168995523464,
+      "RMSE": 1.1399782037929993,
+      "max_absolute_error": 8.010279871264807
+    },
+    "K_25um_MPa_sqrt_m": {
+      "mean_error": -0.07568823934064042,
+      "MAE": 0.15533599880677498,
+      "RMSE": 0.2715504599180366,
+      "max_absolute_error": 0.8686570514492971
+    },
+    "K_50um_MPa_sqrt_m": {
+      "mean_error": -0.06820124935467149,
+      "MAE": 0.13995420190262636,
+      "RMSE": 0.24466985460670634,
+      "max_absolute_error": 0.7826697966687064
+    },
+    "all_K_checkpoints": {
+      "MAE": 0.1330560783932988,
+      "RMSE": 0.5986756471546335,
+      "max_absolute_error": 8.010279871264807
+    },
+    "per_candidate": {
+      "v912_targeted_local_peak_005518_0118": {
+        "MAE": 0.04210324175532114,
+        "RMSE": 0.07983510313913834,
+        "max_absolute_error": 0.23987902561991348
+      },
+      "v912_targeted_local_peak_013476_0162": {
+        "MAE": 0.30530409658899293,
+        "RMSE": 1.2894225430482527,
+        "max_absolute_error": 8.010279871264807
+      },
+      "v912_targeted_local_peak_013476_0314": {
+        "MAE": 0.08709376125299402,
+        "RMSE": 0.17173052938060476,
+        "max_absolute_error": 0.5980880464290834
+      },
+      "v912_targeted_local_peak_013476_0368": {
+        "MAE": 0.06880418210721366,
+        "RMSE": 0.15669911194764172,
+        "max_absolute_error": 0.638553098341923
+      },
+      "v912_targeted_local_plateau_010759_0403": {
+        "MAE": 0.16197511026197234,
+        "RMSE": 0.26274041915798674,
+        "max_absolute_error": 0.5725139230342506
+      }
+    },
+    "per_temperature": {
+      "300": {
+        "MAE": 0.004139231033785417,
+        "RMSE": 0.004213333187656389,
+        "max_absolute_error": 0.005477048788106842
+      },
+      "400": {
+        "MAE": 0.0068861296735489574,
+        "RMSE": 0.007036130110264633,
+        "max_absolute_error": 0.009431246028235307
+      },
+      "500": {
+        "MAE": 0.012332219527853638,
+        "RMSE": 0.012613578405469499,
+        "max_absolute_error": 0.01729529141409003
+      },
+      "600": {
+        "MAE": 0.020679089888113823,
+        "RMSE": 0.031320274644967304,
+        "max_absolute_error": 0.09277692137081317
+      },
+      "700": {
+        "MAE": 0.023741168396528067,
+        "RMSE": 0.033404291182241516,
+        "max_absolute_error": 0.09463015329833269
+      },
+      "800": {
+        "MAE": 0.14396113056088086,
+        "RMSE": 0.22017884178142963,
+        "max_absolute_error": 0.4780349544669207
+      },
+      "900": {
+        "MAE": 0.2539356658526966,
+        "RMSE": 0.349587260086075,
+        "max_absolute_error": 0.638553098341923
+      },
+      "1000": {
+        "MAE": 0.5970874638005812,
+        "RMSE": 1.82198705795897,
+        "max_absolute_error": 8.010279871264807
+      },
+      "1100": {
+        "MAE": 0.13424018438826407,
+        "RMSE": 0.21621967767279912,
+        "max_absolute_error": 0.5725139230342506
+      },
+      "1200": {
+        "MAE": 0.13355850081073548,
+        "RMSE": 0.21148137945853443,
+        "max_absolute_error": 0.5464029308471012
+      }
+    }
+  },
+  "event_metrics": {
+    "n_events": 800,
+    "MAE": 0.13082554834835303,
+    "RMSE": 0.36717227638253913,
+    "max_absolute_error": 8.010279871264807
+  },
+  "validation_note": "One finite-event phase outlier occurs for candidate 0162 at 1000 K; its 25 and 50 um checkpoints return to sub-1 MPa sqrt(m) error."
+}

@@ -87,6 +87,56 @@ def test_implicit_root_blocks_without_inventory():
     assert 0.0 < value < block
 
 
+def test_implicit_root_accepts_exact_mechanical_blocking_boundary():
+    prefactor = 100.0
+    rho_increment = 1.0e12
+    drive = 1.0e9
+    block = (drive / prefactor) ** 2 / rho_increment
+    value = solve_backstress_limited_activations(
+        multiplicity=1.0e6,
+        dt_s=1.0,
+        drive_stress_Pa=drive,
+        rho_initial_m2=0.0,
+        rho_increment_per_activation_m2=rho_increment,
+        backstress_prefactor_Pa_sqrt_m2=prefactor,
+        # A finite zero-stress thermal rate used to destroy the bracket through
+        # floating-point leakage just below the exact blocking state.
+        rate_function=lambda sigma: 1.0,
+    )
+    assert value == pytest.approx(block, rel=1.0e-8)
+
+
+def test_front_width_floor_and_multiplicity_are_independent_of_mpz_dx():
+    coarse = EmergentGNDState(
+        candidate(),
+        physics(
+            n_bins=8,
+            mpz_length_m=8.0e-6,
+            minimum_front_width_m=50.0e-9,
+        ),
+    )
+    fine = EmergentGNDState(
+        candidate(),
+        physics(
+            n_bins=64,
+            mpz_length_m=8.0e-6,
+            minimum_front_width_m=50.0e-9,
+        ),
+    )
+    for state in (coarse, fine):
+        state.mobile_m2[...] = 1.0e20
+    coarse_geometry = coarse.source_geometry()
+    fine_geometry = fine.source_geometry()
+    assert coarse.dx != fine.dx
+    assert coarse_geometry["front_width_m"] == pytest.approx(50.0e-9)
+    assert fine_geometry["front_width_m"] == pytest.approx(50.0e-9)
+    assert coarse_geometry["multiplicity_per_system"] == pytest.approx(
+        fine_geometry["multiplicity_per_system"]
+    )
+    assert coarse_geometry["front_width_at_minimum"] == 1.0
+    assert fine_geometry["front_width_at_minimum"] == 1.0
+
+
 def test_persistent_emission_conserves_line_content_and_does_not_deplete():
     state = EmergentGNDState(candidate(), physics())
     rates = state.local_rates(40.0, 900.0)
@@ -111,6 +161,114 @@ def test_crack_advance_resharpens_accumulated_slip_without_source_refresh():
     assert after < before
     assert np.array_equal(state.source_available_m2, source_before)
     assert state.source_available_fraction() == 1.0
+
+
+def test_coupled_moving_tip_is_invariant_to_reporting_interval_split():
+    common = physics(
+        coupled_moving_tip_enabled=True,
+        moving_tip_cfl=0.5,
+    )
+    whole = EmergentGNDState(candidate(), common)
+    split = EmergentGNDState(candidate(), common)
+    whole.advance_coupled_segment(
+        duration_s=2.0e-9,
+        da_m=1.0e-6,
+        K_start_MPa_sqrt_m=20.0,
+        K_end_MPa_sqrt_m=40.0,
+        T_K=900.0,
+    )
+    split.advance_coupled_segment(
+        duration_s=1.0e-9,
+        da_m=0.5e-6,
+        K_start_MPa_sqrt_m=20.0,
+        K_end_MPa_sqrt_m=30.0,
+        T_K=900.0,
+    )
+    split.advance_coupled_segment(
+        duration_s=1.0e-9,
+        da_m=0.5e-6,
+        K_start_MPa_sqrt_m=30.0,
+        K_end_MPa_sqrt_m=40.0,
+        T_K=900.0,
+    )
+    assert whole.extension_m == pytest.approx(split.extension_m)
+    assert whole.time_s == pytest.approx(split.time_s)
+    assert np.allclose(whole.mobile_m2, split.mobile_m2)
+    assert np.allclose(whole.retained_m2, split.retained_m2)
+    assert np.allclose(whole.accumulated_slip_m2, split.accumulated_slip_m2)
+    assert np.allclose(
+        whole.cumulative_source_activations,
+        split.cumulative_source_activations,
+    )
+
+
+def test_encounter_efficiency_scales_geometric_storage_rate():
+    unit = EmergentGNDState(candidate(), physics(encounter_efficiency=1.0))
+    scaled = EmergentGNDState(candidate(), physics(encounter_efficiency=9.0))
+    unit_rate = unit.local_rates(20.0, 900.0)["encounter_s"]
+    scaled_rate = scaled.local_rates(20.0, 900.0)["encounter_s"]
+    assert np.allclose(scaled_rate, 9.0 * unit_rate)
+
+
+def test_taylor_local_stress_uses_shared_2d_phi_limit():
+    uncapped = EmergentGNDState(
+        candidate(),
+        physics(taylor_phi_max=float("inf")),
+    )
+    capped = EmergentGNDState(candidate(), physics(taylor_phi_max=20.0))
+    uncapped_rate = uncapped.local_rates(
+        1.0,
+        900.0,
+    )["taylor_completion_s"]
+    capped_rate = capped.local_rates(
+        1.0,
+        900.0,
+    )["taylor_completion_s"]
+    assert np.all(capped_rate <= uncapped_rate)
+    assert np.any(capped_rate < uncapped_rate)
+
+
+def test_zero_spatial_transport_preserves_peierls_encounter_storage():
+    state = EmergentGNDState(
+        candidate(),
+        physics(
+            encounter_efficiency=9.0,
+            mobile_transport_velocity_scale=0.0,
+        ),
+    )
+    rates = state.local_rates(20.0, 900.0)
+    assert np.all(rates["velocity_m_s"] == 0.0)
+    assert np.any(np.abs(rates["peierls_velocity_m_s"]) > 0.0)
+    assert np.any(rates["encounter_s"] > 0.0)
+
+
+def test_extension_resolved_emission_geometry_replaces_constant_projection():
+    state = EmergentGNDState(
+        candidate(),
+        physics(
+            emission_schmid_factors=(1.0, 1.0),
+            emission_geometry_extension_m=(0.0, 2.0e-6),
+            emission_geometry_factors=((0.1, 0.01), (0.5, 0.02)),
+        ),
+    )
+    assert state.emission_drive_factors() == pytest.approx((0.1, 0.01))
+    state.translate_tip(2.0e-6)
+    assert state.emission_drive_factors() == pytest.approx((0.5, 0.02))
+    rates = state.local_rates(20.0, 900.0)
+    expected = 0.5 / 0.02
+    ratio = (
+        rates["emission_drive_Pa"][0]
+        / rates["emission_drive_Pa"][1]
+    )
+    assert ratio == pytest.approx(expected)
+
+
+def test_empty_emission_geometry_preserves_constant_projection():
+    state = EmergentGNDState(
+        candidate(),
+        physics(emission_schmid_factors=(0.4, 0.2)),
+    )
+    assert state.emission_drive_factors() == pytest.approx((0.4, 0.2))
 
 
 def test_recovery_is_forced_off_and_metadata_declares_persistent_contract():
@@ -140,3 +298,9 @@ def test_recovery_is_forced_off_and_metadata_declares_persistent_contract():
     assert metadata["source_depletion_on_emission"] is False
     assert metadata["source_refresh_on_crack_advance"] is False
     assert metadata["explicit_recovery_active"] is False
+    assert metadata["front_width_grid_spacing_coupling_active"] is False
+
+
+def test_front_width_requires_an_explicit_positive_physical_floor():
+    with pytest.raises(ValueError, match="positive physical length"):
+        physics(minimum_front_width_m=0.0)

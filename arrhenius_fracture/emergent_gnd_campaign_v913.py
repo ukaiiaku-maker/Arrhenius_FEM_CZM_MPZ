@@ -10,6 +10,7 @@ from .emergent_gnd_campaign_v912 import (
     score_microstructural_transition,
 )
 from .emergent_gnd_state_v913 import EmergentGNDState
+from .emergent_gnd_contract_v913 import effective_candidate_parameters
 from .emergent_gnd_types_v912 import ExpFloorSurface, PTMechanism, ProtocolSegment, TemperatureResult
 from .emergent_gnd_types_v913 import CandidateParameters, CommonPhysics
 
@@ -31,6 +32,11 @@ PERSISTENT_RESULT_FIELDS = (
     "persistent_site_multiplicity_per_system",
     "persistent_site_source_area_m2",
     "persistent_site_front_width_m",
+    "persistent_physical_minimum_front_width_m",
+    "persistent_physical_maximum_front_width_m",
+    "persistent_front_width_to_minimum_ratio",
+    "persistent_front_width_at_minimum",
+    "persistent_front_width_grid_coupling_active",
     "persistent_site_width_density_m2",
     "persistent_tip_radius_m",
     "persistent_rho_back_mean_m2",
@@ -39,73 +45,68 @@ PERSISTENT_RESULT_FIELDS = (
     "persistent_backstress_drive_ratio_max",
     "persistent_last_source_activations",
     "persistent_last_line_content",
+    "persistent_interval_source_activations",
+    "persistent_interval_line_content",
+    "persistent_cumulative_source_activations",
+    "persistent_cumulative_line_content",
     "persistent_local_accumulated_slip_count",
     "tip_radius_before_advance_m",
     "tip_radius_after_advance_m",
     "tip_resharpening_by_advance_m",
+    "interval_tip_radius_start_m",
+    "interval_tip_radius_max_m",
+    "interval_tip_radius_end_m",
+    "interval_tip_resharpening_m",
+    "interval_translation_steps",
+    "interval_crack_advance_m",
 )
-
-
-def _float_or_default(row: Mapping[str, Any], key: str, default: float) -> float:
-    value = row.get(key, default)
-    if value in (None, ""):
-        value = default
-    return float(value)
 
 
 def candidate_from_registry_row(row: Mapping[str, Any]) -> CandidateParameters:
     """Parse one top-five row under the persistent-site/no-recovery contract."""
-    Tref = _float_or_default(row, "Tref_K", 481.33)
+    active = effective_candidate_parameters(row)
+    Tref = active["Tref_K"]
 
     def surface(prefix: str) -> ExpFloorSurface:
         return ExpFloorSurface(
-            G00_eV=float(row[f"{prefix}_G00_eV"]),
-            gT_eV_per_K=float(row[f"{prefix}_gT_eV_per_K"]),
-            sigc0_Pa=float(row[f"{prefix}_sigc0_GPa"]) * 1.0e9,
-            sT_Pa_per_K=float(row[f"{prefix}_sT_GPa_per_K"]) * 1.0e9,
-            exp_a=float(row[f"{prefix}_exp_a"]),
-            exp_n=float(row[f"{prefix}_exp_n"]),
-            floor_fraction=float(row[f"{prefix}_floor_frac"]),
+            G00_eV=active[f"{prefix}_G00_eV"],
+            gT_eV_per_K=active[f"{prefix}_gT_eV_per_K"],
+            sigc0_Pa=active[f"{prefix}_sigc0_GPa"] * 1.0e9,
+            sT_Pa_per_K=active[f"{prefix}_sT_GPa_per_K"] * 1.0e9,
+            exp_a=active[f"{prefix}_exp_a"],
+            exp_n=active[f"{prefix}_exp_n"],
+            floor_fraction=active[f"{prefix}_floor_frac"],
             Tref_K=Tref,
         )
-
-    rho_source = row.get("rho_source0_m2")
-    if rho_source in (None, ""):
-        raise KeyError("v9.13 requires rho_source0_m2")
-    c_blunt = row.get("c_blunt")
-    if c_blunt in (None, ""):
-        raise KeyError("v9.13 requires c_blunt")
 
     return CandidateParameters(
         candidate_id=str(row["candidate_id"]),
         cleavage=surface("cleave"),
         emission=surface("emit"),
         peierls=PTMechanism(
-            float(row["peierls_H0_eV"]),
-            float(row["peierls_activation_entropy_kB"]),
-            float(row["peierls_exp_a"]),
-            float(row["peierls_exp_n"]),
-            _float_or_default(row, "peierls_nu0_s", 1.0e12),
+            active["peierls_H0_eV"],
+            active["peierls_activation_entropy_kB"],
+            active["peierls_exp_a"],
+            active["peierls_exp_n"],
+            active["peierls_nu0_s"],
         ),
         taylor=PTMechanism(
-            float(row["taylor_H0_eV"]),
-            float(row["taylor_activation_entropy_kB"]),
-            float(row["taylor_exp_a"]),
-            float(row["taylor_exp_n"]),
-            _float_or_default(row, "taylor_nu0_s", 1.0e11),
+            active["taylor_H0_eV"],
+            active["taylor_activation_entropy_kB"],
+            active["taylor_exp_a"],
+            active["taylor_exp_n"],
+            active["taylor_nu0_s"],
         ),
-        rho_source0_m2=float(rho_source),
-        source_refresh_length_m=_float_or_default(
-            row, "source_refresh_length_um", 0.0
-        ) * 1.0e-6,
-        taylor_corr_rho_c_m2=float(row["taylor_corr_rho_c_m2"]),
-        taylor_corr_scale=float(row["taylor_corr_scale"]),
+        rho_source0_m2=active["rho_source0_m2"],
+        # These coordinates exist in historical v9.12 registries but were
+        # disabled in every accepted v10.2.22 persistent-site run.
+        source_refresh_length_m=0.0,
+        taylor_corr_rho_c_m2=active["taylor_corr_rho_c_m2"],
+        taylor_corr_scale=active["taylor_corr_scale"],
         recovery_nu0_s=0.0,
-        recovery_H0_eV=_float_or_default(row, "recovery_H0_eV", 0.0),
-        recovery_activation_entropy_kB=_float_or_default(
-            row, "recovery_activation_entropy_kB", 0.0
-        ),
-        c_blunt=float(c_blunt),
+        recovery_H0_eV=0.0,
+        recovery_activation_entropy_kB=0.0,
+        c_blunt=active["c_blunt"],
     )
 
 
@@ -127,9 +128,22 @@ def run_temperature_protocol(
         midpoint_K = 0.5 * (
             segment.K_start_MPa_sqrt_m + segment.K_end_MPa_sqrt_m
         )
-        state.advance_time(segment.duration_s, midpoint_K, T_K)
-        source_fraction_pre_advance = state.source_available_fraction()
-        state.translate_tip(segment.da_m)
+        if physics.coupled_moving_tip_enabled:
+            state.advance_coupled_segment(
+                duration_s=segment.duration_s,
+                da_m=segment.da_m,
+                K_start_MPa_sqrt_m=segment.K_start_MPa_sqrt_m,
+                K_end_MPa_sqrt_m=segment.K_end_MPa_sqrt_m,
+                T_K=T_K,
+            )
+            # Persistent sites are never consumed.  Translation is
+            # interleaved, so there is no single coarse pre-advance state.
+            source_fraction_pre_advance = state.source_available_fraction()
+        else:
+            state.begin_diagnostic_interval()
+            state.advance_time(segment.duration_s, midpoint_K, T_K)
+            source_fraction_pre_advance = state.source_available_fraction()
+            state.translate_tip(segment.da_m)
 
         if segment.da_m > 0.0:
             tip_speed = segment.da_m / max(segment.duration_s, 1.0e-30)
