@@ -101,6 +101,11 @@ python -m pytest -q \
   tests/test_v100511_same_mesh_energy.py
 ```
 
+The v10.0.5.14.3-specific tests include exact semigroup behavior for a frozen
+stiff generator, a Courant number far above the explicit limit, the actual
+candidate-0118 Peierls/Taylor parameters at 700 K over 840 s, nonnegativity,
+line-content conservation, and zero-content clock advancement.
+
 ## Candidate-0118 smoke
 
 The versioned runner creates the output directory before opening its log:
