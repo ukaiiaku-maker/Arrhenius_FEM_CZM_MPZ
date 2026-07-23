@@ -52,19 +52,21 @@ the calibrated event exponent \(p=0.95\) and a cleavage-hazard increment of
 calibration setting; promoted candidates must be rerun with 0.05.
 
 First check out this branch and refresh the editable installation in the active
-conda environment. The explicit refspec is required for clones whose fetch
-configuration tracks only the branch originally cloned:
+conda environment. For a single-branch clone, first add the v9.13 branch to the
+set that Git recognizes as remote branches:
 
 ```bash
 BRANCH=v9.13-dbtt-4096-autonomous-search
-git fetch origin \
-  "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
+git remote set-branches --add origin "$BRANCH"
+git fetch origin
 
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   git switch "$BRANCH"
   git merge --ff-only "origin/$BRANCH"
 else
-  git switch -c "$BRANCH" --track "origin/$BRANCH"
+  git switch --no-track -c "$BRANCH" \
+    "refs/remotes/origin/$BRANCH"
+  git branch --set-upstream-to="origin/$BRANCH" "$BRANCH"
 fi
 
 "$CONDA_PREFIX/bin/python" -m pip install -e .
