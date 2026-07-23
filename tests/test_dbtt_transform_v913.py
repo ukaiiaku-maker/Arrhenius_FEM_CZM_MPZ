@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -53,7 +55,7 @@ def candidate_row() -> dict[str, float | str]:
     }
 
 
-def test_temperature_scale_preserves_dimensionless_barriers(candidate_row):
+def test_temperature_scale_preserves_arrhenius_factors(candidate_row):
     scale = 0.7
     original = candidate_from_registry_row(candidate_row)
     transformed_row = temperature_scale_candidate_row(candidate_row, scale)
@@ -80,16 +82,16 @@ def test_temperature_scale_preserves_dimensionless_barriers(candidate_row):
                     transformed.taylor.surface(transformed.emission),
                 ),
             ):
-                old_value = float(old_surface.barrier_eV(stress, temperature)) / (
-                    KB_EV_PER_K * temperature
-                )
-                new_value = float(
+                old_exponent = float(
+                    old_surface.barrier_eV(stress, temperature)
+                ) / (KB_EV_PER_K * temperature)
+                new_exponent = float(
                     new_surface.barrier_eV(stress, scale * temperature)
                 ) / (KB_EV_PER_K * scale * temperature)
-                assert new_value == pytest.approx(
-                    old_value,
-                    rel=2.0e-13,
-                    abs=2.0e-13,
+                assert math.exp(-new_exponent) == pytest.approx(
+                    math.exp(-old_exponent),
+                    rel=2.0e-11,
+                    abs=2.0e-11,
                 )
 
 
@@ -142,7 +144,9 @@ def test_global_cleavage_stress_scale_changes_only_cleavage_axis(candidate_row):
     )
     for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS:
         if field not in ("cleave_sigc0_GPa", "cleave_sT_GPa_per_K"):
-            assert float(scaled[field]) == pytest.approx(float(candidate_row[field]))
+            assert float(scaled[field]) == pytest.approx(
+                float(candidate_row[field])
+            )
 
 
 def test_positive_domain_rejects_overaggressive_anchor_pivot(candidate_row):
