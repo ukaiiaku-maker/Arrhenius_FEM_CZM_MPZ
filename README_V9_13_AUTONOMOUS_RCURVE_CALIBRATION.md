@@ -168,3 +168,7 @@ promotion should use:
 This ordering separates model calibration from material parameter search: the
 1-D/2-D reduction is fixed first, and candidate kinetics are searched only
 after the transfer error is quantified.
+
+The first calibrated search over the existing 4,096-row v9.12 local pool is
+defined in
+[`README_V9_13_AUTONOMOUS_DBTT_SEARCH.md`](README_V9_13_AUTONOMOUS_DBTT_SEARCH.md).
