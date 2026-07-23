@@ -179,6 +179,25 @@ class PersistentSiteSignedMPZStateV100514(
         )
         return self.kernel
 
+    def advance(self, distance_m: float) -> dict[str, float]:
+        """Preflight the family envelope before mutating the moving-frame state."""
+        distance = max(float(distance_m), 0.0)
+        if self.kernel_family is not None:
+            self.kernel_family.snapshot(
+                self.advance_total_m + distance,
+                self.x,
+                self.wake_x,
+            )
+        return super().advance(distance)
+
+    def split(self, daughter_fraction: float) -> "PersistentSiteSignedMPZStateV100514":
+        """A daughter inherits the parent's cumulative crack-path coordinate."""
+        parent_extension = self.advance_total_m
+        child = super().split(daughter_fraction)
+        child.advance_total_m = parent_extension
+        child.current_kernel_snapshot()
+        return child
+
     @property
     def kernel_source_path(self) -> str:
         if self.kernel_family is not None:
