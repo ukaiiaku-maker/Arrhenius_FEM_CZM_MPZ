@@ -163,7 +163,13 @@ promotion should use:
 - the complete event-resolved \(K(\Delta a,T)\) response;
 - the four checkpoint values;
 - backstress, front-width, and tip-radius state diagnostics; and
-- explicit failure-mode classification for high-temperature plastic failure.
+- a final 2-D failure-mode check for high-temperature plastic failure.
+
+The calibrated 1-D transfer predicts the persistent
+emission/backstress/blunting/cleavage R-curve contract. It does not add an
+unvalidated continuum plastic-collapse classifier. The 1-D search therefore
+ranks genuine toughness peaks and records the state diagnostics; the promoted
+2-D cases determine whether the post-peak branch is plastic failure.
 
 This ordering separates model calibration from material parameter search: the
 1-D/2-D reduction is fixed first, and candidate kinetics are searched only

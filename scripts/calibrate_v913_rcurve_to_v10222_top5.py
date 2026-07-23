@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import csv
 from dataclasses import asdict, dataclass, replace
-import hashlib
 import json
 import math
 from pathlib import Path
@@ -34,8 +33,8 @@ from arrhenius_fracture.emergent_gnd_types_v913 import (
     CandidateParameters,
     CommonPhysics,
 )
-from scripts.build_v913_v10222_rcurve_targets import (
-    CANDIDATE_PARAMETER_FIELDS,
+from arrhenius_fracture.emergent_gnd_contract_v913 import (
+    candidate_parameter_fingerprint,
 )
 from scripts.run_mpz_v9_13_persistent_top5 import load_physics
 
@@ -183,15 +182,7 @@ def _write_csv(path: Path, rows: list[Mapping[str, Any]]) -> None:
 
 
 def _candidate_fingerprint(rows: list[Mapping[str, str]]) -> str:
-    payload = [
-        {
-            "candidate_id": row["candidate_id"],
-            **{field: row[field] for field in CANDIDATE_PARAMETER_FIELDS},
-        }
-        for row in sorted(rows, key=lambda item: item["candidate_id"])
-    ]
-    text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return candidate_parameter_fingerprint(rows)
 
 
 def _load_candidates(

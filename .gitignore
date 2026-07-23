@@ -8,3 +8,4 @@ __pycache__/
 runs/
 *.log
 *.nohup.log
+candidates/v9_12_targeted_local_4096_registry.csv

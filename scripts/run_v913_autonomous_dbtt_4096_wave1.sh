@@ -13,7 +13,8 @@ cd "$REPO_ROOT"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 # The checked-out branch must take precedence over any older editable install.
 export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
-REGISTRY="${REGISTRY:-candidates/v9_12_targeted_local_4096_registry.csv}"
+DEFAULT_REGISTRY="candidates/v9_12_targeted_local_4096_registry.csv"
+REGISTRY="${REGISTRY:-$DEFAULT_REGISTRY}"
 OUT="${OUT:-runs/v9_13_autonomous_dbtt_4096_peak_wave1_v1}"
 MAX_JOBS="${MAX_JOBS:-4}"
 PER_PARENT="${PER_PARENT:-128}"
@@ -24,6 +25,11 @@ TREES="${TREES:-1200}"
 PHYSICS="${PHYSICS:-mpz_v9_13_v10222_transfer_common_physics.json}"
 LOADING_MAP="${LOADING_MAP:-runs/v9_13_v10222_rcurve_targets_v1/v10_2_22_rcurve_loading_map.json}"
 POLICY="${POLICY:-mpz_v9_12_targeted_local_search_policy.json}"
+
+if [[ "$REGISTRY" == "$DEFAULT_REGISTRY" ]]; then
+  "$PYTHON_BIN" -u scripts/materialize_v913_candidate_registry.py \
+    --out "$REGISTRY"
+fi
 
 for required in "$REGISTRY" "$PHYSICS" "$LOADING_MAP" "$POLICY"; do
   test -f "$required" || {
@@ -49,7 +55,14 @@ PY
 
 "$PYTHON_BIN" -m pytest -q \
   tests/test_emergent_gnd_rcurve_v913.py \
-  tests/test_v913_autonomous_dbtt_search.py
+  tests/test_v913_autonomous_dbtt_search.py \
+  tests/test_v913_candidate_registry.py
+
+"$PYTHON_BIN" -u scripts/verify_v913_autonomous_dbtt_integration.py \
+  --candidate-registry "$REGISTRY" \
+  --base-physics-json "$PHYSICS" \
+  --loading-map "$LOADING_MAP" \
+  --run-sentinels
 
 "$PYTHON_BIN" -u scripts/run_v913_autonomous_dbtt_search.py \
   --candidate-registry "$REGISTRY" \
@@ -63,7 +76,7 @@ PY
   --checkpoint-um 25 \
   --target-extension-um 25 \
   --translation-action-exponent 0.95 \
-  --max-hazard-increment 0.25 \
+  --max-hazard-increment 0.05 \
   --jobs "$MAX_JOBS" \
   --promote-count "$PROMOTE_COUNT" \
   --out "$OUT"

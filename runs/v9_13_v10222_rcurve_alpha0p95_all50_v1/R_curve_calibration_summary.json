@@ -2,7 +2,7 @@
   "schema": "v9.13_autonomous_R_curve_calibration",
   "mode": "evaluate",
   "candidate_parameters_refit": false,
-  "candidate_registry_sha256": "44fc65de9cb6a275b2cb0e824357ac5085fdfe0727bfc721c5a9cbc4e75c1ef9",
+  "candidate_registry_sha256": "a8befb167c06289fc0b19bc1452f6744501fa09647ac2c242efd9fbb846e137f",
   "n_candidate_rows": 5,
   "optimized_parameters": [
     "translation_action_exponent"

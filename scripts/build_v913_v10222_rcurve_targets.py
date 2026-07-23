@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import io
 import json
 from pathlib import Path
@@ -15,41 +14,15 @@ import zipfile
 import numpy as np
 
 from arrhenius_fracture.emergent_gnd_rcurve_v913 import RCurveLoadingMap
+from arrhenius_fracture.emergent_gnd_contract_v913 import (
+    CANDIDATE_PARAMETER_FIELDS,
+    candidate_parameter_fingerprint,
+    effective_candidate_parameters,
+)
 
 
 REFERENCE_CANDIDATE_ID = "v912_targeted_local_peak_013476_0368"
 REFERENCE_TEMPERATURE_K = 300
-
-CANDIDATE_PARAMETER_FIELDS = (
-    "cleave_G00_eV",
-    "cleave_gT_eV_per_K",
-    "cleave_sigc0_GPa",
-    "cleave_sT_GPa_per_K",
-    "cleave_exp_a",
-    "cleave_exp_n",
-    "cleave_floor_frac",
-    "emit_G00_eV",
-    "emit_gT_eV_per_K",
-    "emit_sigc0_GPa",
-    "emit_sT_GPa_per_K",
-    "emit_exp_a",
-    "emit_exp_n",
-    "emit_floor_frac",
-    "peierls_H0_eV",
-    "peierls_activation_entropy_kB",
-    "peierls_exp_a",
-    "peierls_exp_n",
-    "peierls_nu0_s",
-    "taylor_H0_eV",
-    "taylor_activation_entropy_kB",
-    "taylor_exp_a",
-    "taylor_exp_n",
-    "taylor_nu0_s",
-    "rho_source0_m2",
-    "taylor_corr_rho_c_m2",
-    "taylor_corr_scale",
-    "c_blunt",
-)
 
 CALIBRATION_BOUNDARY_ROWS = (
     {
@@ -224,26 +197,13 @@ def _registry_rows(path: Path) -> list[dict[str, str]]:
         rows = list(csv.DictReader(stream))
     if not rows:
         raise RuntimeError(f"empty candidate registry: {path}")
-    missing = [
-        field
-        for field in ("candidate_id", *CANDIDATE_PARAMETER_FIELDS)
-        if field not in rows[0]
-    ]
-    if missing:
-        raise RuntimeError(f"candidate registry is missing fields: {missing}")
+    for row in rows:
+        effective_candidate_parameters(row)
     return rows
 
 
 def _candidate_fingerprint(rows: list[Mapping[str, str]]) -> str:
-    payload = [
-        {
-            "candidate_id": row["candidate_id"],
-            **{field: row[field] for field in CANDIDATE_PARAMETER_FIELDS},
-        }
-        for row in sorted(rows, key=lambda item: item["candidate_id"])
-    ]
-    text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return candidate_parameter_fingerprint(rows)
 
 
 def _summary_member(archive: zipfile.ZipFile) -> str:

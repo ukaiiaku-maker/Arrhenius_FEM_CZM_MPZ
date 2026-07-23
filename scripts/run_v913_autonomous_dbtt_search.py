@@ -17,6 +17,7 @@ import json
 import multiprocessing
 import os
 from pathlib import Path
+import platform
 import time
 from typing import Any, Mapping, Sequence
 
@@ -26,6 +27,13 @@ import pandas as pd
 from arrhenius_fracture.emergent_gnd_campaign_v913 import (
     candidate_from_registry_row,
 )
+from arrhenius_fracture.emergent_gnd_contract_v913 import (
+    ACTIVE_CANDIDATE_PARAMETER_FIELDS,
+    PERSISTENT_INACTIVE_REGISTRY_FIELDS,
+    candidate_feature_record,
+    candidate_parameter_fingerprint,
+    effective_candidate_parameters,
+)
 from arrhenius_fracture.emergent_gnd_rcurve_v913 import (
     RCurveLoadingMap,
     run_autonomous_rcurve,
@@ -33,9 +41,6 @@ from arrhenius_fracture.emergent_gnd_rcurve_v913 import (
 from scripts.augment_mpz_v9_12_directional_peak_targets import (
     add_directional_peak_classifications,
     add_trajectory_metrics,
-)
-from scripts.build_v913_v10222_rcurve_targets import (
-    CANDIDATE_PARAMETER_FIELDS,
 )
 from scripts.run_mpz_v9_13_persistent_top5 import load_physics
 
@@ -89,7 +94,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-um", type=float, default=25.0)
     parser.add_argument("--target-extension-um", type=float, default=25.0)
     parser.add_argument("--translation-action-exponent", type=float, default=0.95)
-    parser.add_argument("--max-hazard-increment", type=float, default=0.25)
+    parser.add_argument("--max-hazard-increment", type=float, default=0.05)
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--promote-count", type=int, default=48)
     parser.add_argument("--low-max-K", type=float, default=700.0)
@@ -147,15 +152,159 @@ def _case_path(root: Path, candidate_id: str, temperature_K: float) -> Path:
 
 
 def _candidate_fingerprint(rows: Sequence[Mapping[str, str]]) -> str:
-    payload = [
-        {
-            "candidate_id": row["candidate_id"],
-            **{field: row[field] for field in CANDIDATE_PARAMETER_FIELDS},
-        }
-        for row in sorted(rows, key=lambda item: item["candidate_id"])
-    ]
-    text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return candidate_parameter_fingerprint(rows)
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _canonical_sha256(payload: Mapping[str, Any]) -> str:
+    text = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _run_contract(
+    args: argparse.Namespace,
+    *,
+    all_rows: Sequence[Mapping[str, str]],
+    selected_rows: Sequence[Mapping[str, str]],
+    temperatures: Sequence[float],
+) -> dict[str, Any]:
+    repo_root = Path(__file__).resolve().parents[1]
+    source_paths = tuple(
+        sorted((repo_root / "arrhenius_fracture").glob("*.py"))
+    ) + (
+        Path(__file__).resolve(),
+        repo_root / "scripts/augment_mpz_v9_12_directional_peak_targets.py",
+        repo_root / "scripts/run_mpz_v9_13_persistent_top5.py",
+    )
+    payload = {
+        "schema": "v9.13_autonomous_dbtt_run_contract_v2",
+        "model_source_sha256": {
+            str(path.relative_to(repo_root)): _sha256_path(path)
+            for path in source_paths
+        },
+        "runtime": {
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+        },
+        "inputs": {
+            "candidate_registry_sha256": _sha256_path(args.candidate_registry),
+            "candidate_parameter_sha256": _candidate_fingerprint(all_rows),
+            "selected_candidate_parameter_sha256": _candidate_fingerprint(
+                selected_rows
+            ),
+            "base_physics_sha256": _sha256_path(args.base_physics_json),
+            "loading_map_sha256": _sha256_path(args.loading_map),
+            "policy_sha256": _sha256_path(args.policy_json),
+        },
+        "candidate_contract": {
+            "active_fields": list(ACTIVE_CANDIDATE_PARAMETER_FIELDS),
+            "inactive_legacy_fields": list(PERSISTENT_INACTIVE_REGISTRY_FIELDS),
+            "candidate_parameters_refit": False,
+            "source_refresh_active": False,
+            "explicit_recovery_active": False,
+        },
+        "selection": {
+            "families": list(args.families),
+            "candidate_ids": list(args.candidate_ids),
+            "per_parent": int(args.per_parent),
+            "parent_offset": int(args.parent_offset),
+            "selected_candidates": len(selected_rows),
+        },
+        "simulation": {
+            "temperatures_K": list(temperatures),
+            "checkpoint_um": float(args.checkpoint_um),
+            "target_extension_um": float(args.target_extension_um),
+            "translation_mode": "hazard_coupled",
+            "translation_action_exponent": float(
+                args.translation_action_exponent
+            ),
+            "max_hazard_increment": float(args.max_hazard_increment),
+        },
+        "objective": {
+            "response": f"K({args.checkpoint_um:g} um, T)",
+            "low_max_K": float(args.low_max_K),
+            "high_min_K": float(args.high_min_K),
+            "peak_min_K": float(args.peak_min_K),
+            "peak_max_K": float(args.peak_max_K),
+            "direction_threshold": float(args.direction_threshold),
+            "peak_threshold": float(args.peak_threshold),
+        },
+    }
+    return {
+        "sha256": _canonical_sha256(payload),
+        "contract": payload,
+    }
+
+
+def _establish_run_contract(
+    path: Path,
+    current: Mapping[str, Any],
+    *,
+    case_root: Path,
+) -> str:
+    expected = str(current["sha256"])
+    if path.exists():
+        previous = json.loads(path.read_text())
+        actual = str(previous.get("sha256", ""))
+        if actual != expected or previous.get("contract") != current.get("contract"):
+            raise RuntimeError(
+                "output directory belongs to a different autonomous-search "
+                "contract; choose a new --out directory instead of mixing cases "
+                f"(existing={actual or '<missing>'}, requested={expected})"
+            )
+    else:
+        existing_cases = list(case_root.glob("*/T*K.json"))
+        if existing_cases:
+            raise RuntimeError(
+                "case JSON files exist without run_contract.json; refusing "
+                "unsafe legacy resume. Choose a new --out directory."
+            )
+        path.write_text(json.dumps(current, indent=2) + "\n")
+    return expected
+
+
+def _validate_resumed_payload(
+    payload: Mapping[str, Any],
+    *,
+    candidate_id: str,
+    temperature_K: float,
+    contract_sha256: str,
+    loading_map_seed: int,
+) -> None:
+    errors: list[str] = []
+    if str(payload.get("run_contract_sha256", "")) != contract_sha256:
+        errors.append("run_contract_sha256")
+    if str(payload.get("candidate_id", "")) != candidate_id:
+        errors.append("candidate_id")
+    try:
+        stored_temperature = float(payload.get("temperature_K"))
+    except (TypeError, ValueError):
+        stored_temperature = float("nan")
+    if not np.isclose(stored_temperature, temperature_K, rtol=0.0, atol=1.0e-12):
+        errors.append("temperature_K")
+    try:
+        stored_seed = int(payload.get("seed"))
+    except (TypeError, ValueError):
+        stored_seed = -1
+    if stored_seed != int(loading_map_seed):
+        errors.append("seed")
+    if errors:
+        raise RuntimeError(
+            f"unsafe resume payload for {candidate_id} at {temperature_K:g} K; "
+            f"invalid fields: {errors}"
+        )
 
 
 def _select_rows(
@@ -288,8 +437,11 @@ def _objective_tables(
     direction_threshold: float,
     peak_threshold: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    policy = json.loads(policy_path.read_text())
-    dimensions = list(policy["search_dimensions"])
+    # Read the policy here because it remains the immutable source of the
+    # established objective/generator provenance.  Surrogate inputs, however,
+    # are every active v9.13 candidate constant, not the legacy generator's
+    # inactive recovery/source-refresh coordinates.
+    json.loads(policy_path.read_text())
     by_case = {
         (str(row["candidate_id"]), float(row["temperature_K"])): row
         for row in case_records
@@ -303,8 +455,7 @@ def _objective_tables(
             "campaign_parent_id": candidate.get("campaign_parent_id", ""),
             "campaign_parent_family": candidate.get("campaign_parent_family", ""),
         }
-        for name in dimensions:
-            record[f"x_raw__{name}"] = float(candidate[name])
+        record.update(candidate_feature_record(candidate))
         complete = True
         for temperature in temperatures:
             case = by_case.get((candidate_id, float(temperature)))
@@ -374,10 +525,18 @@ def _event_rows(payloads: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 def main() -> int:
     args = parse_args()
+    if args.checkpoint_um <= 0.0 or args.target_extension_um <= 0.0:
+        raise ValueError("checkpoint and target extension must be positive")
+    if args.checkpoint_um > args.target_extension_um:
+        raise ValueError("checkpoint extension must not exceed target extension")
+    if int(args.jobs) < 1:
+        raise ValueError("--jobs must be at least one")
     args.out.mkdir(parents=True, exist_ok=True)
     case_root = args.out / "cases"
     case_root.mkdir(parents=True, exist_ok=True)
     all_rows = _read_csv(args.candidate_registry)
+    for row in all_rows:
+        effective_candidate_parameters(row)
     selected_rows = _select_rows(
         all_rows,
         families=args.families,
@@ -386,6 +545,38 @@ def main() -> int:
         parent_offset=args.parent_offset,
     )
     temperatures = sorted({float(value) for value in args.temperatures})
+    if not temperatures or not all(np.isfinite(temperatures)):
+        raise ValueError("temperatures must be nonempty and finite")
+    required_windows = {
+        "low": any(value <= args.low_max_K for value in temperatures),
+        "peak": any(
+            args.peak_min_K <= value <= args.peak_max_K
+            for value in temperatures
+        ),
+        "high": any(value >= args.high_min_K for value in temperatures),
+    }
+    missing_windows = [
+        name for name, present in required_windows.items() if not present
+    ]
+    if missing_windows:
+        raise ValueError(
+            "temperature grid does not cover objective windows: "
+            f"{missing_windows}"
+        )
+    loading_map = RCurveLoadingMap.from_dict(
+        json.loads(args.loading_map.read_text())
+    )
+    contract = _run_contract(
+        args,
+        all_rows=all_rows,
+        selected_rows=selected_rows,
+        temperatures=temperatures,
+    )
+    contract_sha256 = _establish_run_contract(
+        args.out / "run_contract.json",
+        contract,
+        case_root=case_root,
+    )
     settings = {
         "target_extension_um": float(args.target_extension_um),
         "max_hazard_increment": float(args.max_hazard_increment),
@@ -398,9 +589,15 @@ def main() -> int:
         for temperature in temperatures:
             path = _case_path(case_root, row["candidate_id"], temperature)
             if args.resume and path.exists():
-                payloads[(row["candidate_id"], temperature)] = json.loads(
-                    path.read_text()
+                payload = json.loads(path.read_text())
+                _validate_resumed_payload(
+                    payload,
+                    candidate_id=row["candidate_id"],
+                    temperature_K=temperature,
+                    contract_sha256=contract_sha256,
+                    loading_map_seed=loading_map.seed,
                 )
+                payloads[(row["candidate_id"], temperature)] = payload
             else:
                 pending.append((row, temperature))
 
@@ -418,6 +615,14 @@ def main() -> int:
 
     def accept(payload: dict[str, Any], wall_s: float) -> None:
         key = (str(payload["candidate_id"]), float(payload["temperature_K"]))
+        payload["run_contract_sha256"] = contract_sha256
+        _validate_resumed_payload(
+            payload,
+            candidate_id=key[0],
+            temperature_K=key[1],
+            contract_sha256=contract_sha256,
+            loading_map_seed=loading_map.seed,
+        )
         payloads[key] = payload
         path = _case_path(case_root, *key)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -487,8 +692,6 @@ def main() -> int:
     )
     table.to_csv(args.out / "autonomous_dbtt_training_table.csv", index=False)
     ranking.to_csv(args.out / "ranked_candidates.csv", index=False)
-    policy = json.loads(args.policy_json.read_text())
-    dimensions = list(policy["search_dimensions"])
     pool_records = []
     for candidate in all_rows:
         pool_records.append(
@@ -496,7 +699,7 @@ def main() -> int:
                 "candidate_id": candidate["candidate_id"],
                 "campaign_parent_id": candidate.get("campaign_parent_id", ""),
                 "campaign_parent_family": candidate.get("campaign_parent_family", ""),
-                **{f"x_raw__{name}": float(candidate[name]) for name in dimensions},
+                **candidate_feature_record(candidate),
             }
         )
     pd.DataFrame(pool_records).to_csv(
@@ -529,16 +732,34 @@ def main() -> int:
     promoted = promoted.sort_values("search_rank")
     promoted.to_csv(args.out / "promoted_registry.csv", index=False)
 
-    complete_grid = len(payloads) == len(selected_rows) * len(temperatures)
+    expected_cases = len(selected_rows) * len(temperatures)
+    complete_grid = (
+        len(payloads) == expected_cases
+        and all(str(payload.get("status")) == "complete" for payload in payloads.values())
+    )
+    status_counts: dict[str, int] = {}
+    for payload in payloads.values():
+        status = str(payload.get("status", "missing"))
+        status_counts[status] = status_counts.get(status, 0) + 1
     manifest = {
         "schema": "v9.13_autonomous_dbtt_candidate_search",
+        "run_contract_sha256": contract_sha256,
         "candidate_parameters_refit": False,
         "candidate_registry": str(args.candidate_registry.resolve()),
+        "candidate_registry_file_sha256": _sha256_path(args.candidate_registry),
+        "candidate_parameter_sha256": _candidate_fingerprint(all_rows),
         "selected_candidate_parameter_sha256": _candidate_fingerprint(selected_rows),
+        "active_candidate_parameter_fields": list(
+            ACTIVE_CANDIDATE_PARAMETER_FIELDS
+        ),
+        "inactive_legacy_registry_fields": list(
+            PERSISTENT_INACTIVE_REGISTRY_FIELDS
+        ),
         "selected_candidates": len(selected_rows),
         "temperatures_K": temperatures,
         "complete_grid": complete_grid,
         "completed_cases": len(payloads),
+        "case_status_counts": status_counts,
         "families": list(args.families),
         "per_parent": int(args.per_parent),
         "parent_offset": int(args.parent_offset),

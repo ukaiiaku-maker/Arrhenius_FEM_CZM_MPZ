@@ -3,9 +3,10 @@
   "source_archive": "v10_2_22_top5_dbtt_physical_width_50um_theta45_crn3621_v1(1).zip",
   "source_summary_member": "v10_2_22_top5_dbtt_physical_width_50um_theta45_crn3621_v1/v10_2_22_dbtt_50um_screen_summary.csv",
   "candidate_registry": "candidates/v9_13_persistent_sites_top5_registry.csv",
-  "candidate_registry_sha256": "44fc65de9cb6a275b2cb0e824357ac5085fdfe0727bfc721c5a9cbc4e75c1ef9",
+  "candidate_registry_sha256": "a8befb167c06289fc0b19bc1452f6744501fa09647ac2c242efd9fbb846e137f",
   "candidate_parameters_fixed": true,
   "candidate_parameter_fields": [
+    "Tref_K",
     "cleave_G00_eV",
     "cleave_gT_eV_per_K",
     "cleave_sigc0_GPa",

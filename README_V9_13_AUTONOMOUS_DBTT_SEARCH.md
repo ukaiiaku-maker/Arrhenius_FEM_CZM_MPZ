@@ -14,12 +14,16 @@ families around eight v9.12 parents:
 - 1,024 bridge-family rows; and
 - 1,024 peak-family rows.
 
-Eleven kinetic and state coordinates vary. The cleavage surface and several
-geometry/constitutive quantities remain fixed. This is nevertheless the
-correct first pool because it was generated around the prior DBTT and peak
-basins. A new reduced-model candidate generator is justified only if the
-calibrated autonomous 1-D search shows that this population contains no robust
-peak.
+The legacy generator varied eleven coordinates. Three of them—source-refresh
+length and the two explicit-recovery coordinates—are inactive in the accepted
+persistent-site transfer because source refresh and explicit recovery were
+disabled in every v10.2.22 run. They remain in the registry only as provenance
+and are excluded from the surrogate. The surrogate uses all 29 active
+candidate constants, including active values that distinguish the parent
+parameterizations. This is the correct first pool because it was generated
+around the prior DBTT and peak basins. A new reduced-model candidate generator
+is justified only if the calibrated autonomous 1-D search shows that this
+population contains no robust peak.
 
 ## Objective and optimizer
 
@@ -46,32 +50,27 @@ peak-quality candidates and 15% uncertainty/diversity exploration.
 
 The first 128 Sobol rows from each peak parent form a nested, low-discrepancy
 256-candidate batch. Each candidate is evaluated at
-700, 800, 900, 1000, 1100, and 1200 K to 25 µm. The screening integration uses
-the calibrated event exponent \(p=0.95\) and a cleavage-hazard increment of
-0.25. This is a five-times-coarser search approximation than the accepted
-calibration setting; promoted candidates must be rerun with 0.05.
+700, 800, 900, 1000, 1100, and 1200 K to 25 µm. The integration uses the
+accepted event exponent \(p=0.95\) and cleavage-hazard increment 0.05. A
+30-case convergence audit found that 0.25 changed \(K(25\,\mu\mathrm m)\) by
+up to 0.745 MPa\(\sqrt{\mathrm m}\) without a useful reduction in wall time,
+so the long search no longer uses the coarse setting.
 
-First check out this branch and refresh the editable installation in the active
-conda environment. For a single-branch clone, first add the v9.13 branch to the
-set that Git recognizes as remote branches:
+Do not switch the branch inside a dirty v9.12 campaign checkout. Clone the
+integrated branch into a new directory and refresh the editable installation
+in the active conda environment:
 
 ```bash
-BRANCH=v9.13-dbtt-4096-autonomous-search
-git remote set-branches --add origin "$BRANCH"
-git fetch origin
-
-if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-  git switch "$BRANCH"
-  git merge --ff-only "origin/$BRANCH"
-else
-  git switch --no-track -c "$BRANCH" \
-    "refs/remotes/origin/$BRANCH"
-  git branch --set-upstream-to="origin/$BRANCH" "$BRANCH"
-fi
+cd /Volumes/Data/Data/Nanopillar_calculation
+git clone --branch v9.13-integrated-autonomous-dbtt-search --single-branch \
+  https://github.com/ukaiiaku-maker/Arrhenius_FEM_CZM_MPZ.git \
+  Arrhenius_FEM_CZM_MPZ_v9_13_integrated_dbtt_search
+cd Arrhenius_FEM_CZM_MPZ_v9_13_integrated_dbtt_search
 
 "$CONDA_PREFIX/bin/python" -m pip install -e .
 
 test -f scripts/run_v913_autonomous_dbtt_4096_wave1.sh
+test -f candidates/v9_12_targeted_local_4096_registry.csv.gz
 ```
 
 Then run from the repository root:
@@ -83,8 +82,15 @@ OUT=runs/v9_13_autonomous_dbtt_4096_peak_wave1_v1 \
 bash scripts/run_v913_autonomous_dbtt_4096_wave1.sh
 ```
 
-The driver is case-resumable. Rerunning the same command reads completed case
-JSON files and schedules only missing candidate/temperature pairs.
+The launcher first materializes the exact 4,096-row CSV from its versioned gzip
+asset and verifies both hashes. It then runs the focused tests and recomputes
+two accepted sentinel R-curves. Before the first search case it writes
+`run_contract.json`, which hashes the registry, effective candidate values,
+common physics, loading map, objective, numerical settings, runtime versions,
+and model sources. Rerunning the exact command reads completed case JSON files
+and schedules only missing pairs. Any changed input, code, temperature grid,
+runtime, or numerical setting fails closed instead of mixing stale and current
+results.
 
 Primary outputs are:
 
