@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 PFROOT=${PFROOT:-/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1}
 FAMILY_JSON=${FAMILY_JSON:-$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json}
-CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_16_0118_300_1200K_200um_stochastic_pf_parity_v1}
+CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_16_0118_300_1200K_200um_stochastic_pf_parity_v2}
 
 TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 900 1000 1100 1200"}
 TARGET_EXT_UM=${TARGET_EXT_UM:-200}
@@ -16,6 +16,7 @@ SKIP_FINISHED=${SKIP_FINISHED:-1}
 SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-10}
 SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-20}
 SNAPSHOT_COLS=${SNAPSHOT_COLS:-5}
+GENERATE_SOLVER_PLOTS=${GENERATE_SOLVER_PLOTS:-1}
 PRINT_EVERY=${PRINT_EVERY:-100}
 BASE_HAZARD_SEED=${BASE_HAZARD_SEED:-1720}
 EVENT_MIN_FACTOR=${EVENT_MIN_FACTOR:-0.5}
@@ -26,10 +27,35 @@ if [[ ! -f "$FAMILY_JSON" ]]; then
   exit 1
 fi
 
+derive_seed() {
+  local T="$1"
+  python - "$BASE_HAZARD_SEED" "$T" <<'PY'
+import hashlib
+import sys
+
+base = int(sys.argv[1])
+temperature = int(sys.argv[2])
+payload = f"v10.0.5.16|{base}|{temperature}".encode("ascii")
+digest = hashlib.sha256(payload).digest()
+print(int.from_bytes(digest[:4], byteorder="little", signed=False))
+PY
+}
+
 mkdir -p "$CAMPAIGN_ROOT"
+SEED_MAP="$CAMPAIGN_ROOT/temperature_seed_map.csv"
+echo "temperature_K,hazard_seed" > "$SEED_MAP"
+for T in $TEMPERATURES; do
+  echo "$T,$(derive_seed "$T")" >> "$SEED_MAP"
+done
+
+if [[ $(tail -n +2 "$SEED_MAP" | cut -d, -f2 | sort -u | wc -l | tr -d ' ') -ne \
+      $(tail -n +2 "$SEED_MAP" | wc -l | tr -d ' ') ]]; then
+  echo "ERROR: derived temperature seeds are not unique" >&2
+  exit 1
+fi
 
 cat > "$CAMPAIGN_ROOT/campaign_configuration.txt" <<EOF
-release=10.0.5.16
+release=10.0.5.16.1
 entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_16_stochastic_pf_parity
 candidate=v912_peak_0118_persistent_sites
 PF_reference_commit=198ece3aeb1d193a8c1c4857676fba720c088d27
@@ -40,13 +66,17 @@ cleavage_event_length_mode=threshold_scaled_same_Xi_mean_preserving
 cleavage_event_min_factor=$EVENT_MIN_FACTOR
 cleavage_event_max_factor=$EVENT_MAX_FACTOR
 base_hazard_seed=$BASE_HAZARD_SEED
-hazard_seed_formula=base_hazard_seed_plus_temperature_K
+hazard_seed_formula=sha256_low32_little_endian_of_v10.0.5.16_base_temperature
+hazard_seed_map=$SEED_MAP
 temperatures_K=$TEMPERATURES
 target_extension_um=$TARGET_EXT_UM
 steps=$STEPS
 dU=$DU
 dt_s=$DT
 snapshot_spacing_um=$SNAPSHOT_BY_EXT_UM
+save_snapshots=$SAVE_SNAPSHOTS
+snapshot_columns=$SNAPSHOT_COLS
+generate_solver_plots=$GENERATE_SOLVER_PLOTS
 kernel_family=$FAMILY_JSON
 max_jobs=$MAX_JOBS
 EOF
@@ -55,7 +85,9 @@ run_case() {
   set -euo pipefail
   local T="$1"
   local TAG
-  local SEED=$((BASE_HAZARD_SEED + T))
+  local SEED
+  local -a PLOT_ARGS=()
+  SEED=$(derive_seed "$T")
   printf -v TAG "%04d" "$T"
   local OUT="$CAMPAIGN_ROOT/T${TAG}K"
   local MANIFEST="$OUT/persistent_site_production_manifest_v10_0_5_16.json"
@@ -67,15 +99,21 @@ run_case() {
     return 0
   fi
 
+  if [[ "$GENERATE_SOLVER_PLOTS" != "1" ]]; then
+    PLOT_ARGS+=(--no-plots)
+  fi
+
   rm -rf "$OUT"
   mkdir -p "$OUT"
 
   echo "============================================================"
   echo "[START] T=${T} K"
-  echo "  output:      $OUT"
-  echo "  target:      ${TARGET_EXT_UM} um realized extension"
-  echo "  hazard seed: $SEED"
-  echo "  hazard:      exponential integrated-action threshold"
+  echo "  output:       $OUT"
+  echo "  target:       ${TARGET_EXT_UM} um realized extension"
+  echo "  hazard seed:  $SEED"
+  echo "  snapshots:    every ${SNAPSHOT_BY_EXT_UM} um; target ${SAVE_SNAPSHOTS}"
+  echo "  solver plots: $GENERATE_SOLVER_PLOTS"
+  echo "  hazard:       exponential integrated-action threshold"
   echo "  event length: same threshold, mean 5 um, bounded factors"
   echo "============================================================"
 
@@ -124,19 +162,24 @@ run_case() {
       --save-snapshots "$SAVE_SNAPSHOTS" \
       --snapshot-cols "$SNAPSHOT_COLS" \
       --snapshot-by-crack-extension-um "$SNAPSHOT_BY_EXT_UM" \
-      --no-plots \
+      "${PLOT_ARGS[@]}" \
       --out "$OUT" \
       2>&1 | tee "$LOG"
 
   echo "[DONE] T=${T} K seed=${SEED}"
 }
 
-export -f run_case
+export -f derive_seed run_case
 export ROOT PFROOT FAMILY_JSON CAMPAIGN_ROOT TARGET_EXT_UM STEPS DU DT
-export SKIP_FINISHED SNAPSHOT_BY_EXT_UM SAVE_SNAPSHOTS SNAPSHOT_COLS PRINT_EVERY
-export BASE_HAZARD_SEED EVENT_MIN_FACTOR EVENT_MAX_FACTOR
+export SKIP_FINISHED SNAPSHOT_BY_EXT_UM SAVE_SNAPSHOTS SNAPSHOT_COLS
+export GENERATE_SOLVER_PLOTS PRINT_EVERY BASE_HAZARD_SEED EVENT_MIN_FACTOR EVENT_MAX_FACTOR
 
 printf '%s\n' $TEMPERATURES | xargs -n 1 -P "$MAX_JOBS" bash -c 'run_case "$1"' _
 
+python "$ROOT/scripts/analyze_v100516_stochastic_campaign.py" \
+  --campaign-root "$CAMPAIGN_ROOT" \
+  --target-extension-um "$TARGET_EXT_UM"
+
 echo
 echo "Campaign finished: $CAMPAIGN_ROOT"
+echo "Final plots and tables: $CAMPAIGN_ROOT/final_analysis"
