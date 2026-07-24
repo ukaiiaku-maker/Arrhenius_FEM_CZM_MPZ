@@ -22,6 +22,7 @@ jobs:
             arrhenius_fracture/persistent_site_pf_update_v100515.py \
             arrhenius_fracture/persistent_site_moving_tip_v100515.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_15_pf_parity.py
+          bash -n run_v10_0_5_15_0118_300_1200K_200um_family_campaign.sh
       - name: Exact PF update-map tests
         run: python -m pytest -q --tb=short tests/test_pf_update_map_v100515.py
       - name: Continuous moving-tip coupling tests
