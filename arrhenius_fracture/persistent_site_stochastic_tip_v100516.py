@@ -3,7 +3,7 @@
 This release retains the v10.0.5.15 PF local update map and continuous moving-tip
 Strang coupling.  It adds the exact PF v10.1.7.2/v10.1.7.3 renewal semantics:
 
-* Xi ~ Exponential(1) is the integrated-hazard threshold for one event;
+* Xi = -ln(U) is the integrated-hazard threshold for one event;
 * normalized progress evolves at lambda_c / Xi;
 * the same Xi sets the event reward through a bounded mean-preserving map;
 * no noise is added to K, J, barriers, shielding, backstress, or material data.
@@ -38,7 +38,8 @@ def draw_hazard_threshold(
         return 1.0
     if selected != "exponential":
         raise ValueError("hazard threshold mode must be deterministic or exponential")
-    return max(float(rng.exponential(1.0)), floor)
+    uniform = max(float(rng.random()), float(np.finfo(float).tiny))
+    return max(-math.log(uniform), floor)
 
 
 def clipped_exponential_mean(minimum_factor: float, maximum_factor: float) -> float:
@@ -122,10 +123,7 @@ class PersistentSitePFStochasticMovingTipFrontEngineV100516(
         self.event_length_mode = str(type(self)._event_length_mode_default)
         self.event_minimum_factor = float(type(self)._event_minimum_factor_default)
         self.event_maximum_factor = float(type(self)._event_maximum_factor_default)
-        sequence = np.random.SeedSequence(
-            [self.hazard_seed, int(getattr(self, "_engine_id", 0))]
-        )
-        self._hazard_rng = np.random.default_rng(sequence)
+        self._hazard_rng = np.random.default_rng(self.hazard_seed)
         self.hazard_threshold_action = self._draw_threshold()
         self.hazard_action_current = 0.0
         self.hazard_event_index = 0
@@ -472,6 +470,10 @@ class PersistentSitePFStochasticMovingTipFrontEngineV100516(
         trial._checkpoint_origin_snapshot = None
         trial._geometry_veto_snapshot = None
         trial._checkpoint_fired_last_step = False
+        trial.hazard_threshold_history = list(self.hazard_threshold_history)
+        trial.stochastic_event_length_history = list(
+            self.stochastic_event_length_history
+        )
         rng = np.random.default_rng()
         rng.bit_generator.state = copy.deepcopy(self._hazard_rng.bit_generator.state)
         trial._hazard_rng = rng
@@ -574,6 +576,8 @@ class PersistentSitePFStochasticMovingTipFrontEngineV100516(
                     "seed": cls._hazard_seed_default,
                     "minimum_threshold": cls._hazard_minimum_threshold_default,
                     "distribution": "exponential_unit_mean",
+                    "random_transform": "minus_log_uniform",
+                    "rng": "numpy_default_rng_explicit_seed",
                 },
                 "stochastic_event_length": {
                     "schema": EVENT_LENGTH_SCHEMA,
