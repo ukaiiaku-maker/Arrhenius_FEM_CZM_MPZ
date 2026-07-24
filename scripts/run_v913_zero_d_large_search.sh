@@ -42,13 +42,14 @@ done
 
 "$PYTHON_BIN" -m pytest -q \
   tests/test_zero_d_persistent_v913.py \
-  tests/test_v913_zero_d_large_search.py
+  tests/test_v913_zero_d_large_search.py \
+  tests/test_v913_zero_d_nonfinite_safety.py
 
 mkdir -p "$OUT"
 
 read -r -a TEMPERATURE_ARRAY <<< "$TEMPERATURES_K"
 
-"$PYTHON_BIN" -u scripts/run_v913_zero_d_large_search.py \
+"$PYTHON_BIN" -u scripts/run_v913_zero_d_large_search_safe.py \
   --anchor-registry "$ANCHOR_REGISTRY" \
   --base-physics-json "$PHYSICS" \
   --loading-map "$LOADING_MAP" \
