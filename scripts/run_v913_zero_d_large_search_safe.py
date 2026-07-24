@@ -2,22 +2,27 @@
 """Safety wrapper for the v9.13 persistent zero-D large search.
 
 The vectorized proxy deliberately explores parameter regions that may produce no
-finite toughness values.  Those candidates must receive a finite rejection score,
+finite toughness values. Those candidates must receive a finite rejection score,
 not emit NumPy all-NaN warnings or leak NaN/Inf into strict JSON outputs.
+
+The exact-stage gate also requires completion to the requested checkpoint. The
+promotion selector preserves every complete strict pass and fills the remaining
+pool tier-by-tier with diverse, complete, finite local-peak candidates.
 """
 from __future__ import annotations
 
 import copy
 import math
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import numpy as np
+import pandas as pd
 
 import arrhenius_fracture.zero_d_search_v913 as search_helpers
 import scripts.run_v913_zero_d_large_search as base
 
 
-SAFETY_SCHEMA = "v9.13_persistent_zero_d_nonfinite_safety_v1"
+SAFETY_SCHEMA = "v9.13_persistent_zero_d_nonfinite_completion_promotion_v2"
 
 
 def json_safe(value: Any) -> Any:
@@ -132,7 +137,9 @@ def curve_metrics_matrix_safe(
     local_found = np.zeros(nrows, dtype=bool)
 
     for index in range(1, ntemperatures - 1):
-        triplet_finite = finite[:, index - 1] & finite[:, index] & finite[:, index + 1]
+        triplet_finite = (
+            finite[:, index - 1] & finite[:, index] & finite[:, index + 1]
+        )
         local = (
             triplet_finite
             & (curves[:, index] > curves[:, index - 1])
@@ -195,6 +202,7 @@ def curve_metrics_matrix_safe(
 
 _original_exact_candidate_worker = base._exact_candidate_worker
 _original_run_contract = base._run_contract
+_original_score_frame = base._score_frame
 
 
 def exact_candidate_worker_safe(row: dict[str, Any]) -> dict[str, Any]:
@@ -202,12 +210,239 @@ def exact_candidate_worker_safe(row: dict[str, Any]) -> dict[str, Any]:
     return json_safe(_original_exact_candidate_worker(row))
 
 
+def score_frame_safe(
+    frame: pd.DataFrame,
+    prefix: str,
+    *,
+    minimum_prominence: float,
+    minimum_drop: float,
+    maximum_rebound: float,
+    peak_min: float,
+    peak_max: float,
+) -> pd.DataFrame:
+    """Require exact-stage completion and replace nonfinite objectives."""
+    out = _original_score_frame(
+        frame,
+        prefix,
+        minimum_prominence=minimum_prominence,
+        minimum_drop=minimum_drop,
+        maximum_rebound=maximum_rebound,
+        peak_min=peak_min,
+        peak_max=peak_max,
+    )
+    objective_name = f"{prefix}_objective"
+    gate_name = f"{prefix}_gate_pass"
+    objective = pd.to_numeric(out[objective_name], errors="coerce").to_numpy(float)
+    objective = np.where(np.isfinite(objective), objective, 1000.0)
+
+    completion_name = f"{prefix}_complete"
+    if completion_name in out:
+        complete = (
+            pd.to_numeric(out[completion_name], errors="coerce")
+            .fillna(0)
+            .astype(bool)
+            .to_numpy()
+        )
+        objective = objective + np.where(complete, 0.0, 500.0)
+        out[gate_name] = out[gate_name].astype(bool).to_numpy() & complete
+
+    out[objective_name] = objective
+    return out
+
+
+def _finite_columns(frame: pd.DataFrame, names: Sequence[str]) -> np.ndarray:
+    mask = np.ones(len(frame), dtype=bool)
+    for name in names:
+        values = pd.to_numeric(frame[name], errors="coerce").to_numpy(float)
+        mask &= np.isfinite(values)
+    return mask
+
+
+def _greedy_quality_diverse(
+    features: np.ndarray,
+    objective: np.ndarray,
+    candidates: np.ndarray,
+    selected: list[int],
+    count: int,
+) -> list[int]:
+    """Add quality-weighted farthest points from one promotion tier."""
+    remaining = int(count)
+    available = [int(index) for index in candidates if int(index) not in selected]
+    if remaining <= 0 or not available:
+        return selected
+
+    if not selected:
+        best = min(
+            available,
+            key=lambda index: (
+                float(objective[index])
+                if np.isfinite(objective[index])
+                else float("inf"),
+                index,
+            ),
+        )
+        selected.append(best)
+        available.remove(best)
+        remaining -= 1
+        if remaining <= 0 or not available:
+            return selected
+
+    min_distance = np.full(len(features), np.inf, dtype=float)
+    for index in selected:
+        distance = np.sum(np.square(features - features[index]), axis=1)
+        min_distance = np.minimum(min_distance, distance)
+
+    available_array = np.asarray(available, dtype=int)
+    available_objective = objective[available_array]
+    order = np.argsort(np.argsort(available_objective, kind="stable"), kind="stable")
+    percentile = (order + 1.0) / max(len(order), 1)
+    quality = np.exp(-3.0 * percentile)
+
+    for _ in range(min(remaining, len(available_array))):
+        distance = np.sqrt(np.maximum(min_distance[available_array], 0.0))
+        acquisition = distance * (0.10 + 0.90 * quality)
+        pick_position = int(np.argmax(acquisition))
+        picked = int(available_array[pick_position])
+        selected.append(picked)
+        distance_to_pick = np.sum(
+            np.square(features - features[picked]),
+            axis=1,
+        )
+        min_distance = np.minimum(min_distance, distance_to_pick)
+        available_array = np.delete(available_array, pick_position)
+        quality = np.delete(quality, pick_position)
+        if available_array.size == 0:
+            break
+    return selected
+
+
+def diverse_selection_safe(
+    ranked: pd.DataFrame,
+    policy: Mapping[str, Any],
+    count: int,
+) -> pd.DataFrame:
+    """Preserve complete strict passes, then fill ordered quality tiers."""
+    if count < 1:
+        raise ValueError("promotion count must be positive")
+    frame = ranked.reset_index(drop=True).copy()
+
+    parameter_finite = _finite_columns(
+        frame,
+        tuple(base.ACTIVE_CANDIDATE_PARAMETER_FIELDS),
+    )
+    metric_finite = _finite_columns(
+        frame,
+        (
+            "zeroD_objective",
+            "zeroD_peak_temperature_K",
+            "zeroD_peak_value_MPa_sqrt_m",
+            "zeroD_two_sided_prominence_MPa_sqrt_m",
+            "zeroD_post_peak_drop_MPa_sqrt_m",
+            "zeroD_high_temperature_rebound_MPa_sqrt_m",
+        ),
+    )
+    complete = (
+        pd.to_numeric(frame["zeroD_complete"], errors="coerce")
+        .fillna(0)
+        .astype(bool)
+        .to_numpy()
+    )
+    internal = frame["zeroD_peak_internal"].astype(bool).to_numpy()
+    desired = frame["zeroD_peak_in_desired_window"].astype(bool).to_numpy()
+    strict = (
+        frame["zeroD_gate_pass"].astype(bool).to_numpy()
+        & complete
+        & parameter_finite
+        & metric_finite
+    )
+
+    tier = np.full(len(frame), "", dtype=object)
+    tier[strict] = "strict_gate"
+    mask = (
+        (tier == "")
+        & complete
+        & parameter_finite
+        & metric_finite
+        & internal
+        & desired
+    )
+    tier[mask] = "relaxed_desired_peak"
+    mask = (
+        (tier == "")
+        & complete
+        & parameter_finite
+        & metric_finite
+        & internal
+    )
+    tier[mask] = "internal_peak_outside_window"
+    mask = (
+        (tier == "")
+        & complete
+        & parameter_finite
+        & metric_finite
+    )
+    tier[mask] = "finite_complete_boundary"
+
+    eligible = np.flatnonzero(tier != "")
+    if eligible.size == 0:
+        raise RuntimeError("no complete finite zero-D candidates are promotable")
+
+    features = base._normalize_features(frame, policy)
+    objective = pd.to_numeric(
+        frame["zeroD_objective"], errors="coerce"
+    ).to_numpy(float)
+    selected: list[int] = []
+
+    for tier_name in (
+        "strict_gate",
+        "relaxed_desired_peak",
+        "internal_peak_outside_window",
+        "finite_complete_boundary",
+    ):
+        remaining = int(count) - len(selected)
+        if remaining <= 0:
+            break
+        candidates = np.flatnonzero(tier == tier_name)
+        if tier_name == "strict_gate" and len(candidates) <= remaining:
+            ordered = sorted(
+                (int(index) for index in candidates),
+                key=lambda index: (objective[index], index),
+            )
+            selected.extend(ordered)
+        else:
+            selected = _greedy_quality_diverse(
+                features,
+                objective,
+                candidates,
+                selected,
+                remaining,
+            )
+
+    if len(selected) < min(int(count), len(eligible)):
+        raise RuntimeError(
+            "promotion selector failed to fill the available complete finite pool"
+        )
+
+    result = frame.iloc[selected[:count]].copy()
+    result["promotion_tier"] = tier[np.asarray(selected[:count], dtype=int)]
+    result["diversity_rank"] = np.arange(1, len(result) + 1)
+
+    strict_ids = set(frame.loc[strict, "candidate_id"].astype(str))
+    promoted_ids = set(result["candidate_id"].astype(str))
+    if len(strict_ids) <= count and not strict_ids.issubset(promoted_ids):
+        missing = sorted(strict_ids - promoted_ids)
+        raise RuntimeError(f"promotion omitted complete strict passes: {missing}")
+    if not result["zeroD_complete"].astype(bool).all():
+        raise RuntimeError("promotion contains incomplete exact candidates")
+    return result
+
+
 def run_contract_safe(
     args: Any,
     policy: Mapping[str, Any],
     anchor_rows: Any,
 ) -> dict[str, Any]:
-    """Version the safety behavior so unsafe output directories cannot resume."""
+    """Version safety and promotion behavior for resume protection."""
     original = _original_run_contract(args, policy, anchor_rows)
     contract = copy.deepcopy(original["contract"])
     contract["nonfinite_safety"] = {
@@ -215,6 +450,15 @@ def run_contract_safe(
         "json_nonfinite_encoding": "null",
         "all_nonfinite_curve_policy": "invalid_candidate_finite_penalty",
         "nan_slice_warnings_suppressed_by_explicit_finite_mask": True,
+        "exact_gate_requires_completion": True,
+        "promotion_requires_complete_finite_metrics": True,
+        "all_complete_strict_passes_preserved": True,
+        "promotion_tiers": [
+            "strict_gate",
+            "relaxed_desired_peak",
+            "internal_peak_outside_window",
+            "finite_complete_boundary",
+        ],
     }
     stable = copy.deepcopy(contract)
     stable.pop("created_at_utc", None)
@@ -228,10 +472,10 @@ def install_safety_patch() -> None:
     base._json_safe = json_safe
     base.local_peak_metrics = local_peak_metrics_safe
     base._curve_metrics_matrix = curve_metrics_matrix_safe
-    # _proxy_response_batch is defined in zero_d_search_v913 and resolves its
-    # metric helper from that module's globals, not from the driver module.
     search_helpers._curve_metrics_matrix = curve_metrics_matrix_safe
     base._exact_candidate_worker = exact_candidate_worker_safe
+    base._score_frame = score_frame_safe
+    base._diverse_selection = diverse_selection_safe
     base._run_contract = run_contract_safe
 
 
