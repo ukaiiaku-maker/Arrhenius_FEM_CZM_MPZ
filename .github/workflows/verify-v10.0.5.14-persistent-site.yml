@@ -1,4 +1,4 @@
-name: Verify v10.0.5.14.3 persistent-site kernel-family parity
+name: Verify v10.0.5.14.4 persistent-site long-growth parity
 
 on:
   push:
@@ -26,6 +26,9 @@ jobs:
             arrhenius_fracture/persistent_site_signed_core_v100514.py \
             arrhenius_fracture/persistent_site_signed_transport_v100514.py \
             arrhenius_fracture/persistent_site_transport_v1005143.py \
+            arrhenius_fracture/persistent_site_transport_v1005144.py \
+            arrhenius_fracture/adaptive_czm_tip_support_v1005144.py \
+            arrhenius_fracture/persistent_site_diagnostics_v1005144.py \
             arrhenius_fracture/persistent_site_signed_io_v100514.py \
             arrhenius_fracture/persistent_site_signed_mpz_v100514.py \
             arrhenius_fracture/persistent_site_front_engine_v100514.py \
@@ -33,9 +36,16 @@ jobs:
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_persistent_site.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_2_persistent_site_family.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_3_persistent_site_family.py
-          bash -n run_v10_0_5_14_3_0118_family_smoke.sh
-      - name: Test exact frozen-generator transport
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_3_persistent_site_family.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_4_persistent_site_family.py
+          bash -n run_v10_0_5_14_4_0118_300_1200K_200um_family_campaign.sh
+      - name: Test v10.0.5.14.4 conservative split transport
+        run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005144.py
+      - name: Test v10.0.5.14.4 adaptive-CZM tip support
+        run: python -m pytest -q --tb=short tests/test_adaptive_czm_tip_support_v1005144.py
+      - name: Test v10.0.5.14.4 accounting diagnostics
+        run: python -m pytest -q --tb=short tests/test_persistent_site_diagnostics_v1005144.py
+      - name: Preserve v10.0.5.14.3 transport regression tests
         run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005143.py
       - name: Preserve v10.0.5.14.2 regression tests
         run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005142.py
