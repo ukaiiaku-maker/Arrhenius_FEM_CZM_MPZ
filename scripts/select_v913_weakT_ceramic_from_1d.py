@@ -14,7 +14,6 @@ active rows and adds only selection metadata columns.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import math
 from pathlib import Path
@@ -174,6 +173,11 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
             local["temperature_K"].to_numpy(dtype=float),
             k50,
         )
+        peak_prominence = (
+            float(response_peak.peak_prominence)
+            if math.isfinite(float(response_peak.peak_prominence))
+            else 0.0
+        )
         k700 = ordered_value(local, 700, "K_50um_MPa_sqrt_m")
         k1100 = ordered_value(local, 1100, "K_50um_MPa_sqrt_m")
         k1200 = ordered_value(local, 1200, "K_50um_MPa_sqrt_m")
@@ -199,7 +203,7 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
             and 0.5 <= median_total_rise <= 6.0
             and -0.5 <= median_late_rise <= 3.0
             and positive_total_fraction >= 0.60
-            and response_peak.peak_prominence < 4.0
+            and peak_prominence < 4.0
         )
         ceramic_gate = bool(
             complete_grid
@@ -210,7 +214,7 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
             and median_abs_total_rise <= 2.5
             and median_abs_late_rise <= 1.5
             and high_rebound <= 1.0
-            and response_peak.peak_prominence < 3.0
+            and peak_prominence < 3.0
         )
 
         weakT_score = (
@@ -219,7 +223,7 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
             + abs(median_total_rise - 2.5) / 3.0
             + abs(median_late_rise - 0.75) / 2.0
             + finite_std(total_rise.tolist()) / 4.0
-            + response_peak.peak_prominence / 4.0
+            + peak_prominence / 4.0
             + (0.0 if complete_grid else 100.0)
         )
         ceramic_score = (
@@ -229,7 +233,7 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
             + abs(median_total_rise) / 2.5
             + median_abs_late_rise / 1.5
             + high_rebound / 1.0
-            + response_peak.peak_prominence / 3.0
+            + peak_prominence / 3.0
             + (0.0 if complete_grid else 100.0)
         )
 
@@ -256,7 +260,7 @@ def candidate_metrics(cases: pd.DataFrame, registry_ids: set[str]) -> pd.DataFra
                 local["event_K_range_MPa_sqrt_m"].astype(float).tolist()
             ),
             "K50_peak_temperature_K": response_peak.peak_temperature_K,
-            "K50_peak_prominence_MPa_sqrt_m": response_peak.peak_prominence,
+            "K50_peak_prominence_MPa_sqrt_m": peak_prominence,
             "weakT_gate": weakT_gate,
             "weakT_score": weakT_score,
             "ceramic_gate": ceramic_gate,
@@ -278,6 +282,7 @@ def ranked(frame: pd.DataFrame, gate: str, score: str) -> pd.DataFrame:
         [gate, score, "candidate_id"],
         ascending=[False, True, True],
         kind="stable",
+        na_position="last",
     ).reset_index(drop=True)
 
 
