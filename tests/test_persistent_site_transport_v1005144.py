@@ -140,7 +140,7 @@ def test_tiny_stiff_population_finishes_without_augmented_matrix_error():
             dt_s=840.0, T_K=1000.0, opening_stress_Pa=4.0e9
         )
     assert result["transport_integrator"] == TRANSPORT_INTEGRATOR
-    assert result["transport_attempted_physical_exponentials"] <= 300
+    assert result["transport_attempted_physical_solves"] <= 300
     assert np.min(state.mobile_positive) >= 0.0
     assert np.min(state.mobile_negative) >= 0.0
     assert np.min(state.retained_positive) >= 0.0
@@ -167,7 +167,7 @@ def test_candidate_0118_real_high_temperature_rates_conserve_tiny_content(
             opening_stress_Pa=4.0e9,
         )
     assert result["transport_integrator"] == TRANSPORT_INTEGRATOR
-    assert result["transport_attempted_physical_exponentials"] <= 2000
+    assert result["transport_attempted_physical_solves"] <= 2000
     assert np.isfinite(result["transport_nonlinear_error_max"])
     assert result.get("physical_generator_mass_gain", 0.0) <= (
         2.0e-9 * initial + 1.0e-20
@@ -185,5 +185,5 @@ def test_zero_content_advances_clock_without_transport_work():
             dt_s=840.0, T_K=1200.0, opening_stress_Pa=4.0e9
         )
     assert result["transport_substeps"] == 0
-    assert result["transport_attempted_physical_exponentials"] == 0
+    assert result["transport_attempted_physical_solves"] == 0
     assert state.time_s == pytest.approx(840.0)
