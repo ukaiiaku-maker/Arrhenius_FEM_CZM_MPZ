@@ -67,13 +67,17 @@ def test_discarded_slip_is_not_double_counted_as_line_content():
     assert diag["mpz_local_slip_count"] > 0.0
 
 
-def test_refinement_metadata_survives_missing_runtime_mesh(monkeypatch):
-    radius = 330.0e-6
-    mesh = SimpleNamespace(
+def _annotated_mesh(radius):
+    return SimpleNamespace(
         production_refinement_radius_m=radius,
         production_refinement_centers_m=[[0.5e-3, 0.0]],
         production_refinement_policy="synthetic_test",
     )
+
+
+def test_refinement_metadata_survives_missing_runtime_mesh(monkeypatch):
+    radius = 330.0e-6
+    mesh = _annotated_mesh(radius)
     monkeypatch.setattr(entry, "make_physical_refinement_mesh_v100510", lambda *a, **k: mesh)
     monkeypatch.setattr(entry, "_annotate_mesh", lambda value, *a, **k: value)
     with installed_refinement_audit_v100516():
@@ -83,3 +87,26 @@ def test_refinement_metadata_survives_missing_runtime_mesh(monkeypatch):
     assert payload["actual_radius_verified"] is True
     assert payload["runtime_mesh_pointer_missing"] is True
     assert payload["captured_mesh_used"] is True
+    assert payload["metadata_fallback_reason"] == "runtime_mesh_missing"
+
+
+def test_refinement_metadata_replaces_unannotated_runtime_mesh(monkeypatch):
+    radius = 330.0e-6
+    annotated = _annotated_mesh(radius)
+    unannotated_runtime = SimpleNamespace()
+    monkeypatch.setattr(
+        entry, "make_physical_refinement_mesh_v100510", lambda *a, **k: annotated
+    )
+    monkeypatch.setattr(entry, "_annotate_mesh", lambda value, *a, **k: value)
+    with installed_refinement_audit_v100516():
+        entry.make_physical_refinement_mesh_v100510(None)
+        payload = entry._mesh_payload(unannotated_runtime, radius)
+    assert payload["actual_radius_verified"] is True
+    assert payload["runtime_mesh_pointer_missing"] is False
+    assert payload["runtime_mesh_metadata_verified"] is False
+    assert payload["captured_mesh_metadata_verified"] is True
+    assert payload["captured_mesh_used"] is True
+    assert (
+        payload["metadata_fallback_reason"]
+        == "runtime_mesh_unannotated_or_unverified"
+    )
