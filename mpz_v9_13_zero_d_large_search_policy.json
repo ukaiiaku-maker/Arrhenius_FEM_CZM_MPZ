@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "purpose": "Very-large zero-dimensional persistent-site DBTT search consistent with the active v9.13 one-dimensional constitutive contract. All legacy source-refresh and recovery coordinates are excluded.",
+  "local_anchor_fraction": 0.85,
+  "anchor_candidate_ids": [
+    "v912_targeted_local_peak_013476_0022",
+    "v912_targeted_local_peak_013476_0014",
+    "v912_targeted_local_peak_013476_0062",
+    "v912_targeted_local_peak_013476_0026",
+    "v912_targeted_local_peak_013476_0080",
+    "v912_targeted_local_peak_013476_0042",
+    "v912_targeted_local_peak_013476_0112",
+    "v912_targeted_local_peak_013476_0032",
+    "v912_targeted_local_peak_013476_0002"
+  ],
+  "search_dimensions": {
+    "cleave_G00_eV": {"mode": "linear_delta", "half_width": 1.0, "low": 1.0, "high": 5.5},
+    "cleave_gT_eV_per_K": {"mode": "linear_delta", "half_width": 0.0030, "low": 0.0005, "high": 0.0120},
+    "cleave_sigc0_GPa": {"mode": "linear_delta", "half_width": 1.5, "low": 1.0, "high": 8.0},
+    "cleave_sT_GPa_per_K": {"mode": "linear_delta", "half_width": 0.0030, "low": -0.0030, "high": 0.0080},
+    "cleave_exp_a": {"mode": "linear_delta", "half_width": 0.35, "low": 0.05, "high": 1.5},
+    "cleave_exp_n": {"mode": "linear_delta", "half_width": 0.80, "low": 0.5, "high": 3.0},
+    "cleave_floor_frac": {"mode": "log10_delta", "half_width_decades": 0.50, "low": 0.005, "high": 0.20},
+
+    "emit_G00_eV": {"mode": "linear_delta", "half_width": 0.90, "low": 0.4, "high": 5.0},
+    "emit_gT_eV_per_K": {"mode": "linear_delta", "half_width": 0.0025, "low": -0.0030, "high": 0.0080},
+    "emit_sigc0_GPa": {"mode": "linear_delta", "half_width": 1.75, "low": 1.0, "high": 9.0},
+    "emit_sT_GPa_per_K": {"mode": "linear_delta", "half_width": 0.0030, "low": -0.0080, "high": 0.0040},
+    "emit_exp_a": {"mode": "linear_delta", "half_width": 0.30, "low": 0.03, "high": 1.5},
+    "emit_exp_n": {"mode": "linear_delta", "half_width": 0.55, "low": 0.45, "high": 2.5},
+    "emit_floor_frac": {"mode": "log10_delta", "half_width_decades": 0.50, "low": 0.005, "high": 0.20},
+
+    "peierls_H0_eV": {"mode": "linear_delta", "half_width": 1.5, "low": 0.5, "high": 7.0},
+    "peierls_activation_entropy_kB": {"mode": "linear_delta", "half_width": 15.0, "low": -40.0, "high": 20.0},
+    "peierls_exp_a": {"mode": "linear_delta", "half_width": 0.55, "low": 0.10, "high": 2.0},
+    "peierls_exp_n": {"mode": "linear_delta", "half_width": 0.70, "low": 0.50, "high": 2.75},
+
+    "taylor_H0_eV": {"mode": "linear_delta", "half_width": 0.55, "low": 0.08, "high": 2.0},
+    "taylor_activation_entropy_kB": {"mode": "linear_delta", "half_width": 10.0, "low": 0.0, "high": 40.0},
+    "taylor_exp_a": {"mode": "linear_delta", "half_width": 0.20, "low": 0.03, "high": 1.0},
+    "taylor_exp_n": {"mode": "linear_delta", "half_width": 0.55, "low": 0.50, "high": 2.5},
+
+    "rho_source0_m2": {"mode": "log10_delta", "half_width_decades": 1.25, "low": 1.0e14, "high": 1.0e17},
+    "taylor_corr_rho_c_m2": {"mode": "log10_delta", "half_width_decades": 2.0, "low": 1.0e11, "high": 1.0e18},
+    "taylor_corr_scale": {"mode": "log10_delta", "half_width_decades": 0.75, "low": 0.10, "high": 10.0},
+    "c_blunt": {"mode": "linear_delta", "half_width": 1.0, "low": 0.0, "high": 3.0}
+  }
+}
