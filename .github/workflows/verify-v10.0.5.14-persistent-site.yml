@@ -39,8 +39,16 @@ jobs:
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_3_persistent_site_family.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_14_4_persistent_site_family.py
           bash -n run_v10_0_5_14_4_0118_300_1200K_200um_family_campaign.sh
-      - name: Test v10.0.5.14.4 conservative split transport
-        run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005144.py
+      - name: Transport exact exchange
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_exact_exchange_is_nonnegative_and_conservative_at_extreme_rates
+      - name: Transport absorbing advection
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_absorbing_advection_has_exact_semigroup_and_mass_balance
+      - name: Transport fixed stiff physical generator
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_tiny_stiff_population_finishes_without_augmented_matrix_error
+      - name: Transport real 900-1200 K candidate rates
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content
+      - name: Transport zero-content clock
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_zero_content_advances_clock_without_transport_work
       - name: Test v10.0.5.14.4 adaptive-CZM tip support
         run: python -m pytest -q --tb=short tests/test_adaptive_czm_tip_support_v1005144.py
       - name: Test v10.0.5.14.4 accounting diagnostics
