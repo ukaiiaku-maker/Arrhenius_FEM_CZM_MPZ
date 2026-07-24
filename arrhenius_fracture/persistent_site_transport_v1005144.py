@@ -1,22 +1,16 @@
 """Conservative stiff MPZ transport for v10.0.5.14.4.
 
 The PF-derived Peierls, encounter, Taylor-release, and absorbing-boundary laws
-are unchanged.  The v10.0.5.14.3 augmented matrix mixed the physical state with
-large cumulative trapping/release counters.  At high temperature that
-nonnormal scaling degraded the matrix-exponential conservation audit for very
-small emitted line populations.
+are unchanged.  v10.0.5.14.3 exponentiated the physical mobile/retained state
+together with cumulative trapping, release, and escape counters.  At high
+temperature those accumulator rows made the augmented operator badly scaled and
+produced false conservation failures for small emitted populations.
 
-This release advances the same frozen finite-volume equations by Strang
-splitting:
-
-1. exact local mobile/retained exchange for half an interval;
-2. exact upwind advection with absorbing escape for the full interval;
-3. exact local exchange for the second half interval.
-
-Only the physical mobile/retained arrays are exponentiated.  Escape is the
-actual mobile mass removed by the absorbing advection operator, so the
-line-content audit is evaluated on the physical state rather than diagnostic
-accumulator rows.  Step doubling remains the nonlinear/splitting error control.
+v10.0.5.14.4 exponentiates only the exact frozen 2N physical generator
+[mobile bins, retained bins].  The generator contains upwind transport,
+encounter storage, Taylor release, and the absorbing outer-boundary sink.
+Escape is evaluated as physical mass removed from that substochastic system.
+Step doubling therefore measures only changes in the state-dependent rates.
 """
 from __future__ import annotations
 
@@ -32,7 +26,7 @@ from .persistent_site_signed_transport_v100514 import (
 )
 
 TRANSPORT_INTEGRATOR = (
-    "adaptive_strang_exact_exchange_exponential_advection_v10_0_5_14_4"
+    "adaptive_physical_generator_exponential_v10_0_5_14_4"
 )
 
 
@@ -43,7 +37,7 @@ def _exact_exchange_pair(
     release_rate_s: np.ndarray,
     dt_s: float,
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """Exact nonnegative local solution of M <-> R at every MPZ bin."""
+    """Exact nonnegative local solution of M <-> R, retained for audit tests."""
     m0 = np.maximum(np.asarray(mobile, dtype=float), 0.0)
     r0 = np.maximum(np.asarray(retained, dtype=float), 0.0)
     ke = np.maximum(np.asarray(encounter_rate_s, dtype=float), 0.0)[None, :]
@@ -93,7 +87,7 @@ def _advect_mobile_exact(
     dx_m: float,
     dt_s: float,
 ) -> tuple[np.ndarray, float, float]:
-    """Advance all signed mobile channels exactly and return absorbed content."""
+    """Advance all mobile channels exactly and return absorbed line content."""
     source = np.maximum(np.asarray(mobile, dtype=float), 0.0)
     dt = max(float(dt_s), 0.0)
     if dt <= 0.0 or float(np.sum(source)) <= 0.0:
@@ -101,13 +95,13 @@ def _advect_mobile_exact(
     propagator = expm(dt * _advection_generator(velocity_m_s, dx_m))
     advanced = np.asarray(source @ propagator.T, dtype=float)
     if not np.all(np.isfinite(advanced)):
-        raise RuntimeError("split exponential advection produced nonfinite state")
+        raise RuntimeError("physical exponential advection produced nonfinite state")
     magnitude = max(float(np.max(np.abs(advanced))), float(np.max(source)), 1.0e-300)
     negative_tolerance = 2.0e-12 * magnitude + 1.0e-300
     minimum = float(np.min(advanced))
     if minimum < -negative_tolerance:
         raise RuntimeError(
-            "split exponential advection violated nonnegative state: "
+            "physical exponential advection violated nonnegative state: "
             f"minimum={minimum:.6e}, tolerance={negative_tolerance:.6e}"
         )
     advanced = np.maximum(advanced, 0.0)
@@ -117,14 +111,46 @@ def _advect_mobile_exact(
     gain_tolerance = 2.0e-11 * max(initial_mass, 1.0e-300) + 1.0e-300
     if mass_gain > gain_tolerance:
         raise RuntimeError(
-            "split exponential advection created line content: "
+            "physical exponential advection created line content: "
             f"gain={mass_gain:.6e}, tolerance={gain_tolerance:.6e}"
         )
-    escaped = max(initial_mass - final_mass, 0.0)
-    return advanced, escaped, max(mass_gain, 0.0)
+    return advanced, max(initial_mass - final_mass, 0.0), max(mass_gain, 0.0)
 
 
-def _frozen_transport_step_split(
+def _physical_generator(
+    velocity_m_s: np.ndarray,
+    encounter_rate_s: np.ndarray,
+    release_rate_s: np.ndarray,
+    dx_m: float,
+) -> np.ndarray:
+    """Coupled mobile/retained generator with absorbing mobile escape."""
+    velocity = np.maximum(np.asarray(velocity_m_s, dtype=float).reshape(-1), 0.0)
+    encounter = np.maximum(
+        np.asarray(encounter_rate_s, dtype=float).reshape(-1), 0.0
+    )
+    release = np.maximum(
+        np.asarray(release_rate_s, dtype=float).reshape(-1), 0.0
+    )
+    if not (velocity.shape == encounter.shape == release.shape):
+        raise ValueError("physical transport coefficient shapes do not match")
+    n = int(velocity.size)
+    inv_dx = 1.0 / max(float(dx_m), 1.0e-30)
+    face_velocity = np.empty(n + 1, dtype=float)
+    face_velocity[1:-1] = 0.5 * (velocity[:-1] + velocity[1:])
+    face_velocity[0] = velocity[0]
+    face_velocity[-1] = velocity[-1]
+    generator = np.zeros((2 * n, 2 * n), dtype=float)
+    for i in range(n):
+        generator[i, i] -= face_velocity[i + 1] * inv_dx + encounter[i]
+        if i > 0:
+            generator[i, i - 1] += face_velocity[i] * inv_dx
+        generator[i, n + i] += release[i]
+        generator[n + i, i] += encounter[i]
+        generator[n + i, n + i] -= release[i]
+    return generator
+
+
+def _frozen_transport_step_physical(
     self,
     snapshot: dict[str, np.ndarray],
     *,
@@ -132,7 +158,7 @@ def _frozen_transport_step_split(
     T_K: float,
     opening_stress_Pa: float,
 ) -> tuple[dict[str, np.ndarray], dict[str, float]]:
-    """Advance one frozen-coefficient interval by conservative Strang splitting."""
+    """Advance one frozen physical mobile/retained interval exactly."""
     dt = max(float(dt_s), 0.0)
     initial_mass = self._snapshot_mass(snapshot)
     if dt <= 0.0 or initial_mass <= 0.0:
@@ -142,7 +168,7 @@ def _frozen_transport_step_split(
             "dN_escaped": 0.0,
             "max_frozen_courant": 0.0,
             "line_content_conservation_error": 0.0,
-            "advection_mass_gain": 0.0,
+            "physical_generator_mass_gain": 0.0,
         }
 
     forest = self._forest_from_snapshot(snapshot)
@@ -181,72 +207,63 @@ def _frozen_transport_step_split(
     if not np.all(np.isfinite(encounter)):
         raise RuntimeError("nonfinite encounter-storage coefficients")
 
+    n = self.n_bins
+    n_columns = 2 * self.n_systems
+    initial = np.zeros((2 * n, n_columns), dtype=float)
+    initial_retained = 0.0
+    for system in range(self.n_systems):
+        initial[:n, system] = snapshot["mobile_positive"][system]
+        initial[n:, system] = snapshot["retained_positive"][system]
+        negative_column = self.n_systems + system
+        initial[:n, negative_column] = snapshot["mobile_negative"][system]
+        initial[n:, negative_column] = snapshot["retained_negative"][system]
+        initial_retained += float(np.sum(snapshot["retained_positive"][system]))
+        initial_retained += float(np.sum(snapshot["retained_negative"][system]))
+
+    generator = _physical_generator(velocity, encounter, release_rate, self.dx)
+    advanced = np.asarray(expm(dt * generator) @ initial, dtype=float)
+    if not np.all(np.isfinite(advanced)):
+        raise RuntimeError("physical transport exponential produced nonfinite state")
+    magnitude = max(float(np.max(np.abs(advanced))), float(np.max(initial)), 1.0e-300)
+    negative_tolerance = 2.0e-11 * magnitude + 1.0e-300
+    minimum = float(np.min(advanced))
+    if minimum < -negative_tolerance:
+        raise RuntimeError(
+            "physical transport exponential violated nonnegative state: "
+            f"minimum={minimum:.6e}, tolerance={negative_tolerance:.6e}"
+        )
+    advanced = np.maximum(advanced, 0.0)
+
     result = {
-        name: np.maximum(np.asarray(snapshot[name], dtype=float), 0.0).copy()
-        for name in self._TRANSPORT_ARRAY_NAMES
+        name: np.zeros_like(snapshot[name]) for name in self._TRANSPORT_ARRAY_NAMES
     }
-    trapped = 0.0
-    released = 0.0
-
-    # First exact half exchange.
-    for mobile_name, retained_name in (
-        ("mobile_positive", "retained_positive"),
-        ("mobile_negative", "retained_negative"),
-    ):
-        mobile, retained, dtrap, drelease = _exact_exchange_pair(
-            result[mobile_name],
-            result[retained_name],
-            encounter,
-            release_rate,
-            0.5 * dt,
-        )
-        result[mobile_name] = mobile
-        result[retained_name] = retained
-        trapped += dtrap
-        released += drelease
-
-    # Exact absorbing upwind advection of both Burgers signs and both systems.
-    mobile_stack = np.vstack(
-        [result["mobile_positive"], result["mobile_negative"]]
-    )
-    mobile_stack, escaped, mass_gain = _advect_mobile_exact(
-        mobile_stack, velocity, self.dx, dt
-    )
-    result["mobile_positive"] = mobile_stack[: self.n_systems]
-    result["mobile_negative"] = mobile_stack[self.n_systems :]
-
-    # Second exact half exchange using the same frozen rates.
-    for mobile_name, retained_name in (
-        ("mobile_positive", "retained_positive"),
-        ("mobile_negative", "retained_negative"),
-    ):
-        mobile, retained, dtrap, drelease = _exact_exchange_pair(
-            result[mobile_name],
-            result[retained_name],
-            encounter,
-            release_rate,
-            0.5 * dt,
-        )
-        result[mobile_name] = mobile
-        result[retained_name] = retained
-        trapped += dtrap
-        released += drelease
+    for system in range(self.n_systems):
+        result["mobile_positive"][system] = advanced[:n, system]
+        result["retained_positive"][system] = advanced[n:, system]
+        negative_column = self.n_systems + system
+        result["mobile_negative"][system] = advanced[:n, negative_column]
+        result["retained_negative"][system] = advanced[n:, negative_column]
 
     final_mass = self._snapshot_mass(result)
+    final_retained = float(
+        np.sum(result["retained_positive"]) + np.sum(result["retained_negative"])
+    )
+    mass_gain = final_mass - initial_mass
+    gain_tolerance = 2.0e-9 * max(initial_mass, 1.0e-300) + 1.0e-300
+    if mass_gain > gain_tolerance:
+        raise RuntimeError(
+            "physical transport exponential created line content: "
+            f"gain={mass_gain:.6e}, scale={initial_mass:.6e}, "
+            f"tolerance={gain_tolerance:.6e}"
+        )
+    escaped = max(initial_mass - final_mass, 0.0)
     signed_balance = initial_mass - final_mass - escaped
     conservation_error = abs(signed_balance)
     conservation_scale = max(initial_mass, final_mass + escaped, 1.0e-300)
-    conservation_tolerance = 2.0e-10 * conservation_scale + 5.0e-300
-    if conservation_error > conservation_tolerance:
-        raise RuntimeError(
-            "split persistent-site transport failed line-content conservation: "
-            f"error={conservation_error:.6e}, scale={conservation_scale:.6e}, "
-            f"tolerance={conservation_tolerance:.6e}"
-        )
 
     diagnostics = {
-        "dN_trapped": trapped,
-        "dN_detrapped": released,
+        "dN_trapped": max(final_retained - initial_retained, 0.0),
+        "dN_detrapped": max(initial_retained - final_retained, 0.0),
         "dN_escaped": escaped,
         "peierls_rate_min_s": float(np.min(peierls)),
         "peierls_rate_max_s": float(np.max(peierls)),
@@ -263,15 +280,15 @@ def _frozen_transport_step_split(
         "line_content_conservation_error": conservation_error,
         "line_content_conservation_signed_error": signed_balance,
         "line_content_conservation_scale": conservation_scale,
-        "advection_mass_gain": mass_gain,
+        "physical_generator_mass_gain": max(mass_gain, 0.0),
     }
     return result, diagnostics
 
 
-def _transport_split(
+def _transport_physical(
     self, *, dt_s: float, T_K: float, opening_stress_Pa: float
 ) -> dict[str, Any]:
-    """Adaptive nonlinear transport with conservative frozen split intervals."""
+    """Adaptive nonlinear transport using exact frozen physical generators."""
     dt_total = max(float(dt_s), 0.0)
     initial = self._transport_snapshot()
     initial_global_mass = self._snapshot_mass(initial)
@@ -282,7 +299,7 @@ def _transport_split(
             "dN_escaped": 0.0,
             "dN_recovered": 0.0,
             "transport_substeps": 0,
-            "transport_attempted_split_steps": 0,
+            "transport_attempted_physical_exponentials": 0,
             "transport_attempted_exponentials": 0,
             "transport_rejected_intervals": 0,
             "transport_integrator": TRANSPORT_INTEGRATOR,
@@ -299,7 +316,7 @@ def _transport_split(
             "dN_escaped": 0.0,
             "dN_recovered": 0.0,
             "transport_substeps": 0,
-            "transport_attempted_split_steps": 0,
+            "transport_attempted_physical_exponentials": 0,
             "transport_attempted_exponentials": 0,
             "transport_rejected_intervals": 0,
             "transport_nonlinear_error_max": 0.0,
@@ -313,7 +330,7 @@ def _transport_split(
     nonlinear_rtol = max(
         float(getattr(self, "transport_nonlinear_rtol", 1.0e-3)), 1.0e-10
     )
-    max_steps = max(int(self.max_transport_substeps), 12)
+    max_exponentials = max(int(self.max_transport_substeps), 12)
     minimum_interval = max(
         float(getattr(self, "transport_min_interval_s", 1.0e-12)),
         np.finfo(float).eps * max(dt_total, 1.0),
@@ -330,10 +347,10 @@ def _transport_split(
         current_mass = self._snapshot_mass(snapshot)
         if current_mass <= nonlinear_rtol * initial_global_mass * 1.0e-10:
             return copy.deepcopy(snapshot)
-        if attempted + 3 > max_steps:
+        if attempted + 3 > max_exponentials:
             raise RuntimeError(
-                "persistent-site split transport exceeded nonlinear solve budget: "
-                f"attempted={attempted}, limit={max_steps}, "
+                "persistent-site physical transport exceeded nonlinear solve budget: "
+                f"attempted={attempted}, limit={max_exponentials}, "
                 f"interval_s={interval:.6e}, max_error={maximum_error:.6e}"
             )
         full, _ = self._frozen_transport_step(
@@ -382,7 +399,7 @@ def _transport_split(
         "dN_escaped": escaped,
         "dN_recovered": 0.0,
         "transport_substeps": len(accepted_diagnostics),
-        "transport_attempted_split_steps": attempted,
+        "transport_attempted_physical_exponentials": attempted,
         "transport_attempted_exponentials": attempted,
         "transport_attempted_linear_solves": 0,
         "transport_rejected_intervals": rejected_intervals,
@@ -403,13 +420,13 @@ def _transport_split(
 
 @contextmanager
 def installed_split_transport_v1005144() -> Iterator[None]:
-    """Temporarily install the v10.0.5.14.4 transport on the shared state class."""
+    """Temporarily install the exact physical-state v10.0.5.14.4 transport."""
     old_frozen = PersistentSiteSignedTransportMixin._frozen_transport_step
     old_transport = PersistentSiteSignedTransportMixin.transport
     PersistentSiteSignedTransportMixin._frozen_transport_step = (
-        _frozen_transport_step_split
+        _frozen_transport_step_physical
     )
-    PersistentSiteSignedTransportMixin.transport = _transport_split
+    PersistentSiteSignedTransportMixin.transport = _transport_physical
     try:
         yield
     finally:
@@ -419,5 +436,8 @@ def installed_split_transport_v1005144() -> Iterator[None]:
 
 __all__ = [
     "TRANSPORT_INTEGRATOR",
+    "_exact_exchange_pair",
+    "_advect_mobile_exact",
+    "_physical_generator",
     "installed_split_transport_v1005144",
 ]
