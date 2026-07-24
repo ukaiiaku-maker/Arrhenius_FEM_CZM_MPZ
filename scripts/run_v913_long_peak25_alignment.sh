@@ -2,7 +2,6 @@
 set -euo pipefail
 
 : "${SOURCE_RANKING:?Set SOURCE_RANKING to the prior ranked_candidates.csv}"
-: "${LOADING_MAP:?Set LOADING_MAP to a mechanically calibrated long loading map}"
 
 PYTHON_BIN="${PYTHON_BIN:-${CONDA_PREFIX:?CONDA_PREFIX is not set}/bin/python}"
 BASE_PHYSICS_JSON="${BASE_PHYSICS_JSON:-mpz_v9_13_v10222_transfer_common_physics.json}"
@@ -21,6 +20,28 @@ ANALYSIS="$OUTROOT/alignment"
 REGISTRY="$PREP/selected_peak25_registry.csv"
 
 mkdir -p "$PREP" "$SCREEN" "$ANALYSIS"
+
+if [[ -z "${LOADING_MAP:-}" ]]; then
+  : "${REFERENCE_CASE_DIR:?Set LOADING_MAP or REFERENCE_CASE_DIR}"
+  : "${REFERENCE_CANDIDATE_ID:?Set REFERENCE_CANDIDATE_ID when extracting a map}"
+  LOADING_MAP="$PREP/v10_2_22_long_rcurve_loading_map.json"
+  EXTRACT_ARGS=(
+    --case-dir "$REFERENCE_CASE_DIR"
+    --reference-candidate-id "$REFERENCE_CANDIDATE_ID"
+    --minimum-coverage-um "$TARGET_EXT_UM"
+    --out "$LOADING_MAP"
+  )
+  if [[ -n "${REFERENCE_TEMPERATURE_K:-}" ]]; then
+    EXTRACT_ARGS+=(--reference-temperature-K "$REFERENCE_TEMPERATURE_K")
+  fi
+  "$PYTHON_BIN" scripts/extract_v10222_long_rcurve_loading_map.py \
+    "${EXTRACT_ARGS[@]}"
+fi
+
+test -f "$LOADING_MAP" || {
+  echo "ERROR: loading map does not exist: $LOADING_MAP" >&2
+  exit 1
+}
 
 "$PYTHON_BIN" scripts/prepare_v913_long_peak25_campaign.py \
   --source-ranking "$SOURCE_RANKING" \
@@ -62,4 +83,4 @@ mkdir -p "$PREP" "$SCREEN" "$ANALYSIS"
   --minimum-post-peak-drop-MPa-sqrt-m 1 \
   --out "$ANALYSIS"
 
-echo "V913_LONG_PEAK25_CAMPAIGN_COMPLETE out=$OUTROOT"
+echo "V913_LONG_PEAK25_CAMPAIGN_COMPLETE out=$OUTROOT loading_map=$LOADING_MAP"
