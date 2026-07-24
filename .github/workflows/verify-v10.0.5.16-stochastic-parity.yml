@@ -23,11 +23,14 @@ jobs:
             arrhenius_fracture/stochastic_geometry_v100516.py \
             arrhenius_fracture/persistent_site_diagnostics_v100516.py \
             arrhenius_fracture/refinement_audit_v100516.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_16_stochastic_pf_parity.py
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_16_stochastic_pf_parity.py \
+            scripts/analyze_v100516_stochastic_campaign.py
       - name: Stochastic hazard and event-length tests
         run: python -m pytest -q --tb=short tests/test_stochastic_hazard_event_length_v100516.py
       - name: Diagnostics and refinement lifecycle tests
         run: python -m pytest -q --tb=short tests/test_diagnostics_refinement_v100516.py
+      - name: Campaign plotting and seed audit tests
+        run: python -m pytest -q --tb=short tests/test_analyze_v100516_stochastic_campaign.py
       - name: Preserve exact PF update-map and moving-tip parity
         run: |
           python -m pytest -q --tb=short \
