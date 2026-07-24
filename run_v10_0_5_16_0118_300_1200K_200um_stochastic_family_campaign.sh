@@ -55,7 +55,8 @@ if [[ $(tail -n +2 "$SEED_MAP" | cut -d, -f2 | sort -u | wc -l | tr -d ' ') -ne 
 fi
 
 cat > "$CAMPAIGN_ROOT/campaign_configuration.txt" <<EOF
-release=10.0.5.16.1
+release=10.0.5.16
+campaign_revision=2
 entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_16_stochastic_pf_parity
 candidate=v912_peak_0118_persistent_sites
 PF_reference_commit=198ece3aeb1d193a8c1c4857676fba720c088d27
