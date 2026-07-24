@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+import subprocess
+import sys
+
 import numpy as np
 import pandas as pd
 
@@ -73,3 +77,17 @@ def test_diverse_selection_preserves_complete_strict_passes(monkeypatch) -> None
     assert "candidate_2" not in ids
     assert promoted["zeroD_complete"].astype(bool).all()
     assert len(promoted) == 4
+
+
+def test_repair_cli_supports_direct_script_execution() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    script = repo_root / "scripts" / "repair_v913_zero_d_promotions.py"
+    completed = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--run-dir" in completed.stdout
