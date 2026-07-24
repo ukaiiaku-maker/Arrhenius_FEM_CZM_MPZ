@@ -1,73 +1,57 @@
-# v10.0.5.14.3 — PF persistent-site and signed-kernel-family parity
+# v10.0.5.14.4 — PF persistent-site long-growth parity
 
-This point release ports the audited PF v10.2.22 persistent-site signed MPZ and
-the actual v10.2.14 crack-extension-indexed shielding atlas onto the validated
+This point release retains the audited PF v10.2.22 persistent-site signed MPZ,
+the v10.2.14 crack-extension-indexed shielding atlas, and the validated
 v10.0.5.13.5 full 2-D FEM/CZM mechanics.
 
-## Preserved mechanics
+## Physics retained
 
-- plane-strain FEM and cubic anisotropic elasticity;
-- domain-integral J and equivalent KJ;
-- validated 330/240/100 µm mesh/J policy;
-- long-corridor Euclidean node deduplication;
-- adaptive-CZM topology transactions and quality vetoes;
-- stochastic cleavage/first-passage architecture;
-- elastic continuum bulk under `bulk_plasticity_mode=tip_only`.
-
-## Persistent-site physics
-
+- persistent areal source density with no depletion or refresh;
 - two signed reduced BCC slip channels;
-- separate positive/negative mobile, retained, and accumulated-slip fields;
-- persistent areal source density `rho_source0_m2`;
-- no source depletion, temporal source recovery, or crack-advance refresh;
-- geometry-controlled multiplicity `M_s = rho_source0 c_arc r_tip w_eff`;
-- physical front-width floor `max(w_min_physical,b)`, never MPZ `dx`;
+- unsigned mobile+retained Taylor backstress and signed-retained shielding;
+- corrected physical front-width floor;
 - implicit emission/backstress complementarity;
-- unsigned mobile+retained content for Taylor backstress;
-- signed retained content for shielding, with mobile shielding fraction zero;
+- Peierls transport, encounter storage, Taylor release, and zero recovery;
 - fractional moving-frame translation and natural resharpening;
-- trial/commit and restart preservation of the complete signed state.
+- trial/commit and restart preservation;
+- kernel-family interpolation by committed crack-path extension.
 
-## PF signed-kernel family
+## v10.0.5.14.4 corrections
 
-Production uses:
+### High-temperature transport
 
-```text
---signed-kernel-family v10_2_14_active_only_campaign_family.json
-```
+The 900–1200 K long-growth campaign exposed false conservation failures in the
+v10.0.5.14.3 augmented matrix exponential. The physical mobile/retained state
+was mixed with cumulative trapping/release/escape counters, producing poor
+scaling for small line populations at high rates.
 
-The loader accepts schema
-`v10.2.14_active_only_real_signed_2d_shielding_atlas`, resamples each measured
-2×40 active kernel onto the runtime 2×80 MPZ grid, and interpolates by committed
-cumulative crack-path extension using the atlas-specified inverse-distance
-method. The family-level activation-to-line conversion is retained. Wake
-shielding and constitutive shielding caps remain disabled, and extrapolation
-outside the measured extension envelope is rejected.
+v10.0.5.14.4 solves only the physical 2N mobile/retained generator with sparse,
+L-stable backward Euler. Step doubling controls temporal and state-dependent
+rate error. A negligible-active-tail criterion prevents repeated refinement of
+a residual population that cannot affect mechanics or the conserved escaped
+total. Diagnostic accumulator rows are not part of the solve.
 
-## Transport corrections
+### Adaptive-CZM tip support
 
-v10.0.5.14.1 retained explicit CFL microstepping and failed at the admissible
-Peierls rates. v10.0.5.14.2 replaced this with backward Euler, but step-doubling
-continued to resolve the numerical stiff tail even after nearly all mobile
-content had escaped. The candidate-0118 700 K smoke therefore exhausted 2,000
-linear solves at an interval of approximately 5.4e-4 s.
+The 300–800 K runs reached 80 µm and then repeatedly generated an orphan node
+that was also referenced by a cohesive endpoint. The corrected splitter reuses
+the backend's authoritative active-tip plus/minus pair, partitions the endpoint
+star onto those copies, and repairs a roundoff-induced unsupported side only by
+reassigning an orientation-preserving incident triangle. Node numbering and
+history arrays are unchanged. The existing quality veto remains fail closed.
 
-v10.0.5.14.3 preserves the same finite-volume equations but advances each
-frozen transport generator with a dense scaling-and-squaring matrix exponential.
-The frozen linear Peierls/encounter/Taylor/escape system is therefore solved
-without CFL or backward-Euler stiff-tail error. Step doubling remains only for
-the nonlinear change of state-dependent coefficients between intervals. Error
-normalization uses the line content at the beginning of the accepted macrostep,
-so an insignificant residual tail does not force unbounded refinement.
+### Authoritative accounting
 
-The transport equations and constitutive rates are unchanged. Runtime records:
+Every step now distinguishes:
 
-- `transport_integrator`;
-- `transport_attempted_exponentials`;
-- `transport_rejected_intervals`;
-- `transport_nonlinear_error_max`;
-- `max_frozen_courant`;
-- `line_content_conservation_error`.
+- cumulative emitted line content;
+- active mobile and retained content;
+- wake mobile and retained content;
+- escaped, recovered, and discarded content;
+- signed and relative line-content balance errors.
+
+The inherited `N_em` field is retained for compatibility but is explicitly
+identified as instantaneous active retained content, not cumulative emission.
 
 ## Install or update
 
@@ -79,12 +63,15 @@ git pull --ff-only origin v10.0.5.14-persistent-sites-v10222-parity
 python -m pip install -e "$ROOT" --no-deps
 ```
 
-Expected package version: `10.0.5.14.3`.
+Expected package version: `10.0.5.14.4`.
 
 ## Verification
 
 ```bash
 python -m pytest -q \
+  tests/test_persistent_site_transport_v1005144.py \
+  tests/test_adaptive_czm_tip_support_v1005144.py \
+  tests/test_persistent_site_diagnostics_v1005144.py \
   tests/test_persistent_site_transport_v1005143.py \
   tests/test_persistent_site_transport_v1005142.py \
   tests/test_signed_kernel_family_v1005141.py \
@@ -101,38 +88,28 @@ python -m pytest -q \
   tests/test_v100511_same_mesh_energy.py
 ```
 
-The v10.0.5.14.3-specific tests include exact semigroup behavior for a frozen
-stiff generator, a Courant number far above the explicit limit, the actual
-candidate-0118 Peierls/Taylor parameters at 700 K over 840 s, nonnegativity,
-line-content conservation, and zero-content clock advancement.
-
-## Candidate-0118 smoke
-
-The versioned runner creates the output directory before opening its log:
+## Long-growth campaign
 
 ```bash
 ROOT=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_14_persistent_sites
 cd "$ROOT"
 conda activate arrhenius-fem-czm
-bash run_v10_0_5_14_3_0118_family_smoke.sh
+MAX_JOBS=2 bash run_v10_0_5_14_4_0118_300_1200K_200um_family_campaign.sh
 ```
 
-Optional environment overrides include `PFROOT`, `FAMILY_JSON`, `OUTROOT`,
-`T_K`, `TARGET_EXT_UM`, `STEPS`, `DU`, `DT`, and `PRINT_EVERY`.
+The default campaign uses candidate 0118, 300–1200 K in 100 K increments,
+200 µm extension, 5 µm events, the production PF kernel family, and a new output
+root named `v10_0_5_14_4_0118_300_1200K_200um_family_v1`.
 
 ## Mandatory runtime invariants
 
 - `available_site_fraction = 1`;
-- `persistent_source_inventory_active = false`;
+- `source_sites_refreshed = 0`;
 - `source_depletion_active = false`;
 - `source_refresh_active = false`;
-- `source_sites_refreshed = 0`;
 - `front_width_grid_independent = true`;
-- `ahead_of_tip_dx_used_as_front_width_floor = false`;
 - `two_channel_drive_reliable = true`;
-- `transport_integrator = adaptive_frozen_generator_exponential_v10_0_5_14_3`;
-- `transport_cfl_limited = false`.
-
-The remaining promotion gate is the full candidate-0118, 700 K, 20 µm 2-D
-smoke using the production PF atlas. The PR remains draft until that runtime
-output is reviewed.
+- `transport_integrator = adaptive_physical_backward_euler_tail_control_v10_0_5_14_4`;
+- `transport_cfl_limited = false`;
+- all cohesive endpoints have positive bulk incidence;
+- final line-content balance is recorded in the production manifest.
