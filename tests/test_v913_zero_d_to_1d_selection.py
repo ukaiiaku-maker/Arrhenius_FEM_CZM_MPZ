@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from arrhenius_fracture.emergent_gnd_contract_v913 import (
     ACTIVE_CANDIDATE_PARAMETER_FIELDS,
@@ -61,3 +62,26 @@ def test_selection_rejects_incomplete_strict_row() -> None:
     selected = select_rows(pd.DataFrame(rows), 2)
     assert "candidate_0" not in set(selected["candidate_id"])
     assert len(selected) == 2
+
+
+def test_corrected_registry_schema_without_completion_column_is_accepted() -> None:
+    rows = [
+        candidate(0, "strict_gate", 3, 0.0),
+        candidate(1, "relaxed_desired_peak", 1, 1.0),
+        candidate(2, "relaxed_desired_peak", 2, 2.0),
+    ]
+    for row in rows:
+        row.pop("zeroD_complete")
+    selected = select_rows(pd.DataFrame(rows), 2)
+    assert selected["candidate_id"].tolist() == ["candidate_0", "candidate_1"]
+    assert selected["oneD_selection_tier"].tolist() == [
+        "strict_zeroD",
+        "relaxed_diverse_zeroD",
+    ]
+
+
+def test_registry_without_completion_column_rejects_unknown_tier() -> None:
+    rows = [candidate(0, "finite_complete_boundary", 1, 0.0)]
+    rows[0].pop("zeroD_complete")
+    with pytest.raises(RuntimeError, match="non-promotable tiers"):
+        select_rows(pd.DataFrame(rows), 1)
