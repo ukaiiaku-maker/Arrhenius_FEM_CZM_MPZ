@@ -44,7 +44,7 @@ read -r -a TEMPERATURE_ARRAY <<< "$TEMPERATURES_K"
 read -r -a CHECKPOINT_ARRAY <<< "$CHECKPOINTS_UM"
 
 SEARCH_STATUS=0
-if ! "$PYTHON_BIN" -u -m scripts.run_v913_autonomous_dbtt_search \
+if "$PYTHON_BIN" -u -m scripts.run_v913_autonomous_dbtt_search \
   --candidate-registry "$REGISTRY" \
   --base-physics-json "$BASE_PHYSICS_JSON" \
   --loading-map "$LOADING_MAP" \
@@ -67,6 +67,8 @@ if ! "$PYTHON_BIN" -u -m scripts.run_v913_autonomous_dbtt_search \
   --peak-threshold 5 \
   --out "$SCREEN"
 then
+  SEARCH_STATUS=0
+else
   SEARCH_STATUS=$?
 fi
 
