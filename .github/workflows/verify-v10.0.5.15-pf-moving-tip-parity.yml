@@ -1,0 +1,53 @@
+name: Verify v10.0.5.15 PF update-map and moving-tip parity
+
+on:
+  push:
+    branches:
+      - v10.0.5.15-pf-update-map-moving-tip-parity
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -q -e '.[dev]'
+      - name: Compile v10.0.5.15
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/persistent_site_pf_update_v100515.py \
+            arrhenius_fracture/persistent_site_moving_tip_v100515.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_15_pf_parity.py
+      - name: Exact PF update-map tests
+        run: python -m pytest -q --tb=short tests/test_pf_update_map_v100515.py
+      - name: Continuous moving-tip coupling tests
+        run: python -m pytest -q --tb=short tests/test_moving_tip_coupling_v100515.py
+      - name: Persistent source and kernel-family contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py
+      - name: Adaptive-CZM supported-tip regression
+        run: python -m pytest -q --tb=short tests/test_adaptive_czm_tip_support_v1005144.py
+      - name: Accounting diagnostics regression
+        run: python -m pytest -q --tb=short tests/test_persistent_site_diagnostics_v1005144.py
+      - name: Inherited barrier and state contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_v100513_barrier_only.py \
+            tests/test_v1005131_preserved_state.py \
+            tests/test_v1005132_startup_resolution_warning.py \
+            tests/test_v1005133_tip_only_ramp.py \
+            tests/test_v1005134_tip_only_policy_propagation.py \
+            tests/test_v1005135_long_corridor.py \
+            tests/test_v1005123_phase_c_repairs.py
+      - name: Inherited FEM/CZM mechanics gates
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_mpz_v9_10_unified_transport.py \
+            tests/test_v100510_refinement_support.py \
+            tests/test_v100511_same_mesh_energy.py
