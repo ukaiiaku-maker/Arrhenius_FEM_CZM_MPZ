@@ -45,8 +45,14 @@ jobs:
         run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_absorbing_advection_has_exact_semigroup_and_mass_balance
       - name: Transport fixed stiff physical generator
         run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_tiny_stiff_population_finishes_without_augmented_matrix_error
-      - name: Transport real 900-1200 K candidate rates
-        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content
+      - name: Transport candidate 0118 at 900 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[900.0]'
+      - name: Transport candidate 0118 at 1000 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1000.0]'
+      - name: Transport candidate 0118 at 1100 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1100.0]'
+      - name: Transport candidate 0118 at 1200 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1200.0]'
       - name: Transport zero-content clock
         run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_zero_content_advances_clock_without_transport_work
       - name: Test v10.0.5.14.4 adaptive-CZM tip support
