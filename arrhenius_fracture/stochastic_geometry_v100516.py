@@ -11,6 +11,7 @@ from collections import deque
 from contextlib import contextmanager
 import copy
 import json
+import math
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -80,6 +81,14 @@ class _StochasticLengthBackend:
         local["p1"] = realized_request
         local["direction"] = direction
         result = self._delegate.advance(**local)
+        moved = float(getattr(result, "moved", 0.0))
+        inserted = bool(getattr(result, "inserted", False))
+        synchronized = (not inserted) or math.isclose(
+            moved,
+            event_length,
+            rel_tol=1.0e-6,
+            abs_tol=5.0e-10,
+        )
 
         record = {
             "schema": GEOMETRY_MODEL,
@@ -90,8 +99,10 @@ class _StochasticLengthBackend:
             "p0_m": p0.tolist(),
             "nominal_p1_m": requested_p1.tolist(),
             "stochastic_p1_requested_m": realized_request.tolist(),
-            "inserted": bool(getattr(result, "inserted", False)),
-            "moved_m": float(getattr(result, "moved", 0.0)),
+            "inserted": inserted,
+            "moved_m": moved,
+            "event_length_mismatch_m": moved - event_length,
+            "microstructure_geometry_length_synchronized": synchronized,
             "reason": str(getattr(result, "reason", "")),
             "angle_error_deg": float(getattr(result, "angle_error_deg", 0.0)),
         }
@@ -100,6 +111,12 @@ class _StochasticLengthBackend:
             last = logs[-1]
             record["actual_p1_m"] = [float(last["x1"]), float(last["y1"])]
         _REALIZED_EVENTS.append(record)
+        if inserted and not synchronized:
+            raise RuntimeError(
+                "adaptive-CZM stochastic event length does not match the already "
+                "translated MPZ: "
+                f"requested={event_length:.9e} m moved={moved:.9e} m"
+            )
         return result
 
 
