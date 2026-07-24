@@ -43,7 +43,8 @@ mkdir -p "$PREP" "$SCREEN" "$ANALYSIS"
 read -r -a TEMPERATURE_ARRAY <<< "$TEMPERATURES_K"
 read -r -a CHECKPOINT_ARRAY <<< "$CHECKPOINTS_UM"
 
-"$PYTHON_BIN" -u -m scripts.run_v913_autonomous_dbtt_search \
+SEARCH_STATUS=0
+if ! "$PYTHON_BIN" -u -m scripts.run_v913_autonomous_dbtt_search \
   --candidate-registry "$REGISTRY" \
   --base-physics-json "$BASE_PHYSICS_JSON" \
   --loading-map "$LOADING_MAP" \
@@ -65,6 +66,18 @@ read -r -a CHECKPOINT_ARRAY <<< "$CHECKPOINTS_UM"
   --direction-threshold 5 \
   --peak-threshold 5 \
   --out "$SCREEN"
+then
+  SEARCH_STATUS=$?
+fi
+
+if [[ "$SEARCH_STATUS" -ne 0 && "$SEARCH_STATUS" -ne 2 ]]; then
+  echo "ERROR: 1-D search failed with exit status $SEARCH_STATUS" >&2
+  exit "$SEARCH_STATUS"
+fi
+
+if [[ "$SEARCH_STATUS" -eq 2 ]]; then
+  echo "V913_ZERO_D_PROMOTED_1D_PARTIAL_GRID continuing_to_analysis=true" >&2
+fi
 
 "$PYTHON_BIN" scripts/analyze_v913_long_peak_alignment.py \
   --case-root "$SCREEN/cases" \
@@ -79,4 +92,4 @@ read -r -a CHECKPOINT_ARRAY <<< "$CHECKPOINTS_UM"
   --refinement-half-width-K 100 \
   --out "$ANALYSIS"
 
-echo "V913_ZERO_D_PROMOTED_1D_SCREEN_COMPLETE out=$OUTROOT registry=$REGISTRY"
+echo "V913_ZERO_D_PROMOTED_1D_SCREEN_COMPLETE out=$OUTROOT registry=$REGISTRY search_status=$SEARCH_STATUS"
