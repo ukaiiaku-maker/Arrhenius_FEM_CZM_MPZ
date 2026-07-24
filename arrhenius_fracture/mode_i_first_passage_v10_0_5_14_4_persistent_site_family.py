@@ -27,7 +27,7 @@ from .persistent_site_transport_v1005144 import (
 POINT_RELEASE = "10.0.5.14.4"
 MODEL_ID = (
     "FEM_CZM_full_2D_PF_v10_2_22_persistent_site_kernel_family_"
-    "conservative_split_transport_supported_tip_v10_0_5_14_4"
+    "physical_Lstable_transport_supported_tip_v10_0_5_14_4"
 )
 PRODUCTION_MANIFEST = "persistent_site_production_manifest_v10_0_5_14_4.json"
 SELECTION_MANIFEST = "persistent_site_parameter_selection_v10_0_5_14_4.json"
@@ -133,10 +133,12 @@ def _rewrite_release_metadata(out: Path | None) -> None:
         physics.update(
             {
                 "transport_integrator": TRANSPORT_INTEGRATOR,
-                "transport_operator_split": "exact_exchange_half__exact_absorbing_upwind_advection__exact_exchange_half",
+                "transport_linear_state": "physical_mobile_and_retained_only",
+                "transport_linear_solution": "sparse_L_stable_backward_euler",
                 "nonlinear_transport_error_control": "step_doubling",
+                "negligible_active_tail_acceptance": True,
                 "physical_state_only_conservation_audit": True,
-                "diagnostic_accumulators_excluded_from_transport_exponential": True,
+                "diagnostic_accumulators_excluded_from_transport_solve": True,
                 "explicit_transport_CFL_microstepping": False,
                 "transport_equations_changed": False,
                 "transport_time_integrator_changed": True,
