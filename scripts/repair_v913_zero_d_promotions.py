@@ -6,6 +6,14 @@ import argparse
 import json
 from pathlib import Path
 import shutil
+import sys
+
+# Direct execution as ``python scripts/repair_...py`` places only the scripts
+# directory on sys.path.  Establish the repository root before importing the
+# sibling ``scripts`` namespace and the checked-out package.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import numpy as np
 import pandas as pd
