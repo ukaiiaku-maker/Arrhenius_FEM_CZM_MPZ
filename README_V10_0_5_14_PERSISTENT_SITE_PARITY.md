@@ -42,15 +42,9 @@ history arrays are unchanged. The existing quality veto remains fail closed.
 
 ### Authoritative accounting
 
-Every step now distinguishes:
-
-- cumulative emitted line content;
-- active mobile and retained content;
-- wake mobile and retained content;
-- escaped, recovered, and discarded content;
-- signed and relative line-content balance errors.
-
-The inherited `N_em` field is retained for compatibility but is explicitly
+Every step now distinguishes cumulative emitted, active, wake, escaped,
+recovered, and discarded line content and reports the signed and relative
+balance errors. The inherited `N_em` field remains for compatibility but is
 identified as instantaneous active retained content, not cumulative emission.
 
 ## Install or update
@@ -98,8 +92,8 @@ MAX_JOBS=2 bash run_v10_0_5_14_4_0118_300_1200K_200um_family_campaign.sh
 ```
 
 The default campaign uses candidate 0118, 300–1200 K in 100 K increments,
-200 µm extension, 5 µm events, the production PF kernel family, and a new output
-root named `v10_0_5_14_4_0118_300_1200K_200um_family_v1`.
+200 µm extension, 5 µm events, the production PF kernel family, and output root
+`v10_0_5_14_4_0118_300_1200K_200um_family_v1`.
 
 ## Mandatory runtime invariants
 
