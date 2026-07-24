@@ -22,6 +22,9 @@ from arrhenius_fracture.emergent_gnd_contract_v913 import (
 )
 
 
+PROMOTABLE_TIERS = ("strict_gate", "relaxed_desired_peak")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-registry", type=Path, required=True)
@@ -44,13 +47,25 @@ def _numeric(frame: pd.DataFrame, name: str, default: float) -> pd.Series:
     return pd.to_numeric(frame[name], errors="coerce").fillna(default)
 
 
+def _completion_mask(source: pd.DataFrame) -> pd.Series:
+    """Return completion status for full metrics or corrected registry schemas.
+
+    The corrected downstream registry deliberately omits ``zeroD_complete`` because
+    its repair step already excludes incomplete rows before writing promotion tiers.
+    When the column is present, retain the stronger row-level check so legacy or
+    synthetic tables cannot promote an incomplete case.
+    """
+    if "zeroD_complete" in source:
+        return _numeric(source, "zeroD_complete", 0.0).astype(bool)
+    return pd.Series(np.ones(len(source), dtype=bool), index=source.index)
+
+
 def select_rows(source: pd.DataFrame, selected_count: int) -> pd.DataFrame:
     if selected_count < 1:
         raise ValueError("selected count must be positive")
     required = {
         "candidate_id",
         "promotion_tier",
-        "zeroD_complete",
         *ACTIVE_CANDIDATE_PARAMETER_FIELDS,
     }
     missing = sorted(required - set(source.columns))
@@ -60,14 +75,19 @@ def select_rows(source: pd.DataFrame, selected_count: int) -> pd.DataFrame:
         raise RuntimeError("candidate_id must be unique")
 
     source = source.copy()
+    tiers = source["promotion_tier"].astype(str)
+    unknown_tiers = sorted(set(tiers) - set(PROMOTABLE_TIERS))
+    if unknown_tiers:
+        raise RuntimeError(
+            "source registry contains non-promotable tiers: "
+            f"{unknown_tiers}; expected only {list(PROMOTABLE_TIERS)}"
+        )
     for row in source.to_dict(orient="records"):
         effective_candidate_parameters(row)
 
-    complete = _numeric(source, "zeroD_complete", 0.0).astype(bool)
-    strict = source[(source["promotion_tier"].astype(str) == "strict_gate") & complete].copy()
-    relaxed = source[
-        (source["promotion_tier"].astype(str) == "relaxed_desired_peak") & complete
-    ].copy()
+    complete = _completion_mask(source)
+    strict = source[(tiers == "strict_gate") & complete].copy()
+    relaxed = source[(tiers == "relaxed_desired_peak") & complete].copy()
 
     strict["_objective"] = _numeric(strict, "zeroD_objective", float("inf"))
     strict["_rank"] = _numeric(strict, "zeroD_rank", float("inf"))
@@ -127,7 +147,7 @@ def main() -> int:
     )
     relaxed_count = len(selected) - strict_count
     manifest: dict[str, Any] = {
-        "schema": "v9.13_zero_d_to_one_d_screen_selection_v1",
+        "schema": "v9.13_zero_d_to_one_d_screen_selection_v2",
         "source_registry": str(args.source_registry.resolve()),
         "source_registry_sha256": sha256_path(args.source_registry),
         "out_registry": str(args.out_registry.resolve()),
@@ -136,6 +156,12 @@ def main() -> int:
         "selected_count": int(len(selected)),
         "strict_zeroD_count": strict_count,
         "relaxed_diverse_zeroD_count": relaxed_count,
+        "source_completion_column_present": "zeroD_complete" in source.columns,
+        "completion_validation": (
+            "explicit_zeroD_complete"
+            if "zeroD_complete" in source.columns
+            else "corrected_promotion_tier_contract"
+        ),
         "all_source_strict_passes_selected": bool(
             set(
                 source.loc[
@@ -157,6 +183,7 @@ def main() -> int:
     print(
         "V913_ZERO_D_TO_1D_PREPARED "
         f"selected={len(selected)} strict={strict_count} relaxed={relaxed_count} "
+        f"completion={manifest['completion_validation']} "
         f"registry={args.out_registry}",
         flush=True,
     )
