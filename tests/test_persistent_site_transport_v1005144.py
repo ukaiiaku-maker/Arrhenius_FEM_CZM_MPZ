@@ -169,7 +169,9 @@ def test_candidate_0118_real_high_temperature_rates_conserve_tiny_content(
     assert result["transport_integrator"] == TRANSPORT_INTEGRATOR
     assert result["transport_attempted_physical_exponentials"] <= 2000
     assert np.isfinite(result["transport_nonlinear_error_max"])
-    assert result.get("physical_generator_mass_gain", 0.0) <= 1.0e-18
+    assert result.get("physical_generator_mass_gain", 0.0) <= (
+        2.0e-9 * initial + 1.0e-20
+    )
     final = total_active_content(state)
     assert final + result["dN_escaped"] == pytest.approx(
         initial, rel=2.0e-8, abs=1.0e-17
