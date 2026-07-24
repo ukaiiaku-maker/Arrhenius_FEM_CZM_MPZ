@@ -34,7 +34,7 @@ dt_s=$DT
 max_jobs=$MAX_JOBS
 snapshot_spacing_um=$SNAPSHOT_BY_EXT_UM
 kernel_family=$FAMILY_JSON
-transport=adaptive_strang_exact_exchange_exponential_advection
+transport=adaptive_physical_backward_euler_tail_control
 adaptive_czm_tip_support=authoritative_plus_minus_pair
 EOF
 
