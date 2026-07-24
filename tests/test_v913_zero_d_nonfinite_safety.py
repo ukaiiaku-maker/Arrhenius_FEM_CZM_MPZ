@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import warnings
 
 import numpy as np
 
+import arrhenius_fracture.zero_d_search_v913 as search_helpers
 from scripts.run_v913_zero_d_large_search_safe import (
     curve_metrics_matrix_safe,
+    install_safety_patch,
     json_safe,
     local_peak_metrics_safe,
 )
@@ -38,7 +41,8 @@ def test_curve_metrics_all_nan_row_is_invalid_without_warning() -> None:
             [20.0, 30.0, 45.0, 35.0, 38.0],
         ]
     )
-    with np.errstate(all="raise"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
         result = curve_metrics_matrix_safe(
             temperatures,
             curves,
@@ -52,6 +56,24 @@ def test_curve_metrics_all_nan_row_is_invalid_without_warning() -> None:
     assert result["two_sided_prominence_MPa_sqrt_m"][1] == 10.0
     assert result["post_peak_drop_MPa_sqrt_m"][1] == 10.0
     assert result["high_temperature_rebound_MPa_sqrt_m"][1] == -7.0
+
+
+def test_install_patch_replaces_proxy_module_metric() -> None:
+    install_safety_patch()
+    assert search_helpers._curve_metrics_matrix is curve_metrics_matrix_safe
+
+    temperatures = np.asarray([700.0, 900.0, 1000.0, 1100.0, 1300.0])
+    curves = np.full((1, temperatures.size), np.nan)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        result = search_helpers._curve_metrics_matrix(
+            temperatures,
+            curves,
+            peak_min=850.0,
+            peak_max=1100.0,
+        )
+    assert np.isnan(result["peak_temperature_K"][0])
+    assert result["peak_internal"][0] == 0
 
 
 def test_scalar_boundary_peak_uses_nan_not_infinity() -> None:
