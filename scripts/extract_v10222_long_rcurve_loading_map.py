@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Extract an autonomous v9.13 loading map from one completed v10.2.22 case."""
+"""Extract an autonomous v9.13 loading map from one completed v10.2.22 case.
+
+The extractor fails closed unless the source case uses the calibrated stochastic
+contract (exponential cleavage thresholds and threshold-scaled event lengths).
+It can also require the new long map to reproduce an existing calibrated map as
+an exact prefix before accepting additional crack-growth events.
+"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +14,7 @@ import json
 import math
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -20,12 +26,22 @@ from arrhenius_fracture.dbtt_long_alignment_v913 import loading_map_coverage_um
 from arrhenius_fracture.emergent_gnd_rcurve_v913 import RCurveLoadingMap
 
 
+_MAP_ARRAY_KEYS = (
+    "K_per_U_MPa_sqrt_m_per_m",
+    "threshold_actions",
+    "path_advances_m",
+    "projected_advances_m",
+)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--case-dir", type=Path, required=True)
     parser.add_argument("--steps-csv", type=Path)
     parser.add_argument("--events-json", type=Path)
     parser.add_argument("--run-args-json", type=Path)
+    parser.add_argument("--stack-json", type=Path)
+    parser.add_argument("--expected-prefix-loading-map", type=Path)
     parser.add_argument("--reference-candidate-id", required=True)
     parser.add_argument("--reference-temperature-K", type=float)
     parser.add_argument("--minimum-coverage-um", type=float, default=100.0)
@@ -52,17 +68,155 @@ def unique_match(case_dir: Path, pattern: str, label: str) -> Path:
     return matches[0]
 
 
+def _require_equal(actual: Any, expected: Any, label: str) -> None:
+    if actual != expected:
+        raise RuntimeError(
+            f"uncalibrated stochastic reference: {label}={actual!r}, "
+            f"expected {expected!r}"
+        )
+
+
+def validate_calibrated_stochastic_contract(stack: Mapping[str, Any]) -> dict[str, Any]:
+    """Require the exact stochastic controls used by the calibrated 52 um map."""
+    hazard = stack.get("stochastic_hazard")
+    avalanche = stack.get("stochastic_avalanche")
+    if not isinstance(hazard, Mapping) or not isinstance(avalanche, Mapping):
+        raise RuntimeError(
+            "v10_2_17_final_signed_stochastic_stack.json lacks stochastic contract"
+        )
+
+    _require_equal(hazard.get("mode"), "exponential", "stochastic_hazard.mode")
+    _require_equal(
+        hazard.get("distribution"),
+        "exponential_unit_mean",
+        "stochastic_hazard.distribution",
+    )
+    _require_equal(
+        avalanche.get("mode"),
+        "threshold_scaled",
+        "stochastic_avalanche.mode",
+    )
+    _require_equal(
+        bool(stack.get("event_length_uses_same_integrated_hazard_threshold")),
+        True,
+        "event_length_uses_same_integrated_hazard_threshold",
+    )
+
+    numeric_contract = {
+        "stochastic_avalanche.minimum_factor": (avalanche.get("minimum_factor"), 0.5),
+        "stochastic_avalanche.maximum_factor": (avalanche.get("maximum_factor"), 4.0),
+        "stochastic_avalanche.geometry_subsegment_fraction": (
+            avalanche.get("geometry_subsegment_fraction"),
+            0.1,
+        ),
+    }
+    for label, (actual, expected) in numeric_contract.items():
+        try:
+            value = float(actual)
+        except (TypeError, ValueError):
+            raise RuntimeError(
+                f"uncalibrated stochastic reference: {label}={actual!r}"
+            ) from None
+        if not math.isclose(value, expected, rel_tol=0.0, abs_tol=1.0e-14):
+            raise RuntimeError(
+                f"uncalibrated stochastic reference: {label}={value:.17g}, "
+                f"expected {expected:.17g}"
+            )
+
+    return {
+        "hazard_mode": str(hazard["mode"]),
+        "hazard_distribution": str(hazard["distribution"]),
+        "event_length_mode": str(avalanche["mode"]),
+        "event_length_minimum_factor": float(avalanche["minimum_factor"]),
+        "event_length_maximum_factor": float(avalanche["maximum_factor"]),
+        "event_length_subsegment_fraction": float(
+            avalanche["geometry_subsegment_fraction"]
+        ),
+    }
+
+
+def validate_expected_prefix(
+    current: Mapping[str, Sequence[float]],
+    expected: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require every calibrated map array to be an exact prefix of the long map."""
+    lengths: set[int] = set()
+    maximum_errors: dict[str, float] = {}
+    for key in _MAP_ARRAY_KEYS:
+        if key not in expected:
+            raise KeyError(f"expected prefix loading map is missing {key}")
+        reference = [float(value) for value in expected[key]]
+        observed = [float(value) for value in current[key]]
+        lengths.add(len(reference))
+        if len(reference) > len(observed):
+            raise RuntimeError(
+                f"expected prefix {key} has {len(reference)} entries but long map "
+                f"has only {len(observed)}"
+            )
+        errors = [abs(a - b) for a, b in zip(observed, reference, strict=False)]
+        maximum = max(errors, default=0.0)
+        maximum_errors[key] = maximum
+        for index, (actual, target) in enumerate(
+            zip(observed, reference, strict=False)
+        ):
+            absolute_tolerance = 1.0e-9 if key.startswith("K_per_U") else 1.0e-14
+            if not math.isclose(
+                actual,
+                target,
+                rel_tol=1.0e-12,
+                abs_tol=absolute_tolerance,
+            ):
+                raise RuntimeError(
+                    "long loading map does not reproduce calibrated prefix: "
+                    f"{key}[{index}]={actual:.17g}, expected {target:.17g}"
+                )
+    if len(lengths) != 1:
+        raise RuntimeError(
+            f"expected prefix loading-map arrays have inconsistent lengths: {lengths}"
+        )
+
+    prefix_events = next(iter(lengths))
+    for key in ("seed", "nominal_dU_m", "nominal_dt_s"):
+        if key not in expected:
+            raise KeyError(f"expected prefix loading map is missing {key}")
+        actual = current[key]
+        target = expected[key]
+        if key == "seed":
+            if int(actual) != int(target):
+                raise RuntimeError(
+                    f"long loading-map seed {actual} does not match prefix seed {target}"
+                )
+        elif not math.isclose(
+            float(actual), float(target), rel_tol=0.0, abs_tol=1.0e-15
+        ):
+            raise RuntimeError(
+                f"long loading-map {key}={actual} does not match prefix {target}"
+            )
+
+    return {
+        "prefix_events": prefix_events,
+        "prefix_coverage_um": (
+            sum(float(value) for value in expected["projected_advances_m"]) * 1.0e6
+        ),
+        "maximum_absolute_errors": maximum_errors,
+    }
+
+
 def main() -> int:
     args = parse_args()
     case_dir = args.case_dir.resolve()
     steps_path = args.steps_csv or unique_match(case_dir, "steps_*K.csv", "steps CSV")
     events_path = args.events_json or case_dir / "stochastic_avalanche_geometry_events.json"
     run_args_path = args.run_args_json or case_dir / "run_args.json"
-    for path in (steps_path, events_path, run_args_path):
+    stack_path = args.stack_json or case_dir / "v10_2_17_final_signed_stochastic_stack.json"
+    for path in (steps_path, events_path, run_args_path, stack_path):
         if not path.is_file():
             raise FileNotFoundError(path)
     if args.minimum_coverage_um <= 0.0:
         raise ValueError("minimum coverage must be positive")
+
+    stack = json.loads(stack_path.read_text())
+    stochastic_contract = validate_calibrated_stochastic_contract(stack)
 
     steps = pd.read_csv(steps_path)
     required_columns = {
@@ -167,6 +321,25 @@ def main() -> int:
             }
         )
 
+    raw_map: dict[str, Any] = {
+        "K_per_U_MPa_sqrt_m_per_m": geometry_factors,
+        "threshold_actions": threshold_actions,
+        "path_advances_m": path_advances,
+        "projected_advances_m": projected_advances,
+        "nominal_dU_m": nominal_dU,
+        "nominal_dt_s": nominal_dt,
+        "seed": seed,
+    }
+    prefix_audit: dict[str, Any] | None = None
+    if args.expected_prefix_loading_map is not None:
+        prefix_path = args.expected_prefix_loading_map.resolve()
+        if not prefix_path.is_file():
+            raise FileNotFoundError(prefix_path)
+        expected_prefix = json.loads(prefix_path.read_text())
+        prefix_audit = validate_expected_prefix(raw_map, expected_prefix)
+    else:
+        prefix_path = None
+
     loading_map = RCurveLoadingMap(
         K_per_U_MPa_sqrt_m_per_m=tuple(geometry_factors),
         threshold_actions=tuple(threshold_actions),
@@ -180,7 +353,7 @@ def main() -> int:
         reference_event_K_MPa_sqrt_m=tuple(reference_K),
         reference_event_U_m=tuple(reference_U),
         provenance={
-            "schema": "v9.13_loading_map_from_v10.2.22_case_v1",
+            "schema": "v9.13_loading_map_from_v10.2.22_case_v2",
             "case_dir": str(case_dir),
             "steps_csv": str(steps_path.resolve()),
             "steps_csv_sha256": sha256_path(steps_path),
@@ -188,6 +361,16 @@ def main() -> int:
             "geometry_events_json_sha256": sha256_path(events_path),
             "run_args_json": str(run_args_path.resolve()),
             "run_args_json_sha256": sha256_path(run_args_path),
+            "stochastic_stack_json": str(stack_path.resolve()),
+            "stochastic_stack_json_sha256": sha256_path(stack_path),
+            "calibrated_stochastic_contract": stochastic_contract,
+            "expected_prefix_loading_map": (
+                str(prefix_path) if prefix_path is not None else None
+            ),
+            "expected_prefix_loading_map_sha256": (
+                sha256_path(prefix_path) if prefix_path is not None else None
+            ),
+            "expected_prefix_audit": prefix_audit,
             "geometry_map": "accepted_event_KJ_over_applied_displacement",
             "state_translation": "event_advance_m",
             "R_curve_abscissa": "projected_x_advance",
@@ -207,10 +390,15 @@ def main() -> int:
     audit_path = args.audit_csv or args.out.with_suffix(".audit.csv")
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(audit_rows).to_csv(audit_path, index=False)
+    prefix_text = (
+        f" prefix_events={prefix_audit['prefix_events']}"
+        if prefix_audit is not None
+        else ""
+    )
     print(
         "V913_LONG_LOADING_MAP_EXTRACTED "
-        f"events={len(events)} coverage_um={coverage_um:.9g} seed={seed} "
-        f"out={args.out}",
+        f"events={len(events)} coverage_um={coverage_um:.9g} seed={seed}"
+        f"{prefix_text} out={args.out}",
         flush=True,
     )
     return 0
