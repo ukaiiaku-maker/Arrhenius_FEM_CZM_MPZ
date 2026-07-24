@@ -1,0 +1,109 @@
+name: Verify v10.0.5.14.4 persistent-site long-growth parity
+
+on:
+  push:
+    branches:
+      - v10.0.5.14-persistent-sites-v10222-parity
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -q -e '.[dev]'
+      - name: Compile persistent-site release
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/persistent_site_registry_v100514.py \
+            arrhenius_fracture/persistent_site_signed_support_v100514.py \
+            arrhenius_fracture/persistent_site_complementarity_v100514.py \
+            arrhenius_fracture/signed_kernel_family_v1005141.py \
+            arrhenius_fracture/persistent_site_signed_core_v100514.py \
+            arrhenius_fracture/persistent_site_signed_transport_v100514.py \
+            arrhenius_fracture/persistent_site_transport_v1005143.py \
+            arrhenius_fracture/persistent_site_transport_v1005144.py \
+            arrhenius_fracture/adaptive_czm_tip_support_v1005144.py \
+            arrhenius_fracture/persistent_site_diagnostics_v1005144.py \
+            arrhenius_fracture/persistent_site_signed_io_v100514.py \
+            arrhenius_fracture/persistent_site_signed_mpz_v100514.py \
+            arrhenius_fracture/persistent_site_front_engine_v100514.py \
+            arrhenius_fracture/anisotropic_two_channel_drive_v100514.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_persistent_site.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_2_persistent_site_family.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_3_persistent_site_family.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_14_4_persistent_site_family.py
+          bash -n run_v10_0_5_14_4_0118_300_1200K_200um_family_campaign.sh
+      - name: Transport exact exchange
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_exact_exchange_is_nonnegative_and_conservative_at_extreme_rates
+      - name: Transport absorbing advection
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_absorbing_advection_has_exact_semigroup_and_mass_balance
+      - name: Transport fixed stiff physical generator
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_tiny_stiff_population_finishes_without_augmented_matrix_error
+      - name: Transport candidate 0118 at 900 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[900.0]'
+      - name: Transport candidate 0118 at 1000 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1000.0]'
+      - name: Transport candidate 0118 at 1100 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1100.0]'
+      - name: Transport candidate 0118 at 1200 K
+        run: python -m pytest -q 'tests/test_persistent_site_transport_v1005144.py::test_candidate_0118_real_high_temperature_rates_conserve_tiny_content[1200.0]'
+      - name: Transport zero-content clock
+        run: python -m pytest -q tests/test_persistent_site_transport_v1005144.py::test_zero_content_advances_clock_without_transport_work
+      - name: Test v10.0.5.14.4 adaptive-CZM tip support
+        run: python -m pytest -q --tb=short tests/test_adaptive_czm_tip_support_v1005144.py
+      - name: Test v10.0.5.14.4 accounting diagnostics
+        run: python -m pytest -q --tb=short tests/test_persistent_site_diagnostics_v1005144.py
+      - name: Preserve v10.0.5.14.3 transport regression tests
+        run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005143.py
+      - name: Preserve v10.0.5.14.2 regression tests
+        run: python -m pytest -q --tb=short tests/test_persistent_site_transport_v1005142.py
+      - name: Test PF kernel-family contract
+        run: python -m pytest -q --tb=short tests/test_signed_kernel_family_v1005141.py
+      - name: Contract exact registry
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_exact_registry_contract_and_candidate_0118
+      - name: Contract persistent source
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_persistent_source_invariance_after_emission
+      - name: Contract width grid independence
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_grid_independent_width_and_multiplicity
+      - name: Contract interior implicit root
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_interior_implicit_root
+      - name: Contract blocking complementarity
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_mechanical_blocking_complementarity
+      - name: Contract zero-drive gate
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_zero_drive_gate
+      - name: Contract sign reversal
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_burgers_sign_reversal_equal_magnitude
+      - name: Contract moving-frame resharpening
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_crack_advance_resharpens_without_refresh
+      - name: Contract unsigned backstress signed shielding
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_unsigned_backstress_survives_signed_shielding_cancellation
+      - name: Contract trial isolation
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_trial_copy_does_not_mutate_committed_state
+      - name: Contract two-channel tensor drive
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_two_channel_tensor_drive_has_signed_channels
+      - name: Contract restart round trip
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_restart_round_trip_preserves_signed_state_and_full_sources
+      - name: Contract distinct channel tensors
+        run: python -m pytest -q tests/test_persistent_site_v100514.py::test_two_channel_resolution_uses_distinct_channel_tensors
+      - name: Test inherited barrier and state contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_v100513_barrier_only.py \
+            tests/test_v1005131_preserved_state.py \
+            tests/test_v1005132_startup_resolution_warning.py \
+            tests/test_v1005133_tip_only_ramp.py \
+            tests/test_v1005134_tip_only_policy_propagation.py \
+            tests/test_v1005135_long_corridor.py \
+            tests/test_v1005123_phase_c_repairs.py
+      - name: Test inherited FEM/CZM mechanics gates
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_mpz_v9_10_unified_transport.py \
+            tests/test_v100510_refinement_support.py \
+            tests/test_v100511_same_mesh_energy.py

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "v10.0.5.14_signed_shielding_kernel",
+  "title": "Mechanically derived signed shielding kernel for FEM/CZM v10.0.5.14",
+  "type": "object",
+  "required": [
+    "schema",
+    "candidate_independent",
+    "counts_are_signed_burgers_lines",
+    "normalization_is_mechanically_derived",
+    "active_kernel_Pa_sqrt_m_per_signed_line",
+    "activation_to_line_content_by_system"
+  ],
+  "properties": {
+    "schema": {
+      "enum": [
+        "v10.0.5.14_signed_shielding_kernel",
+        "v10.2.5_2d_unit_signed_shielding_kernel"
+      ]
+    },
+    "candidate_independent": {"const": true},
+    "counts_are_signed_burgers_lines": {"const": true},
+    "normalization_is_mechanically_derived": {"const": true},
+    "active_kernel_Pa_sqrt_m_per_signed_line": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "array",
+        "minItems": 80,
+        "maxItems": 80,
+        "items": {"type": "number"}
+      }
+    },
+    "wake_kernel_Pa_sqrt_m_per_signed_line": {"type": "array"},
+    "activation_to_line_content_by_system": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "number", "exclusiveMinimum": 0}
+    },
+    "active_x_m": {
+      "type": "array",
+      "minItems": 80,
+      "maxItems": 80,
+      "items": {"type": "number"}
+    },
+    "wake_x_m": {"type": "array", "items": {"type": "number"}}
+  },
+  "additionalProperties": true
+}
