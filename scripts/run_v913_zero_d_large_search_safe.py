@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
+import arrhenius_fracture.zero_d_search_v913 as search_helpers
 import scripts.run_v913_zero_d_large_search as base
 
 
@@ -227,6 +228,9 @@ def install_safety_patch() -> None:
     base._json_safe = json_safe
     base.local_peak_metrics = local_peak_metrics_safe
     base._curve_metrics_matrix = curve_metrics_matrix_safe
+    # _proxy_response_batch is defined in zero_d_search_v913 and resolves its
+    # metric helper from that module's globals, not from the driver module.
+    search_helpers._curve_metrics_matrix = curve_metrics_matrix_safe
     base._exact_candidate_worker = exact_candidate_worker_safe
     base._run_contract = run_contract_safe
 
