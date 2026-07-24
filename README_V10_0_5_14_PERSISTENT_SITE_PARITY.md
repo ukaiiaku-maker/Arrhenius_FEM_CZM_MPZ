@@ -113,3 +113,7 @@ root named `v10_0_5_14_4_0118_300_1200K_200um_family_v1`.
 - `transport_cfl_limited = false`;
 - all cohesive endpoints have positive bulk incidence;
 - final line-content balance is recorded in the production manifest.
+
+The PR remains draft until the corrected 300–1200 K, 200 µm production-atlas
+campaign completes and its distance-resolved mechanics and MPZ accounting are
+reviewed.
