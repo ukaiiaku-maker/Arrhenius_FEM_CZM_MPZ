@@ -1,10 +1,12 @@
 """Conservative stiff MPZ transport for v10.0.5.14.4.
 
-The Peierls, encounter, Taylor-release, upwind transport, and absorbing-boundary
-laws are unchanged.  Only the exact frozen physical state [mobile, retained] is
-advanced.  Diagnostic accumulator rows are excluded.  The matrix exponential
-is applied with sparse Krylov ``expm_multiply`` so strongly nonuniform real-rate
-operators do not require formation of a dense propagator.
+The physical Peierls, encounter, Taylor-release, upwind transport, and absorbing
+boundary equations are unchanged.  This release removes cumulative diagnostic
+rows from the linear solve and advances only the 2N mobile/retained state with
+L-stable backward Euler.  Step doubling controls rate nonlinearity and temporal
+error.  Refinement stops when both trial solutions contain a negligible
+fraction of the macrostep's initial active line content; differences in that
+vanishing stiff tail cannot affect the conserved escaped total or mechanics.
 """
 from __future__ import annotations
 
@@ -14,15 +16,15 @@ from typing import Any, Iterator
 
 import numpy as np
 from scipy.linalg import expm
-from scipy.sparse import csc_matrix
-from scipy.sparse.linalg import expm_multiply
+from scipy.sparse import csc_matrix, eye
+from scipy.sparse.linalg import spsolve
 
 from .persistent_site_signed_transport_v100514 import (
     PersistentSiteSignedTransportMixin,
 )
 
 TRANSPORT_INTEGRATOR = (
-    "adaptive_physical_generator_krylov_exponential_v10_0_5_14_4"
+    "adaptive_physical_backward_euler_tail_control_v10_0_5_14_4"
 )
 
 
@@ -33,7 +35,6 @@ def _exact_exchange_pair(
     release_rate_s: np.ndarray,
     dt_s: float,
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """Exact nonnegative local M <-> R solution, retained for audit tests."""
     m0 = np.maximum(np.asarray(mobile, dtype=float), 0.0)
     r0 = np.maximum(np.asarray(retained, dtype=float), 0.0)
     ke = np.maximum(np.asarray(encounter_rate_s, dtype=float), 0.0)[None, :]
@@ -84,19 +85,13 @@ def _advect_mobile_exact(
     magnitude = max(float(np.max(np.abs(advanced))), float(np.max(source)), 1.0e-300)
     tolerance = 2.0e-12 * magnitude + 1.0e-300
     if float(np.min(advanced)) < -tolerance:
-        raise RuntimeError(
-            "physical exponential advection violated nonnegative state: "
-            f"minimum={float(np.min(advanced)):.6e}, tolerance={tolerance:.6e}"
-        )
+        raise RuntimeError("physical exponential advection violated nonnegative state")
     advanced = np.maximum(advanced, 0.0)
     initial_mass = float(np.sum(source))
     final_mass = float(np.sum(advanced))
     gain = final_mass - initial_mass
-    gain_tolerance = 2.0e-11 * max(initial_mass, 1.0e-300) + 1.0e-300
-    if gain > gain_tolerance:
-        raise RuntimeError(
-            f"physical exponential advection created line content: gain={gain:.6e}"
-        )
+    if gain > 2.0e-11 * max(initial_mass, 1.0e-300) + 1.0e-300:
+        raise RuntimeError("physical exponential advection created line content")
     return advanced, max(initial_mass - final_mass, 0.0), max(gain, 0.0)
 
 
@@ -109,9 +104,9 @@ def _physical_generator(
     velocity = np.maximum(np.asarray(velocity_m_s, dtype=float).reshape(-1), 0.0)
     encounter = np.maximum(np.asarray(encounter_rate_s, dtype=float).reshape(-1), 0.0)
     release = np.maximum(np.asarray(release_rate_s, dtype=float).reshape(-1), 0.0)
-    if not (velocity.shape == encounter.shape == release.shape):
-        raise ValueError("physical transport coefficient shapes do not match")
     n = int(velocity.size)
+    if encounter.shape != (n,) or release.shape != (n,):
+        raise ValueError("physical transport coefficient shapes do not match")
     inv_dx = 1.0 / max(float(dx_m), 1.0e-30)
     faces = np.empty(n + 1, dtype=float)
     faces[1:-1] = 0.5 * (velocity[:-1] + velocity[1:])
@@ -183,40 +178,39 @@ def _frozen_transport_step_physical(
         initial_retained += float(np.sum(snapshot["retained_positive"][system]))
         initial_retained += float(np.sum(snapshot["retained_negative"][system]))
 
-    operator = dt * _physical_generator(velocity, encounter, release, self.dx)
-    advanced = np.asarray(expm_multiply(operator, initial), dtype=float)
+    generator = _physical_generator(velocity, encounter, release, self.dx)
+    system = eye(2 * n, format="csc") - dt * generator
+    advanced = np.asarray(spsolve(system, initial), dtype=float)
+    if advanced.ndim == 1:
+        advanced = advanced[:, None]
     if not np.all(np.isfinite(advanced)):
-        raise RuntimeError("physical Krylov transport produced nonfinite state")
+        raise RuntimeError("physical backward-Euler transport produced nonfinite state")
     magnitude = max(float(np.max(np.abs(advanced))), float(np.max(initial)), 1.0e-300)
-    negative_tolerance = 5.0e-10 * magnitude + 1.0e-300
-    minimum = float(np.min(advanced))
-    if minimum < -negative_tolerance:
-        raise RuntimeError(
-            "physical Krylov transport violated nonnegative state: "
-            f"minimum={minimum:.6e}, tolerance={negative_tolerance:.6e}"
-        )
+    negative_tolerance = 2.0e-11 * magnitude + 1.0e-300
+    if float(np.min(advanced)) < -negative_tolerance:
+        raise RuntimeError("physical backward-Euler transport violated nonnegative state")
     advanced = np.maximum(advanced, 0.0)
 
     result = {name: np.zeros_like(snapshot[name]) for name in self._TRANSPORT_ARRAY_NAMES}
-    for system in range(self.n_systems):
-        result["mobile_positive"][system] = advanced[:n, system]
-        result["retained_positive"][system] = advanced[n:, system]
-        column = self.n_systems + system
-        result["mobile_negative"][system] = advanced[:n, column]
-        result["retained_negative"][system] = advanced[n:, column]
+    for system_index in range(self.n_systems):
+        result["mobile_positive"][system_index] = advanced[:n, system_index]
+        result["retained_positive"][system_index] = advanced[n:, system_index]
+        column = self.n_systems + system_index
+        result["mobile_negative"][system_index] = advanced[:n, column]
+        result["retained_negative"][system_index] = advanced[n:, column]
 
     final_mass = self._snapshot_mass(result)
     final_retained = float(np.sum(result["retained_positive"]) + np.sum(result["retained_negative"]))
     gain = final_mass - initial_mass
-    gain_tolerance = 2.0e-8 * max(initial_mass, 1.0e-300) + 1.0e-300
+    gain_tolerance = 2.0e-10 * max(initial_mass, 1.0e-300) + 1.0e-300
     if gain > gain_tolerance:
         raise RuntimeError(
-            "physical Krylov transport created line content: "
-            f"gain={gain:.6e}, scale={initial_mass:.6e}, tolerance={gain_tolerance:.6e}"
+            "physical backward-Euler transport created line content: "
+            f"gain={gain:.6e}, scale={initial_mass:.6e}"
         )
     escaped = max(initial_mass - final_mass, 0.0)
     signed_balance = initial_mass - final_mass - escaped
-    diagnostics = {
+    return result, {
         "dN_trapped": max(final_retained - initial_retained, 0.0),
         "dN_detrapped": max(initial_retained - final_retained, 0.0),
         "dN_escaped": escaped,
@@ -234,9 +228,8 @@ def _frozen_transport_step_physical(
         "line_content_conservation_signed_error": signed_balance,
         "line_content_conservation_scale": max(initial_mass, final_mass + escaped, 1.0e-300),
         "physical_generator_mass_gain": max(gain, 0.0),
-        "physical_generator_action": "sparse_krylov_expm_multiply",
+        "physical_generator_action": "sparse_backward_euler",
     }
-    return result, diagnostics
 
 
 def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: float) -> dict[str, Any]:
@@ -252,7 +245,7 @@ def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: flo
             "dN_escaped": 0.0,
             "dN_recovered": 0.0,
             "transport_substeps": 0,
-            "transport_attempted_physical_exponentials": 0,
+            "transport_attempted_physical_solves": 0,
             "transport_attempted_exponentials": 0,
             "transport_rejected_intervals": 0,
             "transport_nonlinear_error_max": 0.0,
@@ -264,6 +257,7 @@ def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: flo
         return out
 
     rtol = max(float(getattr(self, "transport_nonlinear_rtol", 1.0e-3)), 1.0e-10)
+    tail_fraction = max(float(getattr(self, "transport_tail_fraction", 1.0e-10)), 1.0e-14)
     limit = max(int(self.max_transport_substeps), 12)
     min_interval = max(
         float(getattr(self, "transport_min_interval_s", 1.0e-12)),
@@ -271,17 +265,19 @@ def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: flo
     )
     attempted = 0
     rejected = 0
+    tail_accepts = 0
     accepted_rows: list[dict[str, float]] = []
     max_error = 0.0
 
     def integrate(snapshot: dict[str, np.ndarray], interval: float) -> dict[str, np.ndarray]:
-        nonlocal attempted, rejected, max_error
+        nonlocal attempted, rejected, tail_accepts, max_error
         current_mass = self._snapshot_mass(snapshot)
-        if current_mass <= rtol * initial_global_mass * 1.0e-10:
+        if current_mass <= tail_fraction * initial_global_mass:
+            tail_accepts += 1
             return copy.deepcopy(snapshot)
         if attempted + 3 > limit:
             raise RuntimeError(
-                "persistent-site physical Krylov transport exceeded nonlinear solve budget: "
+                "persistent-site physical transport exceeded nonlinear solve budget: "
                 f"attempted={attempted}, limit={limit}, interval_s={interval:.6e}, "
                 f"max_error={max_error:.6e}"
             )
@@ -295,10 +291,15 @@ def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: flo
             half, dt_s=0.5 * interval, T_K=T_K, opening_stress_Pa=opening_stress_Pa
         )
         attempted += 3
-        scale = max(initial_global_mass, current_mass, self._snapshot_mass(two_half), 1.0e-300)
+        full_mass = self._snapshot_mass(full)
+        half_mass = self._snapshot_mass(two_half)
+        scale = max(initial_global_mass, current_mass, half_mass, 1.0e-300)
         error = self._snapshot_difference(full, two_half) / scale
         max_error = max(max_error, error)
-        if error <= rtol or interval <= min_interval:
+        negligible_tail = max(full_mass, half_mass) <= tail_fraction * initial_global_mass
+        if error <= rtol or negligible_tail or interval <= min_interval:
+            if negligible_tail and error > rtol:
+                tail_accepts += 1
             accepted_rows.extend((d1, d2))
             return two_half
         rejected += 1
@@ -317,10 +318,12 @@ def _transport_physical(self, *, dt_s: float, T_K: float, opening_stress_Pa: flo
         "dN_escaped": escaped,
         "dN_recovered": 0.0,
         "transport_substeps": len(accepted_rows),
-        "transport_attempted_physical_exponentials": attempted,
-        "transport_attempted_exponentials": attempted,
-        "transport_attempted_linear_solves": 0,
+        "transport_attempted_physical_solves": attempted,
+        "transport_attempted_exponentials": 0,
+        "transport_attempted_linear_solves": attempted,
         "transport_rejected_intervals": rejected,
+        "transport_tail_accepts": tail_accepts,
+        "transport_tail_fraction": tail_fraction,
         "transport_nonlinear_error_max": max_error,
         "transport_nonlinear_rtol": rtol,
         "transport_integrator": TRANSPORT_INTEGRATOR,
