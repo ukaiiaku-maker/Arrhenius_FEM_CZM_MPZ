@@ -10,6 +10,7 @@ import pytest
 @pytest.mark.parametrize(
     "relative_path,required_option",
     [
+        ("scripts/extract_v10222_long_rcurve_loading_map.py", "--case-dir"),
         ("scripts/prepare_v913_long_peak25_campaign.py", "--source-ranking"),
         ("scripts/analyze_v913_long_peak_alignment.py", "--checkpoints-um"),
     ],
