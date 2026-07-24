@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import math
 from types import MethodType, SimpleNamespace
 
 import numpy as np
@@ -109,12 +110,16 @@ def coupled(engine, dt):
     )
 
 
-def test_exponential_threshold_draw_is_reproducible_and_unit_mean():
-    rng1 = np.random.default_rng(31415)
-    rng2 = np.random.default_rng(31415)
+def test_exponential_threshold_draw_matches_pf_minus_log_uniform_and_unit_mean():
+    seed = 31415
+    reference_rng = np.random.default_rng(seed)
+    expected_first = -math.log(max(float(reference_rng.random()), np.finfo(float).tiny))
+    rng1 = np.random.default_rng(seed)
+    rng2 = np.random.default_rng(seed)
     first = [draw_hazard_threshold("exponential", rng1) for _ in range(100)]
     second = [draw_hazard_threshold("exponential", rng2) for _ in range(100)]
     assert first == second
+    assert first[0] == pytest.approx(expected_first, rel=0.0, abs=0.0)
     rng = np.random.default_rng(2718)
     sample = np.array([draw_hazard_threshold("exponential", rng) for _ in range(200000)])
     assert float(np.mean(sample)) == pytest.approx(1.0, abs=0.01)
@@ -131,7 +136,7 @@ def test_threshold_correlated_event_length_is_bounded_and_mean_preserving():
         10.0, minimum_factor=0.5, maximum_factor=4.0
     ) == pytest.approx(4.0 / mean_clip)
     rng = np.random.default_rng(97531)
-    xi = rng.exponential(1.0, size=300000)
+    xi = -np.log(np.maximum(rng.random(300000), np.finfo(float).tiny))
     factors = np.array(
         [
             threshold_event_length_factor(
@@ -165,13 +170,15 @@ def test_same_threshold_controls_waiting_time_and_continuous_event_length():
     assert engine.n_adv == 1
 
 
-def test_stochastic_predictor_preserves_rng_threshold_and_state():
+def test_stochastic_predictor_preserves_rng_threshold_histories_and_state():
     engine = make_engine(seed=44)
-    install_no_plastic_constant_cleavage(engine, 0.2)
+    install_no_plastic_constant_cleavage(engine, 10.0)
     before_rng = copy.deepcopy(engine._hazard_rng.bit_generator.state)
     before_threshold = engine.hazard_threshold_action
     before_B = engine.B
     before_advance = engine.mpz_state.advance_total_m
+    before_threshold_history = list(engine.hazard_threshold_history)
+    before_length_history = list(engine.stochastic_event_length_history)
     predicted = engine.predict_clock_increment_drives(
         20.0e6, 20.0e6, 700.0, 1.0
     )
@@ -180,6 +187,8 @@ def test_stochastic_predictor_preserves_rng_threshold_and_state():
     assert engine.hazard_threshold_action == before_threshold
     assert engine.B == before_B
     assert engine.mpz_state.advance_total_m == before_advance
+    assert engine.hazard_threshold_history == before_threshold_history
+    assert engine.stochastic_event_length_history == before_length_history
 
 
 def test_geometry_adapter_replaces_only_requested_event_length():
@@ -224,3 +233,4 @@ def test_geometry_adapter_replaces_only_requested_event_length():
     assert len(records) == 1
     assert records[0]["requested_fixed_length_m"] == pytest.approx(5.0e-6)
     assert records[0]["requested_stochastic_length_m"] == pytest.approx(7.5e-6)
+    assert records[0]["microstructure_geometry_length_synchronized"] is True
