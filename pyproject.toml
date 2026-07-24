@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.14.4"
-description = "Full 2-D Arrhenius FEM/CZM with PF persistent sites, signed-kernel family parity, conservative split MPZ transport, and supported adaptive-CZM tip topology"
+version = "10.0.5.15"
+description = "Full 2-D Arrhenius FEM/CZM with the PF v10.2.22 signed-state update map, continuous moving-tip microstructure coupling, persistent sites, kernel-family parity, and supported adaptive-CZM topology"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
