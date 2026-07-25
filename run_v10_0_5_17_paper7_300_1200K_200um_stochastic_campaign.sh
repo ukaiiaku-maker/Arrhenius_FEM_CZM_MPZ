@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 PFROOT=${PFROOT:-/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_22_physical_front_width_top5_dbtt_screen}
 PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.22-physical-front-width-top5-dbtt-screen}
-CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1}
+PARAMETER_SET=${PARAMETER_SET:-paper4}
+CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_paper4_anisotropic_300_1200K_200um_stochastic_pf_parity_v1}
 
 # The signed-kernel family is a generated runtime artifact rather than a tracked
 # file in the paper-parameter PF branch. Prefer an explicit path, then the paper
@@ -51,6 +52,8 @@ SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-20}
 SNAPSHOT_COLS=${SNAPSHOT_COLS:-5}
 GENERATE_SOLVER_PLOTS=${GENERATE_SOLVER_PLOTS:-1}
 INCLUDE_CONTROL=${INCLUDE_CONTROL:-0}
+CRYSTAL_THETA_DEG=${CRYSTAL_THETA_DEG:-30}
+MIN_GLOBAL_FORWARD=${MIN_GLOBAL_FORWARD:-0.05}
 
 case "$GENERATE_SOLVER_PLOTS" in
   0|1) ;;
@@ -60,8 +63,18 @@ case "$INCLUDE_CONTROL" in
   0|1) ;;
   *) echo "ERROR: INCLUDE_CONTROL must be 0 or 1" >&2; exit 1 ;;
 esac
+case "$PARAMETER_SET" in
+  paper4|full7) ;;
+  *) echo "ERROR: PARAMETER_SET must be paper4 or full7" >&2; exit 1 ;;
+esac
 
-PRIMARY_OPTIONS=(
+PAPER4_OPTIONS=(
+  v913_paper_peak01_0242980_persistent_sites
+  v913_paper_dbtt01_0202500_persistent_sites
+  v913_paper_weakT01_0257068_persistent_sites
+  v913_paper_ceramic01_0189364_persistent_sites
+)
+FULL7_OPTIONS=(
   v913_paper_peak01_0242980_persistent_sites
   v913_paper_peak02_0127508_persistent_sites
   v913_paper_peak03_0115460_persistent_sites
@@ -71,6 +84,14 @@ PRIMARY_OPTIONS=(
   v913_paper_ceramic01_0189364_persistent_sites
 )
 CONTROL_OPTION=v913_paper_control01_0086420_persistent_sites
+if [[ "$PARAMETER_SET" == "paper4" ]]; then
+  OPTIONS=("${PAPER4_OPTIONS[@]}")
+else
+  OPTIONS=("${FULL7_OPTIONS[@]}")
+fi
+if [[ "$INCLUDE_CONTROL" == "1" ]]; then
+  OPTIONS+=("$CONTROL_OPTION")
+fi
 
 if [[ ! -d "$PFROOT/.git" ]]; then
   echo "ERROR: PFROOT is not a Git clone: $PFROOT" >&2
@@ -112,11 +133,8 @@ PY
 echo "Using signed-kernel family: $FAMILY_JSON"
 echo "  source: $FAMILY_JSON_SOURCE"
 echo "  sha256: $FAMILY_JSON_SHA256"
-
-OPTIONS=("${PRIMARY_OPTIONS[@]}")
-if [[ "$INCLUDE_CONTROL" == "1" ]]; then
-  OPTIONS+=("$CONTROL_OPTION")
-fi
+echo "Parameter set: $PARAMETER_SET (${#OPTIONS[@]} options)"
+echo "Crystallographic path selection: theta=${CRYSTAL_THETA_DEG} deg, global forward gate=${MIN_GLOBAL_FORWARD}"
 
 mkdir -p "$CAMPAIGN_ROOT"
 CASE_MATRIX="$CAMPAIGN_ROOT/case_matrix.tsv"
@@ -170,6 +188,7 @@ entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaig
 PF_repo_root=$PFROOT
 PF_branch_required=$PF_BRANCH_REQUIRED
 PF_commit=$PF_COMMIT
+parameter_set=$PARAMETER_SET
 parameter_options=${OPTIONS[*]}
 include_rehardening_control=$INCLUDE_CONTROL
 temperatures_K=$TEMPERATURES
@@ -184,6 +203,13 @@ snapshot_spacing_um=$SNAPSHOT_BY_EXT_UM
 save_snapshots=$SAVE_SNAPSHOTS
 snapshot_cols=$SNAPSHOT_COLS
 generate_solver_plots=$GENERATE_SOLVER_PLOTS
+crystal_anisotropic_elasticity=true
+crystal_direction_competition=true
+crystal_theta_deg=$CRYSTAL_THETA_DEG
+crystal_plane_gate=global_ligament_forward
+minimum_global_forward=$MIN_GLOBAL_FORWARD
+branching=false
+maximum_fronts=1
 kernel_family=$FAMILY_JSON
 kernel_family_source=$FAMILY_JSON_SOURCE
 kernel_family_sha256=$FAMILY_JSON_SHA256
@@ -241,12 +267,14 @@ run_case() {
     --target-crack-extension-um "$TARGET_EXT_UM"
     --crystal-aniso
     --crystal-compete
-    --crystal-theta-deg 45
+    --crystal-theta-deg "$CRYSTAL_THETA_DEG"
     --crystal-C11 523e9
     --crystal-C12 203e9
     --crystal-C44 160e9
     --cleave-gamma-aniso 0.3
     --crystal-material w
+    --plane-gate-global
+    --min-global-forward "$MIN_GLOBAL_FORWARD"
     --max-fronts 1
     --crack-backend adaptive_czm
     --czm-max-angle-error-deg 35
@@ -271,6 +299,12 @@ run_case() {
     CLEAVAGE_EVENT_MAX_FACTOR="$EVENT_MAX_FACTOR" \
     "${CMD[@]}" 2>&1 | tee "$LOG"
 
+  # Produce an incrementally updated analysis after every completed case. A
+  # file lock avoids concurrent writers when MAX_JOBS > 1.
+  python "$ROOT/scripts/analyze_v100517_paper_parameter_campaign.py" \
+    "$CAMPAIGN_ROOT" --target-extension-um "$TARGET_EXT_UM" --allow-partial \
+    --lock-file "$CAMPAIGN_ROOT/.analysis.lock" || true
+
   echo "[DONE] option=$OPTION T=${T}K seed=$SEED"
 }
 
@@ -278,11 +312,24 @@ export -f run_case
 export ROOT PFROOT FAMILY_JSON CAMPAIGN_ROOT TARGET_EXT_UM STEPS DU DT
 export SKIP_FINISHED PRINT_EVERY EVENT_MIN_FACTOR EVENT_MAX_FACTOR
 export SNAPSHOT_BY_EXT_UM SAVE_SNAPSHOTS SNAPSHOT_COLS GENERATE_SOLVER_PLOTS
+export CRYSTAL_THETA_DEG MIN_GLOBAL_FORWARD
 
+set +e
 xargs -P "$MAX_JOBS" -n 4 bash -c 'run_case "$1" "$2" "$3" "$4"' _ < "$CASE_MATRIX"
+RUN_STATUS=$?
+set -e
+
+# Always leave the best available plots, even if one case failed. Then apply
+# the strict completeness gate only when all case processes returned success.
+python "$ROOT/scripts/analyze_v100517_paper_parameter_campaign.py" \
+  "$CAMPAIGN_ROOT" --target-extension-um "$TARGET_EXT_UM" --allow-partial
+
+if [[ "$RUN_STATUS" -ne 0 ]]; then
+  echo "ERROR: one or more cases failed; partial analysis was written." >&2
+  exit "$RUN_STATUS"
+fi
 
 python "$ROOT/scripts/analyze_v100517_paper_parameter_campaign.py" \
-  "$CAMPAIGN_ROOT" \
-  --target-extension-um "$TARGET_EXT_UM"
+  "$CAMPAIGN_ROOT" --target-extension-um "$TARGET_EXT_UM"
 
 echo "Campaign and final analysis complete: $CAMPAIGN_ROOT"
