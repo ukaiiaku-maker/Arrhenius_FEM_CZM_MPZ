@@ -25,13 +25,16 @@ jobs:
           python -m py_compile \
             arrhenius_fracture/adaptive_czm_quality_subdivision_v100518.py \
             arrhenius_fracture/adaptive_czm_quality_partition_v100519.py \
+            arrhenius_fracture/adaptive_czm_partition_failure_audit_v100520.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_standalone.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_19_four_class_standalone.py
-      - name: Adaptive partition and production-sweep tests
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_19_four_class_standalone.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_20_four_class_standalone.py
+      - name: Adaptive partition, failure-audit, and production-sweep tests
         run: |
           python -m pytest -q \
             tests/test_adaptive_czm_quality_subdivision_v100518.py \
             tests/test_adaptive_czm_quality_partition_v100519.py \
+            tests/test_adaptive_czm_partition_failure_audit_v100520.py \
             tests/test_v100519_four_class_temperature_sweep.py
       - name: Preserve stochastic moving-tip and adaptive-CZM parity
         run: |
