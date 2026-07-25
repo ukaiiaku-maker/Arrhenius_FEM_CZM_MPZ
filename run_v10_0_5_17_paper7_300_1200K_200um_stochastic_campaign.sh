@@ -4,8 +4,38 @@ set -euo pipefail
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 PFROOT=${PFROOT:-/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_22_physical_front_width_top5_dbtt_screen}
 PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.22-physical-front-width-top5-dbtt-screen}
-FAMILY_JSON=${FAMILY_JSON:-$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json}
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1}
+
+# The signed-kernel family is a generated runtime artifact rather than a tracked
+# file in the paper-parameter PF branch. Prefer an explicit path, then the paper
+# PF clone, then the sibling PF clone used by the validated v10.0.5.15/16 runs.
+ATLAS_REL=runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json
+FAMILY_JSON=${FAMILY_JSON:-}
+FAMILY_JSON_SOURCE=explicit_environment
+if [[ -z "$FAMILY_JSON" ]]; then
+  FAMILY_JSON_SOURCE=unresolved
+  ATLAS_CANDIDATES=(
+    "$PFROOT/$ATLAS_REL"
+    "$(dirname "$ROOT")/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/$ATLAS_REL"
+  )
+  for candidate in "${ATLAS_CANDIDATES[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      FAMILY_JSON="$candidate"
+      FAMILY_JSON_SOURCE=validated_sibling_runtime_artifact
+      break
+    fi
+  done
+fi
+if [[ -z "$FAMILY_JSON" || ! -f "$FAMILY_JSON" ]]; then
+  echo "ERROR: missing audited v10.2.14 active-only signed-kernel family." >&2
+  echo "Provide it explicitly with:" >&2
+  echo "  FAMILY_JSON=/absolute/path/to/$ATLAS_REL" >&2
+  echo "Checked:" >&2
+  echo "  $PFROOT/$ATLAS_REL" >&2
+  echo "  $(dirname "$ROOT")/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/$ATLAS_REL" >&2
+  exit 1
+fi
+FAMILY_JSON=$(cd "$(dirname "$FAMILY_JSON")" && pwd)/$(basename "$FAMILY_JSON")
 
 # The 50 K transition-region points resolve the selected 950 K and 1050 K peaks.
 TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 850 900 950 1000 1050 1100 1150 1200"}
@@ -64,6 +94,18 @@ for path in "${REQUIRED_PF_FILES[@]}"; do
     exit 1
   fi
 done
+
+FAMILY_JSON_SHA256=$(python - "$FAMILY_JSON" <<'PY'
+from pathlib import Path
+import hashlib
+import sys
+path = Path(sys.argv[1])
+print(hashlib.sha256(path.read_bytes()).hexdigest())
+PY
+)
+echo "Using signed-kernel family: $FAMILY_JSON"
+echo "  source: $FAMILY_JSON_SOURCE"
+echo "  sha256: $FAMILY_JSON_SHA256"
 
 OPTIONS=("${PRIMARY_OPTIONS[@]}")
 if [[ "$INCLUDE_CONTROL" == "1" ]]; then
@@ -140,6 +182,8 @@ save_snapshots=$SAVE_SNAPSHOTS
 snapshot_cols=$SNAPSHOT_COLS
 generate_solver_plots=$GENERATE_SOLVER_PLOTS
 kernel_family=$FAMILY_JSON
+kernel_family_source=$FAMILY_JSON_SOURCE
+kernel_family_sha256=$FAMILY_JSON_SHA256
 max_jobs=$MAX_JOBS
 EOF
 
