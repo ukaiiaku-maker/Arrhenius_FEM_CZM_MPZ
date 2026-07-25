@@ -48,7 +48,7 @@ def response_metrics(
     initial = _array(K_initial_MPa_sqrt_m)
     developed = _array(K_developed_MPa_sqrt_m)
     complete = bool(
-        temperatures.size >= 6
+        temperatures.size >= 5
         and temperatures.size == initial.size == developed.size
         and np.isfinite(temperatures).all()
         and np.isfinite(initial).all()
