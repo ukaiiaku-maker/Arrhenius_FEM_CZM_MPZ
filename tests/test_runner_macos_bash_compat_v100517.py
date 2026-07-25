@@ -5,6 +5,7 @@ import subprocess
 RUNNER = Path(
     "run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh"
 )
+WRAPPER4 = Path("run_v10_0_5_17_paper4_validated_campaign.sh")
 
 
 def test_runner_uses_nonempty_command_array_under_nounset():
@@ -14,6 +15,38 @@ def test_runner_uses_nonempty_command_array_under_nounset():
     assert "CMD=(" in text
     assert 'CMD+=(--no-plots)' in text
     assert '"${CMD[@]}"' in text
+
+
+def test_four_class_default_and_direction_switch_gate():
+    text = RUNNER.read_text()
+    assert "PARAMETER_SET=${PARAMETER_SET:-paper4}" in text
+    assert "PAPER4_OPTIONS=(" in text
+    assert "v913_paper_peak01_0242980_persistent_sites" in text
+    assert "v913_paper_dbtt01_0202500_persistent_sites" in text
+    assert "v913_paper_weakT01_0257068_persistent_sites" in text
+    assert "v913_paper_ceramic01_0189364_persistent_sites" in text
+    assert "CRYSTAL_THETA_DEG=${CRYSTAL_THETA_DEG:-30}" in text
+    assert "--plane-gate-global" in text
+    assert '--min-global-forward "$MIN_GLOBAL_FORWARD"' in text
+    assert "--max-fronts 1" in text
+
+
+def test_runner_generates_partial_and_strict_analysis():
+    text = RUNNER.read_text()
+    assert "--allow-partial" in text
+    assert "--lock-file" in text
+    assert "RUN_STATUS=$?" in text
+    assert "scripts/analyze_v100517_paper_parameter_campaign.py" in text
+
+
+def test_paper4_validated_wrapper_selects_exactly_four_primary_options():
+    text = WRAPPER4.read_text()
+    assert "PARAMETER_SET=paper4" in text
+    assert text.count("v913_paper_") == 4
+    assert "peak01_0242980" in text
+    assert "dbtt01_0202500" in text
+    assert "weakT01_0257068" in text
+    assert "ceramic01_0189364" in text
 
 
 def test_nonempty_array_expansion_is_safe_with_nounset(tmp_path):
