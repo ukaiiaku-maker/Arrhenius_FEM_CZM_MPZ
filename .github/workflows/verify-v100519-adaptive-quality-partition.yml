@@ -42,6 +42,7 @@ jobs:
             tests/test_stochastic_hazard_event_length_v100516.py \
             tests/test_moving_tip_coupling_v100515.py \
             tests/test_adaptive_czm_tip_support_v1005144.py
-      - name: Validate production launcher syntax
+      - name: Validate launchers
         run: |
           bash -n run_v10_0_5_19_frozen_four_class_temperature_sweep.sh
+          bash -n run_v10_0_5_20_peak300_geometry_reproducer.sh
