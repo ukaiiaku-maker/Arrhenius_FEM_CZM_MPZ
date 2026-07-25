@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "purpose": "Class-specific persistent-site search for weak-temperature/FCC-like and ceramic-like responses. The bounds deliberately permit near-zero or negative temperature coefficients and low source density, unlike the DBTT/peak search.",
+  "local_anchor_fraction": 0.25,
+  "anchor_candidate_ids": [
+    "v913_zeroD_sobol_0257068",
+    "v913_zeroD_sobol_0189364"
+  ],
+  "search_dimensions": {
+    "cleave_G00_eV": {"mode": "linear_delta", "half_width": 1.5, "low": 0.5, "high": 6.0},
+    "cleave_gT_eV_per_K": {"mode": "linear_delta", "half_width": 0.0050, "low": -0.0060, "high": 0.0100},
+    "cleave_sigc0_GPa": {"mode": "linear_delta", "half_width": 2.0, "low": 0.5, "high": 9.0},
+    "cleave_sT_GPa_per_K": {"mode": "linear_delta", "half_width": 0.0050, "low": -0.0100, "high": 0.0100},
+    "cleave_exp_a": {"mode": "linear_delta", "half_width": 0.55, "low": 0.03, "high": 2.0},
+    "cleave_exp_n": {"mode": "linear_delta", "half_width": 0.90, "low": 0.35, "high": 3.5},
+    "cleave_floor_frac": {"mode": "log10_delta", "half_width_decades": 0.75, "low": 0.001, "high": 0.30},
+
+    "emit_G00_eV": {"mode": "linear_delta", "half_width": 1.5, "low": 0.3, "high": 7.0},
+    "emit_gT_eV_per_K": {"mode": "linear_delta", "half_width": 0.0050, "low": -0.0080, "high": 0.0100},
+    "emit_sigc0_GPa": {"mode": "linear_delta", "half_width": 2.5, "low": 0.5, "high": 11.0},
+    "emit_sT_GPa_per_K": {"mode": "linear_delta", "half_width": 0.0060, "low": -0.0120, "high": 0.0100},
+    "emit_exp_a": {"mode": "linear_delta", "half_width": 0.50, "low": 0.02, "high": 2.0},
+    "emit_exp_n": {"mode": "linear_delta", "half_width": 0.80, "low": 0.35, "high": 3.0},
+    "emit_floor_frac": {"mode": "log10_delta", "half_width_decades": 0.75, "low": 0.001, "high": 0.30},
+
+    "peierls_H0_eV": {"mode": "linear_delta", "half_width": 2.0, "low": 0.2, "high": 8.0},
+    "peierls_activation_entropy_kB": {"mode": "linear_delta", "half_width": 20.0, "low": -50.0, "high": 30.0},
+    "peierls_exp_a": {"mode": "linear_delta", "half_width": 0.70, "low": 0.05, "high": 2.5},
+    "peierls_exp_n": {"mode": "linear_delta", "half_width": 0.90, "low": 0.35, "high": 3.25},
+
+    "taylor_H0_eV": {"mode": "linear_delta", "half_width": 1.0, "low": 0.05, "high": 4.0},
+    "taylor_activation_entropy_kB": {"mode": "linear_delta", "half_width": 20.0, "low": -30.0, "high": 50.0},
+    "taylor_exp_a": {"mode": "linear_delta", "half_width": 0.35, "low": 0.02, "high": 1.5},
+    "taylor_exp_n": {"mode": "linear_delta", "half_width": 0.80, "low": 0.35, "high": 3.0},
+
+    "rho_source0_m2": {"mode": "log10_delta", "half_width_decades": 2.0, "low": 1.0e11, "high": 1.0e17},
+    "taylor_corr_rho_c_m2": {"mode": "log10_delta", "half_width_decades": 2.5, "low": 1.0e10, "high": 1.0e18},
+    "taylor_corr_scale": {"mode": "log10_delta", "half_width_decades": 1.0, "low": 0.03, "high": 15.0},
+    "c_blunt": {"mode": "linear_delta", "half_width": 1.5, "low": 0.0, "high": 4.0}
+  }
+}

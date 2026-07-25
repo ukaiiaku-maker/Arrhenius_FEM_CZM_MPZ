@@ -1,0 +1,6 @@
+V913_WEAKT_CERAMIC_FINAL_SELECTION
+class=weakT_FCC_like rank=1 role=paper_primary candidate=v913_zeroD_sobol_0129902 score=0.759737931
+class=weakT_FCC_like rank=2 role=paper_backup candidate=v913_zeroD_sobol_0008816 score=0.914174746
+class=ceramic_like rank=1 role=paper_primary candidate=v913_zeroD_sobol_0077080 score=3.16094906
+class=ceramic_like rank=2 role=paper_backup candidate=v913_zeroD_sobol_0008536 score=3.17577028
+V913_WEAKT_CERAMIC_PRIMARY_HANDOFF_WRITTEN rows=2 csv=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v9_13_dbtt_temperature_shelf/paper_selections/v9_13_weakT_ceramic_5T_100um_v1/v9_13_weakT_ceramic_primary_handoff.csv manifest=/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v9_13_dbtt_temperature_shelf/paper_selections/v9_13_weakT_ceramic_5T_100um_v1/v9_13_weakT_ceramic_final_selection.json
