@@ -25,7 +25,7 @@ jobs:
             scripts/analyze_v100517_paper_parameter_campaign.py
       - name: Audited PF registry bridge tests
         run: python -m pytest -q --tb=short tests/test_audited_pf_parameter_bridge_v100517.py
-      - name: Multi-parameter analysis tests
+      - name: K J path and partial campaign analysis tests
         run: python -m pytest -q --tb=short tests/test_analyze_v100517_paper_campaign.py
       - name: Preserve stochastic and moving-tip parity
         run: |
@@ -41,8 +41,9 @@ jobs:
             tests/test_persistent_site_v100514.py \
             tests/test_adaptive_czm_tip_support_v1005144.py \
             tests/test_persistent_site_diagnostics_v1005144.py
-      - name: Validate production runners and macOS Bash compatibility
+      - name: Validate four-class and full-set runners
         run: |
+          bash -n run_v10_0_5_17_paper4_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
           python -m pytest -q --tb=short tests/test_runner_macos_bash_compat_v100517.py
