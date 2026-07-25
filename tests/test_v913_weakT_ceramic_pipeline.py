@@ -64,15 +64,21 @@ def test_new_policy_expands_beyond_peak_oriented_temperature_and_source_bounds()
     assert float(policy["local_anchor_fraction"]) < 0.5
 
 
-def test_launcher_uses_existing_110um_map_and_single_100um_1d_gate():
+def test_launcher_uses_reduced_five_temperature_100um_gate():
     text = LAUNCHER_PATH.read_text()
     assert "v9_13_long_map_exponential_110um_v2" in text
-    assert "TARGET_EXT_UM=\"${TARGET_EXT_UM:-100}\"" in text
+    assert 'TEMPERATURES_K="${TEMPERATURES_K:-300 600 900 1100 1200}"' in text
+    assert 'TARGET_EXT_UM="${TARGET_EXT_UM:-100}"' in text
+    assert 'SAMPLES="${SAMPLES:-131072}"' in text
+    assert 'ZERO_D_EXACT_PER_CLASS="${ZERO_D_EXACT_PER_CLASS:-128}"' in text
+    assert 'ZERO_D_PROMOTE_PER_CLASS="${ZERO_D_PROMOTE_PER_CLASS:-8}"' in text
+    assert 'FINAL_PROMOTE_PER_CLASS="${FINAL_PROMOTE_PER_CLASS:-3}"' in text
     assert "one_d_${TARGET_TAG}um" in text
     assert "analysis_${TARGET_TAG}um" in text
     assert "1000um" not in text
     assert "LONG_LOADING_MAP" not in text
     assert text.count("scripts.run_v913_autonomous_dbtt_search") == 1
+    assert "V913_WEAKT_CERAMIC_1D_START" in text
 
 
 def test_physical_surface_gate_rejects_negative_high_temperature_surface():
