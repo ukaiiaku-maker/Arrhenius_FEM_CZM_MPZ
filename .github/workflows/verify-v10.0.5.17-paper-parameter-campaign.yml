@@ -1,0 +1,56 @@
+name: Verify v10.0.5.17 audited paper parameter campaign
+
+on:
+  push:
+    branches:
+      - v10.0.5.17-paper-parameter-campaign-parity
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -q -e '.[dev]'
+      - name: Compile v10.0.5.17
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/audited_pf_parameter_bridge_v100517.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_17_paper_parameter_campaign.py \
+            scripts/validate_v100517_paper_parameter_inputs.py \
+            scripts/analyze_v100517_paper_parameter_campaign.py
+      - name: Audited PF registry bridge tests
+        run: python -m pytest -q --tb=short tests/test_audited_pf_parameter_bridge_v100517.py
+      - name: K J path and partial campaign analysis tests
+        run: python -m pytest -q --tb=short tests/test_analyze_v100517_paper_campaign.py
+      - name: Preserve stochastic and moving-tip parity
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_stochastic_hazard_event_length_v100516.py \
+            tests/test_diagnostics_refinement_v100516.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_moving_tip_coupling_v100515.py
+      - name: Preserve persistent source and adaptive-CZM contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
+      - name: Validate campaign shell syntax
+        run: |
+          bash -n run_v10_0_5_17_paper4_validated_campaign.sh
+          bash -n run_v10_0_5_17_paper7_validated_campaign.sh
+          bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
+      - name: Validate nounset-safe command construction
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_runner_uses_nonempty_command_array_under_nounset tests/test_runner_macos_bash_compat_v100517.py::test_nonempty_array_expansion_is_safe_with_nounset
+      - name: Validate four-class production selection
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_four_class_default_and_direction_switch_gate tests/test_runner_macos_bash_compat_v100517.py::test_paper4_validated_wrapper_selects_exactly_four_primary_options
+      - name: Validate global crystallographic direction gate
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_global_gate_allows_both_forward_BCC_100_traces_at_30deg
+      - name: Validate incremental and strict analysis invocation
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_runner_generates_partial_and_strict_analysis
