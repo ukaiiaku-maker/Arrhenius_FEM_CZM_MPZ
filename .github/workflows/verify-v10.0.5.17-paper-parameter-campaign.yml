@@ -46,5 +46,11 @@ jobs:
           bash -n run_v10_0_5_17_paper4_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
-      - name: Validate four-class direction and macOS Bash contracts
-        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py
+      - name: Validate nounset-safe command construction
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_runner_uses_nonempty_command_array_under_nounset tests/test_runner_macos_bash_compat_v100517.py::test_nonempty_array_expansion_is_safe_with_nounset
+      - name: Validate four-class production selection
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_four_class_default_and_direction_switch_gate tests/test_runner_macos_bash_compat_v100517.py::test_paper4_validated_wrapper_selects_exactly_four_primary_options
+      - name: Validate global crystallographic direction gate
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_global_gate_allows_both_forward_BCC_100_traces_at_30deg
+      - name: Validate incremental and strict analysis invocation
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py::test_runner_generates_partial_and_strict_analysis
