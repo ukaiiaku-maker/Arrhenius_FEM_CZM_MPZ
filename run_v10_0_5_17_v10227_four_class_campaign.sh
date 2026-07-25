@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 PFROOT=${PFROOT:-/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1}
-PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.22-physical-front-width-top5-dbtt-screen}
-PF_COMMIT_PREFIX_REQUIRED=${PF_COMMIT_PREFIX_REQUIRED:-0a340f6}
+PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.27-paper-four-class-30deg-long-rcurves}
+PF_CANONICAL_COMMIT_REQUIRED=${PF_CANONICAL_COMMIT_REQUIRED:-73a97ff5fc15c3be3f513e6ce3f219dcf028580c}
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_v10227_paper4_anisotropic_300_1200K_1000um_stochastic_pf_parity_v1}
 
 ATLAS_REL=runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json
@@ -76,8 +76,12 @@ if [[ "$PF_BRANCH" != "$PF_BRANCH_REQUIRED" ]]; then
   echo "ERROR: PFROOT is on '$PF_BRANCH'; required '$PF_BRANCH_REQUIRED'" >&2
   exit 1
 fi
-if [[ "$PF_COMMIT" != "$PF_COMMIT_PREFIX_REQUIRED"* ]]; then
-  echo "ERROR: PFROOT commit '$PF_COMMIT' does not match canonical prefix '$PF_COMMIT_PREFIX_REQUIRED'" >&2
+if ! git -C "$PFROOT" cat-file -e "$PF_CANONICAL_COMMIT_REQUIRED^{commit}" 2>/dev/null; then
+  echo "ERROR: PFROOT does not contain canonical PF commit '$PF_CANONICAL_COMMIT_REQUIRED'" >&2
+  exit 1
+fi
+if ! git -C "$PFROOT" merge-base --is-ancestor "$PF_CANONICAL_COMMIT_REQUIRED" "$PF_COMMIT"; then
+  echo "ERROR: PFROOT commit '$PF_COMMIT' is not a descendant of canonical PF commit '$PF_CANONICAL_COMMIT_REQUIRED'" >&2
   exit 1
 fi
 
@@ -110,6 +114,7 @@ PY
 )
 
 echo "Using PF v10.2.27 four-class registry at commit $PF_COMMIT"
+echo "  canonical ancestor: $PF_CANONICAL_COMMIT_REQUIRED"
 echo "Using signed-kernel family: $FAMILY_JSON"
 echo "  source: $FAMILY_JSON_SOURCE"
 echo "  sha256: $FAMILY_JSON_SHA256"
@@ -165,8 +170,9 @@ release=10.0.5.17-v10.2.27-parameters
 entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_17_v10227_four_class
 PF_repo_root=$PFROOT
 PF_branch_required=$PF_BRANCH_REQUIRED
-PF_commit_prefix_required=$PF_COMMIT_PREFIX_REQUIRED
+PF_canonical_commit_required=$PF_CANONICAL_COMMIT_REQUIRED
 PF_commit=$PF_COMMIT
+PF_commit_is_descendant_of_canonical=true
 parameter_set=paper4-v10.2.27
 parameter_options=${OPTIONS[*]}
 temperatures_K=$TEMPERATURES
