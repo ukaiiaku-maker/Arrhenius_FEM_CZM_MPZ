@@ -41,9 +41,10 @@ jobs:
             tests/test_persistent_site_v100514.py \
             tests/test_adaptive_czm_tip_support_v1005144.py \
             tests/test_persistent_site_diagnostics_v1005144.py
-      - name: Validate four-class and full-set runners
+      - name: Validate campaign shell syntax
         run: |
           bash -n run_v10_0_5_17_paper4_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_validated_campaign.sh
           bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
-          python -m pytest -q --tb=short tests/test_runner_macos_bash_compat_v100517.py
+      - name: Validate four-class direction and macOS Bash contracts
+        run: python -m pytest -vv --tb=long tests/test_runner_macos_bash_compat_v100517.py
