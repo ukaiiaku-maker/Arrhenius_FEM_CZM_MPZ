@@ -46,6 +46,37 @@ def _always_reject(self, **kwargs):
     )
 
 
+def _always_insert(self, **kwargs):
+    moved = float(
+        np.linalg.norm(np.asarray(kwargs["p1"]) - np.asarray(kwargs["p0"]))
+    )
+    self.advance_log.append({"length_m": moved})
+    return cb.CrackAdvanceResult(
+        mesh=kwargs["mesh"],
+        boundary=kwargs["boundary"],
+        damage=kwargs["damage"],
+        displacement=kwargs["displacement"],
+        moved=moved,
+        inserted=True,
+        reason="ok",
+        elem_parent_map=np.arange(kwargs["mesh"].ne),
+    )
+
+
+def _run(backend, mesh):
+    return uniform._quality_subdividing_advance_v100518(
+        backend,
+        mesh=mesh,
+        boundary=object(),
+        damage=np.zeros(mesh.nn),
+        displacement=np.zeros(2 * mesh.nn),
+        p0=np.array([0.0, 0.0]),
+        p1=np.array([1.0, 0.0]),
+        direction=np.array([1.0, 0.0]),
+        front_id=0,
+    )
+
+
 def test_terminal_raw_backend_reasons_survive_atomic_rollback(monkeypatch):
     backend = _Backend()
     mesh = _Mesh()
@@ -63,17 +94,7 @@ def test_terminal_raw_backend_reasons_survive_atomic_rollback(monkeypatch):
 
     with adaptive.installed_adaptive_quality_partition_v100519():
         with audit.installed_partition_failure_audit_v100520():
-            result = uniform._quality_subdividing_advance_v100518(
-                backend,
-                mesh=mesh,
-                boundary=object(),
-                damage=np.zeros(mesh.nn),
-                displacement=np.zeros(2 * mesh.nn),
-                p0=np.array([0.0, 0.0]),
-                p1=np.array([1.0, 0.0]),
-                direction=np.array([1.0, 0.0]),
-                front_id=0,
-            )
+            result = _run(backend, mesh)
 
     assert result.inserted is False
     assert backend.advance_log == []
@@ -88,7 +109,61 @@ def test_terminal_raw_backend_reasons_survive_atomic_rollback(monkeypatch):
     assert row["raw_backend_reason_counts"][row["dominant_raw_backend_reason"]] > 0
     assert row["requested_da_m"] == 1.0
     assert row["minimum_rejected_segment_m"] > 0.0
+    assert row["persistence_stage"] == "final_record_or_raise_after_all_audit_truncation"
     assert uniform._v9185._RUNTIME["quality_vetoes"][-1]["schema"] == audit.MODEL_ID
+
+
+def test_quality_only_failure_survives_final_caller_audit_truncation(monkeypatch):
+    backend = _Backend()
+    mesh = _Mesh()
+
+    uniform._v91856._AUDIT["quality_vetoes"] = []
+    uniform._v9185._RUNTIME["quality_vetoes"] = []
+    monkeypatch.setattr(uniform, "_subdivision_counts", lambda: (2,))
+    monkeypatch.setenv("ARRHENIUS_QUALITY_PARTITION_MAX_DEPTH", "2")
+    monkeypatch.setattr(
+        uniform._v91856,
+        "_record_or_raise",
+        lambda self, kwargs, result: result,
+    )
+
+    def reject_quality(self, old_mesh, result, kwargs, log_start):
+        row = {
+            "min_triangle_quality": 0.2,
+            "triangle_quality_floor": 0.035,
+            "min_child_area_ratio": 0.07,
+            "child_area_ratio_floor": 0.08,
+            "child_area_ratio_reference": "test",
+            "active_tip_h_over_da": 1.0,
+            "requested_tip_h_over_da": 0.75,
+            "tip_h_over_da_enforced_as_veto": False,
+            "resolution_warning": True,
+            "requested_da_m": float(
+                np.linalg.norm(np.asarray(kwargs["p1"]) - np.asarray(kwargs["p0"]))
+            ),
+            "affected_element_count": 1,
+            "accepted": False,
+            "issues": ["child_area_ratio=7.000000e-02<8.000000e-02"],
+            "active_tip_h_mean_m": 1.0,
+        }
+        return row["issues"], row, True
+
+    monkeypatch.setattr(uniform, "_assess", reject_quality)
+    uniform._quality_subdividing_advance_v100518._original = _always_insert
+
+    with adaptive.installed_adaptive_quality_partition_v100519():
+        with audit.installed_partition_failure_audit_v100520():
+            result = _run(backend, mesh)
+
+    assert result.inserted is False
+    rows = uniform._v91856._AUDIT["quality_vetoes"]
+    diagnostic = [row for row in rows if row.get("schema") == audit.MODEL_ID]
+    assert len(diagnostic) == 1
+    row = diagnostic[0]
+    assert row["raw_backend_rejection_count"] == 0
+    assert row["dominant_raw_backend_reason"] == "no_raw_backend_reason_captured"
+    assert row["terminal_veto_reason"].startswith("v100518_quality_veto:")
+    assert row["persistence_stage"] == "final_record_or_raise_after_all_audit_truncation"
 
 
 def test_v100520_wrapper_declares_diagnostic_only_contract():
