@@ -21,6 +21,7 @@ jobs:
           python -m py_compile \
             arrhenius_fracture/audited_pf_parameter_bridge_v100517.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_17_paper_parameter_campaign.py \
+            scripts/validate_v100517_paper_parameter_inputs.py \
             scripts/analyze_v100517_paper_parameter_campaign.py
       - name: Audited PF registry bridge tests
         run: python -m pytest -q --tb=short tests/test_audited_pf_parameter_bridge_v100517.py
@@ -41,4 +42,6 @@ jobs:
             tests/test_adaptive_czm_tip_support_v1005144.py \
             tests/test_persistent_site_diagnostics_v1005144.py
       - name: Validate production runner syntax
-        run: bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
+        run: |
+          bash -n run_v10_0_5_17_paper7_validated_campaign.sh
+          bash -n run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh
