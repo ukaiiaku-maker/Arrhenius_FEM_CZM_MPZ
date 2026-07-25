@@ -60,11 +60,20 @@ def test_runner_generates_partial_and_strict_analysis():
 def test_paper4_validated_wrapper_selects_exactly_four_primary_options():
     text = WRAPPER4.read_text()
     assert "PARAMETER_SET=paper4" in text
-    assert text.count("v913_paper_") == 4
-    assert "peak01_0242980" in text
-    assert "dbtt01_0202500" in text
-    assert "weakT01_0257068" in text
-    assert "ceramic01_0189364" in text
+    primary_block = text.split("OPTIONS=(", 1)[1].split("\n)", 1)[0]
+    primary_options = [
+        line.strip()
+        for line in primary_block.splitlines()
+        if line.strip().startswith("v913_paper_")
+    ]
+    assert primary_options == [
+        "v913_paper_peak01_0242980_persistent_sites",
+        "v913_paper_dbtt01_0202500_persistent_sites",
+        "v913_paper_weakT01_0257068_persistent_sites",
+        "v913_paper_ceramic01_0189364_persistent_sites",
+    ]
+    # The rehardening control is available only behind INCLUDE_CONTROL=1.
+    assert "OPTIONS+=(v913_paper_control01_0086420_persistent_sites)" in text
 
 
 def test_nonempty_array_expansion_is_safe_with_nounset(tmp_path):
