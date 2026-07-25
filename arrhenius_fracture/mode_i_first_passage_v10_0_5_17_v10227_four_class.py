@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 from . import mode_i_first_passage_v10_0_5_16_stochastic_pf_parity as _base
-from .audited_pf_parameter_bridge_v100517_v10227 import (
+from .audited_pf_parameter_bridge_v100517_v10227_canonical import (
     BRIDGE_SCHEMA,
     load_audited_parameter_option,
 )
