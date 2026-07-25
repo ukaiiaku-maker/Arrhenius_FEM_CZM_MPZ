@@ -33,6 +33,8 @@ TEMPERATURES = [
     1300,
 ]
 
+COARSE_TEMPERATURES = [300, 600, 900, 1100, 1200]
+
 
 def test_weakT_gate_requires_flat_initiation_and_small_positive_rcurve():
     initial = [20.0, 20.2, 20.1, 20.3, 20.1, 20.2, 20.0, 20.1, 20.2, 20.1, 20.0, 19.9, 19.8, 19.7, 19.6]
@@ -54,6 +56,28 @@ def test_ceramic_gate_requires_high_temperature_loss_and_negligible_rcurve():
     assert np.isfinite(score)
     assert metrics["initial_high_temperature_loss_MPa_sqrt_m"] > 0.5
     assert metrics["median_abs_R_rise_MPa_sqrt_m"] < 1.0
+
+
+def test_five_temperature_grid_supports_both_class_gates():
+    weak_initial = [20.0, 20.2, 20.1, 20.0, 19.8]
+    weak_developed = [24.0, 24.2, 24.1, 24.0, 23.8]
+    weak_metrics = response_metrics(
+        COARSE_TEMPERATURES,
+        weak_initial,
+        weak_developed,
+    )
+    weak_gate, _ = weakT_score(weak_metrics)
+    assert weak_gate is True
+
+    ceramic_initial = [25.0, 25.1, 25.0, 24.8, 22.5]
+    ceramic_developed = [25.4, 25.5, 25.4, 25.2, 22.9]
+    ceramic_metrics = response_metrics(
+        COARSE_TEMPERATURES,
+        ceramic_initial,
+        ceramic_developed,
+    )
+    ceramic_gate, _ = ceramic_score(ceramic_metrics)
+    assert ceramic_gate is True
 
 
 def test_failed_transfers_are_rejected_by_low_temperature_and_rcurve_terms():
