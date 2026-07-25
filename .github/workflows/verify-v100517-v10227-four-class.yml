@@ -1,4 +1,4 @@
-name: Verify v10.0.5.17 PF v10.2.27 four-class transfer
+name: Verify v10.0.5.17 four-class FEM paths
 
 on:
   pull_request:
@@ -20,17 +20,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . pytest pandas matplotlib scipy
-      - name: Compile new bridge and diagnostics
+      - name: Compile four-class bridges and diagnostics
         run: |
           python -m py_compile \
             arrhenius_fracture/audited_pf_parameter_bridge_v100517_v10227.py \
+            arrhenius_fracture/audited_pf_parameter_bridge_v100517_v10227_canonical.py \
+            arrhenius_fracture/frozen_four_class_registry_v100517.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_17_v10227_four_class.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_17_four_class_standalone.py \
             scripts/validate_v100517_v10227_four_class_inputs.py \
+            scripts/validate_v100517_frozen_four_class.py \
             scripts/diagnose_v100517_j_scale.py
       - name: Exact four-class transfer tests
         run: |
           python -m pytest -q \
             tests/test_v100517_v10227_four_class.py \
+            tests/test_v100517_v10227_pf_ancestry_gate.py \
+            tests/test_v100517_frozen_four_class_standalone.py \
             tests/test_audited_pf_parameter_bridge_v100517.py
       - name: Preserve stochastic moving-tip and adaptive-CZM parity
         run: |
@@ -39,10 +45,16 @@ jobs:
             tests/test_pf_update_map_v100515.py \
             tests/test_moving_tip_coupling_v100515.py \
             tests/test_adaptive_czm_tip_support_v1005144.py
-      - name: Validate new shell launchers
+      - name: Validate shell launchers
         run: |
           bash -n run_v10_0_5_17_v10227_four_class_campaign.sh
           bash -n run_v10_0_5_17_v10227_four_class_300_1000K_20um_smoke.sh
+          bash -n run_v10_0_5_17_frozen_four_class_300_1000K_20um_smoke.sh
+      - name: Execute standalone frozen registry preflight
+        run: |
+          python scripts/validate_v100517_frozen_four_class.py \
+            --out /tmp/v100517_frozen4.json
+          test -s /tmp/v100517_frozen4.json
       - name: Execute lightweight J-scale diagnostic
         run: |
           python scripts/diagnose_v100517_j_scale.py \
