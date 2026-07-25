@@ -1,6 +1,10 @@
 from pathlib import Path
 import subprocess
 
+import numpy as np
+
+from arrhenius_fracture.crystal import bcc_cleavage_traces
+
 
 RUNNER = Path(
     "run_v10_0_5_17_paper7_300_1200K_200um_stochastic_campaign.sh"
@@ -29,6 +33,20 @@ def test_four_class_default_and_direction_switch_gate():
     assert "--plane-gate-global" in text
     assert '--min-global-forward "$MIN_GLOBAL_FORWARD"' in text
     assert "--max-fronts 1" in text
+
+
+def test_global_gate_allows_both_forward_BCC_100_traces_at_30deg():
+    planes = bcc_cleavage_traces(theta_deg=30.0, include_110=False)
+    forward = np.array([1.0, 0.0])
+    directions = []
+    for plane in planes:
+        t = np.asarray(plane["t"], float)
+        if float(t @ forward) < float((-t) @ forward):
+            t = -t
+        directions.append(t)
+    assert all(float(t @ forward) >= 0.2 for t in directions)
+    # The same alternate trace would be rejected by the old local-tangent gate.
+    assert abs(float(directions[0] @ directions[1])) < 0.2
 
 
 def test_runner_generates_partial_and_strict_analysis():
