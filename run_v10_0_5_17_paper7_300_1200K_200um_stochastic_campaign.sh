@@ -30,14 +30,11 @@ if [[ -z "$FAMILY_JSON" || ! -f "$FAMILY_JSON" ]]; then
   echo "ERROR: missing audited v10.2.14 active-only signed-kernel family." >&2
   echo "Provide it explicitly with:" >&2
   echo "  FAMILY_JSON=/absolute/path/to/$ATLAS_REL" >&2
-  echo "Checked:" >&2
-  echo "  $PFROOT/$ATLAS_REL" >&2
-  echo "  $(dirname "$ROOT")/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/$ATLAS_REL" >&2
   exit 1
 fi
 FAMILY_JSON=$(cd "$(dirname "$FAMILY_JSON")" && pwd)/$(basename "$FAMILY_JSON")
 
-# The 50 K transition-region points resolve the selected 950 K and 1050 K peaks.
+# Resolve the selected 950 K and 1050 K extrema with 50 K transition spacing.
 TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 850 900 950 1000 1050 1100 1150 1200"}
 TARGET_EXT_UM=${TARGET_EXT_UM:-200}
 STEPS=${STEPS:-100000}
@@ -54,6 +51,15 @@ SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-20}
 SNAPSHOT_COLS=${SNAPSHOT_COLS:-5}
 GENERATE_SOLVER_PLOTS=${GENERATE_SOLVER_PLOTS:-1}
 INCLUDE_CONTROL=${INCLUDE_CONTROL:-0}
+
+case "$GENERATE_SOLVER_PLOTS" in
+  0|1) ;;
+  *) echo "ERROR: GENERATE_SOLVER_PLOTS must be 0 or 1" >&2; exit 1 ;;
+esac
+case "$INCLUDE_CONTROL" in
+  0|1) ;;
+  *) echo "ERROR: INCLUDE_CONTROL must be 0 or 1" >&2; exit 1 ;;
+esac
 
 PRIMARY_OPTIONS=(
   v913_paper_peak01_0242980_persistent_sites
@@ -110,9 +116,6 @@ echo "  sha256: $FAMILY_JSON_SHA256"
 OPTIONS=("${PRIMARY_OPTIONS[@]}")
 if [[ "$INCLUDE_CONTROL" == "1" ]]; then
   OPTIONS+=("$CONTROL_OPTION")
-elif [[ "$INCLUDE_CONTROL" != "0" ]]; then
-  echo "ERROR: INCLUDE_CONTROL must be 0 or 1" >&2
-  exit 1
 fi
 
 mkdir -p "$CAMPAIGN_ROOT"
@@ -209,9 +212,54 @@ run_case() {
   mkdir -p "$OUT"
   echo "[START] option=$OPTION entry=$ENTRY T=${T}K seed=$SEED"
 
-  PLOT_ARGS=()
+  # Keep this array nonempty. Empty-array expansion under `set -u` fails in the
+  # macOS system Bash 3.2 even though it works in newer Bash releases.
+  local -a CMD
+  CMD=(
+    python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaign
+    --pf-repo-root "$PFROOT"
+    --parameter-entry "$ENTRY"
+    --parameter-option "$OPTION"
+    --signed-kernel-family "$FAMILY_JSON"
+    --tip-refinement-radius-um 330
+    --selected-cluster-J-outer-um 240
+    --local-J-outer-um 100
+    --mode 2d
+    --bulk-plasticity-mode tip_only
+    --temperatures "$T"
+    --steps "$STEPS"
+    --nx 36 --ny 72
+    --tip-h-fine 2.5e-6 --tip-ratio 1.15
+    --dU "$DU" --dt "$DT"
+    --n-stagger 1
+    --print-every "$PRINT_EVERY"
+    --adaptive-events
+    --adaptive-event-target 0.05
+    --adaptive-min-frac 1e-8
+    --adaptive-grow 4
+    --da-phys 5e-6
+    --target-crack-extension-um "$TARGET_EXT_UM"
+    --crystal-aniso
+    --crystal-compete
+    --crystal-theta-deg 45
+    --crystal-C11 523e9
+    --crystal-C12 203e9
+    --crystal-C44 160e9
+    --cleave-gamma-aniso 0.3
+    --crystal-material w
+    --max-fronts 1
+    --crack-backend adaptive_czm
+    --czm-max-angle-error-deg 35
+    --j-decomposition cluster
+    --mpz-length-um 50
+    --mpz-n-bins 80
+    --save-snapshots "$SAVE_SNAPSHOTS"
+    --snapshot-cols "$SNAPSHOT_COLS"
+    --snapshot-by-crack-extension-um "$SNAPSHOT_BY_EXT_UM"
+    --out "$OUT"
+  )
   if [[ "$GENERATE_SOLVER_PLOTS" == "0" ]]; then
-    PLOT_ARGS+=(--no-plots)
+    CMD+=(--no-plots)
   fi
 
   env \
@@ -221,49 +269,7 @@ run_case() {
     CLEAVAGE_EVENT_LENGTH_MODE=threshold_scaled \
     CLEAVAGE_EVENT_MIN_FACTOR="$EVENT_MIN_FACTOR" \
     CLEAVAGE_EVENT_MAX_FACTOR="$EVENT_MAX_FACTOR" \
-    python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaign \
-      --pf-repo-root "$PFROOT" \
-      --parameter-entry "$ENTRY" \
-      --parameter-option "$OPTION" \
-      --signed-kernel-family "$FAMILY_JSON" \
-      --tip-refinement-radius-um 330 \
-      --selected-cluster-J-outer-um 240 \
-      --local-J-outer-um 100 \
-      --mode 2d \
-      --bulk-plasticity-mode tip_only \
-      --temperatures "$T" \
-      --steps "$STEPS" \
-      --nx 36 --ny 72 \
-      --tip-h-fine 2.5e-6 --tip-ratio 1.15 \
-      --dU "$DU" --dt "$DT" \
-      --n-stagger 1 \
-      --print-every "$PRINT_EVERY" \
-      --adaptive-events \
-      --adaptive-event-target 0.05 \
-      --adaptive-min-frac 1e-8 \
-      --adaptive-grow 4 \
-      --da-phys 5e-6 \
-      --target-crack-extension-um "$TARGET_EXT_UM" \
-      --crystal-aniso \
-      --crystal-compete \
-      --crystal-theta-deg 45 \
-      --crystal-C11 523e9 \
-      --crystal-C12 203e9 \
-      --crystal-C44 160e9 \
-      --cleave-gamma-aniso 0.3 \
-      --crystal-material w \
-      --max-fronts 1 \
-      --crack-backend adaptive_czm \
-      --czm-max-angle-error-deg 35 \
-      --j-decomposition cluster \
-      --mpz-length-um 50 \
-      --mpz-n-bins 80 \
-      --save-snapshots "$SAVE_SNAPSHOTS" \
-      --snapshot-cols "$SNAPSHOT_COLS" \
-      --snapshot-by-crack-extension-um "$SNAPSHOT_BY_EXT_UM" \
-      "${PLOT_ARGS[@]}" \
-      --out "$OUT" \
-      2>&1 | tee "$LOG"
+    "${CMD[@]}" 2>&1 | tee "$LOG"
 
   echo "[DONE] option=$OPTION T=${T}K seed=$SEED"
 }
