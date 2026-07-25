@@ -40,7 +40,7 @@ def test_forward_support_repairs_seven_percent_direct_child_without_moving_targe
     assert direct_reason == "ok"
     assert np.allclose(direct_q, target)
     _, direct_area = _immediate_metrics(backend, mesh, direct_mesh, direct_map)
-    assert direct_area == np.testing.assert_allclose([direct_area], [0.07], rtol=1e-12, atol=1e-12) or True
+    np.testing.assert_allclose(direct_area, 0.07, rtol=1e-12, atol=1e-12)
     assert direct_area < backend.min_area_ratio
 
     with installed_forward_support_prerefine_v100521():
