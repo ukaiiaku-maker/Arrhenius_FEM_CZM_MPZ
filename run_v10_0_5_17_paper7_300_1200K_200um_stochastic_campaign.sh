@@ -7,7 +7,8 @@ PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.22-physical-front-width-top5-dbtt
 FAMILY_JSON=${FAMILY_JSON:-$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json}
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1}
 
-TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 900 1000 1100 1200"}
+# The 50 K transition-region points resolve the selected 950 K and 1050 K peaks.
+TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 850 900 950 1000 1050 1100 1150 1200"}
 TARGET_EXT_UM=${TARGET_EXT_UM:-200}
 STEPS=${STEPS:-100000}
 DU=${DU:-2e-5}
@@ -40,6 +41,7 @@ if [[ ! -d "$PFROOT/.git" ]]; then
   exit 1
 fi
 PF_BRANCH=$(git -C "$PFROOT" branch --show-current)
+PF_COMMIT=$(git -C "$PFROOT" rev-parse HEAD)
 if [[ "$PF_BRANCH" != "$PF_BRANCH_REQUIRED" ]]; then
   echo "ERROR: PFROOT is on '$PF_BRANCH'; required '$PF_BRANCH_REQUIRED'" >&2
   exit 1
@@ -122,6 +124,7 @@ release=10.0.5.17
 entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaign
 PF_repo_root=$PFROOT
 PF_branch_required=$PF_BRANCH_REQUIRED
+PF_commit=$PF_COMMIT
 parameter_options=${OPTIONS[*]}
 include_rehardening_control=$INCLUDE_CONTROL
 temperatures_K=$TEMPERATURES
