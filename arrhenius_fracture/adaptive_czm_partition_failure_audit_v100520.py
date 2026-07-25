@@ -1,0 +1,169 @@
+"""Persist terminal adaptive-CZM partition failures after atomic rollback.
+
+v10.0.5.19 correctly rolls back every rejected geometry trial, including its
+per-trial audit rows. That is required for atomicity, but it also erased the
+raw backend reasons needed to diagnose a sustained-growth failure. This
+additive diagnostic wrapper records rejection metadata outside the mutable
+geometry transaction and persists one compact physical-event summary at the
+final record-or-raise stage, after all caller-level audit truncation is complete.
+
+No geometry, quality threshold, constitutive state, hazard clock, loading law,
+or stochastic event length is modified.
+"""
+from __future__ import annotations
+
+from collections import Counter
+from contextlib import contextmanager
+import math
+from typing import Any, Iterator
+
+import numpy as np
+
+from . import adaptive_czm_quality_subdivision_v100518 as _v100518
+
+MODEL_ID = "adaptive_CZM_partition_failure_audit_v10_0_5_20"
+
+
+def _segment_payload(kwargs: dict[str, Any]) -> dict[str, Any]:
+    p0 = np.asarray(kwargs.get("p0", []), float).reshape(-1)
+    p1 = np.asarray(kwargs.get("p1", []), float).reshape(-1)
+    length = float(np.linalg.norm(p1 - p0)) if p0.size == p1.size and p0.size else 0.0
+    return {
+        "p0_m": p0.tolist(),
+        "p1_m": p1.tolist(),
+        "segment_length_m": length,
+        "subdepth": int(kwargs.get("_subdepth", 0) or 0),
+        "front_id": int(kwargs.get("front_id", -1)),
+    }
+
+
+def _bounded_examples(rows: list[dict[str, Any]], limit: int = 24) -> list[dict[str, Any]]:
+    if len(rows) <= limit:
+        return rows
+    head = rows[: limit // 2]
+    tail = rows[-(limit - len(head)) :]
+    return head + tail
+
+
+def _build_summary(
+    kwargs: dict[str, Any], failures: list[dict[str, Any]]
+) -> dict[str, Any]:
+    reasons = Counter(row["reason"] for row in failures)
+    requested = _segment_payload(kwargs)
+    return {
+        "schema": MODEL_ID,
+        "accepted": False,
+        "issues": ["adaptive_quality_partition_exhausted"],
+        "front_id": requested["front_id"],
+        "requested_da_m": requested["segment_length_m"],
+        "requested_p0_m": requested["p0_m"],
+        "requested_p1_m": requested["p1_m"],
+        "raw_backend_rejection_count": int(len(failures)),
+        "raw_backend_reason_counts": dict(sorted(reasons.items())),
+        "dominant_raw_backend_reason": (
+            reasons.most_common(1)[0][0]
+            if reasons
+            else "no_raw_backend_reason_captured"
+        ),
+        "maximum_observed_subdepth": int(
+            max((row["subdepth"] for row in failures), default=0)
+        ),
+        "minimum_rejected_segment_m": float(
+            min((row["segment_length_m"] for row in failures), default=math.nan)
+        ),
+        "maximum_rejected_segment_m": float(
+            max((row["segment_length_m"] for row in failures), default=math.nan)
+        ),
+        "rejection_examples": _bounded_examples(failures),
+        "geometry_transaction_rolled_back": True,
+        "physical_event_consumed": False,
+        "triangle_quality_floor_relaxed": False,
+        "child_area_ratio_floor_relaxed": False,
+        "constitutive_physics_changed": False,
+        "persistence_stage": "final_record_or_raise_after_all_audit_truncation",
+    }
+
+
+def _persist_pending_summary(self: Any, result: Any) -> None:
+    summary = getattr(self, "_v100520_pending_partition_failure", None)
+    if not isinstance(summary, dict):
+        return
+    summary = dict(summary)
+    summary["terminal_veto_reason"] = str(getattr(result, "reason", "unknown"))
+    _v100518._v91856._AUDIT.setdefault("quality_vetoes", []).append(summary)
+    _v100518._v9185._RUNTIME.setdefault("quality_vetoes", []).append(summary.copy())
+    self._v100520_last_partition_failure = summary
+    self._v100520_pending_partition_failure = None
+
+
+@contextmanager
+def installed_partition_failure_audit_v100520() -> Iterator[None]:
+    """Wrap v10.0.5.19 recovery and persist diagnostics after final rollback."""
+    active_try = _v100518._try_subdivisions
+    final_record_or_raise = _v100518._v91856._record_or_raise
+
+    def audited_try(
+        self: Any,
+        original: Any,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        outer_snapshot: Any,
+        audit_snapshot: dict[str, int],
+        counter_snapshot: tuple[int, Any],
+    ):
+        failures: list[dict[str, Any]] = []
+        self._v100520_pending_partition_failure = None
+
+        def recording_original(inner_self: Any, *inner_args, **inner_kwargs):
+            result = original(inner_self, *inner_args, **inner_kwargs)
+            if not bool(getattr(result, "inserted", False)):
+                failures.append(
+                    {
+                        "kind": "raw_backend_rejection",
+                        "reason": str(getattr(result, "reason", "unknown")),
+                        "angle_error_deg": float(
+                            getattr(result, "angle_error_deg", 0.0)
+                        ),
+                        **_segment_payload(inner_kwargs),
+                    }
+                )
+            return result
+
+        result = active_try(
+            self,
+            recording_original,
+            args,
+            kwargs,
+            outer_snapshot,
+            audit_snapshot,
+            counter_snapshot,
+        )
+        if result is not None and bool(getattr(result, "inserted", False)):
+            self._v100520_pending_partition_failure = None
+            return result
+
+        # Store outside the mutable audit arrays. The caller may still truncate
+        # those arrays before invoking the final record-or-raise function.
+        self._v100520_pending_partition_failure = _build_summary(kwargs, failures)
+        return result
+
+    def audited_record_or_raise(self: Any, kwargs: dict[str, Any], result: Any):
+        if not bool(getattr(result, "inserted", False)):
+            _persist_pending_summary(self, result)
+        else:
+            self._v100520_pending_partition_failure = None
+        return final_record_or_raise(self, kwargs, result)
+
+    _v100518._try_subdivisions = audited_try
+    _v100518._v91856._record_or_raise = audited_record_or_raise
+    try:
+        yield
+    finally:
+        _v100518._v91856._record_or_raise = final_record_or_raise
+        _v100518._try_subdivisions = active_try
+
+
+__all__ = [
+    "MODEL_ID",
+    "installed_partition_failure_audit_v100520",
+]
