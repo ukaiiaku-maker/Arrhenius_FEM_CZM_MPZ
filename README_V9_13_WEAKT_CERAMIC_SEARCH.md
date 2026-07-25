@@ -9,8 +9,8 @@ source density to `rho_source0_m2 >= 1e14`, and evaluated only 700--1400 K.
 Those choices are appropriate for the DBTT/peak search but structurally disfavor
 near-temperature-flat initiation and negligible process-zone development.
 
-The failed long 2-D transfers of candidates 0257068 and 0189364 are retained only
-as local anchors. The new population is 75% global and permits:
+The failed transfers of candidates 0257068 and 0189364 are retained only as local
+anchors. The new population is 75% global and permits:
 
 - cleavage and emission temperature coefficients on both sides of zero;
 - lower source density down to `1e11 m^-2`;
@@ -22,12 +22,13 @@ as local anchors. The new population is 75% global and permits:
 
 1. **Vectorized zero-D proxy:** 262,144 new Sobol rows to 100 um.
 2. **Exact zero-D replay:** 512 diverse rows per class to 100 um.
-3. **First 1-D gate:** 48 rows per class to 250 um.
-4. **Long 1-D gate:** best 10 rows per class to 1000 um.
-5. **Final promotion:** up to five rows per class for 2-D validation.
+3. **Autonomous 1-D gate:** 48 rows per class to 100 um.
+4. **Final promotion:** up to five rows per class for 2-D validation.
 
-Both initiation resistance and developed resistance enter every class score.
-The low-temperature rise from 300 through 700 K is an explicit rejection term.
+Both initiation resistance and resistance developed by 100 um enter every class
+score. The low-temperature rise from 300 through 700 K is an explicit rejection
+term. The 100 um gate is sufficient to detect the unwanted strong early R-curve
+while avoiding an unnecessary 1000 um campaign.
 
 ## Class definitions
 
@@ -63,33 +64,14 @@ runs/v9_13_weakT_ceramic_paper_handoff_v1/
   v9_13_weakT_ceramic_paper_handoff.csv
 ```
 
-The calibrated 100 um zero-D map:
+The calibrated stochastic loading map with at least 100 um coverage:
 
 ```text
 runs/v9_13_long_map_exponential_110um_v2/
   v10_2_22_long_rcurve_loading_map_exponential_110um.json
 ```
 
-A calibrated stochastic loading map with at least 1000 um projected coverage is
-also required. Extract it from one completed 1000 um v10.2.22-compatible case:
-
-```bash
-python scripts/extract_v10222_long_rcurve_loading_map.py \
-  --case-dir /absolute/path/to/completed/T300K_case \
-  --expected-prefix-loading-map \
-    runs/v9_13_long_map_exponential_110um_v2/v10_2_22_long_rcurve_loading_map_exponential_110um.json \
-  --reference-candidate-id v913_zeroD_sobol_0202500 \
-  --reference-temperature-K 300 \
-  --minimum-coverage-um 1000 \
-  --out \
-    runs/v9_13_long_map_exponential_1000um_v1/v10_2_22_long_rcurve_loading_map_exponential_1000um.json \
-  --audit-csv \
-    runs/v9_13_long_map_exponential_1000um_v1/v10_2_22_long_rcurve_loading_map_exponential_1000um_audit.csv
-```
-
-The extractor requires the 1000 um map to reproduce the accepted 110 um map as
-an exact prefix. If the selected 2-D case used a different stochastic stream, do
-not force it through the prefix gate; extract a matching long case first.
+No new 1000 um loading map is required.
 
 ## Production launch
 
@@ -106,6 +88,7 @@ stty -tostop 2>/dev/null || true
 nohup /usr/bin/caffeinate -dimsu \
   /usr/bin/env \
     PYTHON_BIN="$CONDA_PREFIX/bin/python" \
+    TARGET_EXT_UM=100 \
     MAX_JOBS=4 \
     OUTROOT="$OUTROOT" \
     bash scripts/run_v913_weakT_ceramic_search.sh \
@@ -130,10 +113,9 @@ runs/v9_13_weakT_ceramic_search_v1/
     zeroD_weakT_ranked.csv
     zeroD_ceramic_ranked.csv
     combined_promoted_registry.csv
-  analysis_250um/
-    candidate_metrics.csv
-    promoted_registry.csv
-  analysis_1000um/
+  one_d_100um/
+    cases/
+  analysis_100um/
     case_temperature_metrics.csv
     candidate_metrics.csv
     weakT_ranked.csv
@@ -142,6 +124,7 @@ runs/v9_13_weakT_ceramic_search_v1/
     summary.json
 ```
 
-The final `promoted_registry.csv` is the only registry intended for the next 2-D
-validation campaign. A row with `oneD_strict_gate_passed=false` is retained only
-as a closest candidate and must not be presented as a successful class match.
+The final `analysis_100um/promoted_registry.csv` is the only registry intended for
+the next 2-D validation campaign. A row with `oneD_strict_gate_passed=false` is
+retained only as a closest candidate and must not be presented as a successful
+class match.
