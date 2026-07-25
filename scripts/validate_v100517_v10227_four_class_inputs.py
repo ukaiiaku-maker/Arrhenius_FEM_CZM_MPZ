@@ -6,10 +6,9 @@ import argparse
 import json
 from pathlib import Path
 
-from arrhenius_fracture.audited_pf_parameter_bridge_v100517_v10227 import (
+from arrhenius_fracture.audited_pf_parameter_bridge_v100517_v10227_canonical import (
     EXPECTED_ACTIVE_FINGERPRINT_SHA256,
     EXPECTED_OPTIONS,
-    EXPECTED_REGISTRY_SHA256,
     load_audited_parameter_option,
 )
 
@@ -24,6 +23,7 @@ def validate(pf_root: Path, options: list[str], out: Path) -> dict:
     candidate_ids = set()
     row_hashes = set()
     classes = set()
+    registry_hashes = set()
     for option in options:
         candidate, audit = load_audited_parameter_option(pf_root, option)
         if candidate.candidate_id in candidate_ids:
@@ -33,9 +33,13 @@ def validate(pf_root: Path, options: list[str], out: Path) -> dict:
         candidate_ids.add(candidate.candidate_id)
         row_hashes.add(audit["selected_row_sha256"])
         classes.add(audit["material_class"])
+        registry_hashes.add(audit["registry_sha256"])
         records.append(audit)
     if classes != {"peak", "DBTT", "weakT", "ceramic"}:
         raise ValueError(f"unexpected four-class labels: {sorted(classes)}")
+    if len(registry_hashes) != 1:
+        raise ValueError(f"inconsistent registry hashes across options: {sorted(registry_hashes)}")
+    observed_registry_sha = next(iter(registry_hashes))
     payload = {
         "schema": "v10.0.5.17_audited_PF_v10_2_27_four_class_preflight",
         "PF_repo_root": str(pf_root.resolve()),
@@ -44,7 +48,8 @@ def validate(pf_root: Path, options: list[str], out: Path) -> dict:
         "classes": [record["material_class"] for record in records],
         "all_candidate_ids_unique": True,
         "all_selected_rows_unique": True,
-        "registry_sha256": EXPECTED_REGISTRY_SHA256,
+        "registry_sha256_observed": observed_registry_sha,
+        "registry_byte_hash_used_as_physics_identity": False,
         "active_parameter_fingerprint_sha256": EXPECTED_ACTIVE_FINGERPRINT_SHA256,
         "mechanics_changed": False,
         "source_closure_changed": False,
@@ -76,7 +81,7 @@ def main() -> None:
             {
                 "n_options": payload["n_options"],
                 "classes": payload["classes"],
-                "registry_sha256": payload["registry_sha256"],
+                "registry_sha256_observed": payload["registry_sha256_observed"],
                 "active_parameter_fingerprint_sha256": payload[
                     "active_parameter_fingerprint_sha256"
                 ],
