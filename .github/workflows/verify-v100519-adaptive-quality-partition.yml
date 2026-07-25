@@ -1,4 +1,4 @@
-name: Verify v10.0.5.21 adaptive CZM geometry repair
+name: Verify v10.0.5.22 adaptive CZM geometry repair
 
 on:
   pull_request:
@@ -27,10 +27,12 @@ jobs:
             arrhenius_fracture/adaptive_czm_quality_partition_v100519.py \
             arrhenius_fracture/adaptive_czm_partition_failure_audit_v100520.py \
             arrhenius_fracture/adaptive_czm_forward_support_prerefine_v100521.py \
+            arrhenius_fracture/adaptive_czm_balanced_support_prerefine_v100522.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_standalone.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_19_four_class_standalone.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_20_four_class_standalone.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_21_four_class_standalone.py
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_21_four_class_standalone.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_22_four_class_standalone.py
       - name: Adaptive geometry and production-sweep tests
         run: |
           python -m pytest -q \
@@ -38,6 +40,7 @@ jobs:
             tests/test_adaptive_czm_quality_partition_v100519.py \
             tests/test_adaptive_czm_partition_failure_audit_v100520.py \
             tests/test_adaptive_czm_forward_support_prerefine_v100521.py \
+            tests/test_adaptive_czm_balanced_support_prerefine_v100522.py \
             tests/test_v100519_four_class_temperature_sweep.py
       - name: Preserve stochastic moving-tip and adaptive-CZM parity
         run: |
@@ -50,3 +53,4 @@ jobs:
           bash -n run_v10_0_5_19_frozen_four_class_temperature_sweep.sh
           bash -n run_v10_0_5_20_peak300_geometry_reproducer.sh
           bash -n run_v10_0_5_21_peak300_forward_support_reproducer.sh
+          bash -n run_v10_0_5_22_peak300_balanced_support_reproducer.sh
