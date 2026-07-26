@@ -22,10 +22,22 @@ jobs:
             arrhenius_fracture/persistent_site_load_ramp_stochastic_emission_v10051831.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_1_four_class_single_layer_load_ramp_stochastic_emission.py
           bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
-      - name: Single-layer load-ramp regressions
+      - name: No duplicated outer emission-action limiter
         run: |
           python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py \
+            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter
+      - name: Actual weak-T 300 K predictor
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_actual_weakT_startup_predictor_remains_finite_and_nonmutating
+      - name: Bounded factor-5 predictor
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_bounded_maximum_two_channel_factor_predictor_is_finite
+      - name: Single-layer audit and runner contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_audit_records_single_layer_action_control \
             tests/test_v10051831_runner_contract.py
       - name: Preserve v10.0.5.18.3 load-ramp and resilience contracts
         run: |
