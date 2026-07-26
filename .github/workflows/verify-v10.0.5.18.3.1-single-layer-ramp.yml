@@ -20,6 +20,7 @@ jobs:
         run: |
           python -m py_compile \
             arrhenius_fracture/persistent_site_load_ramp_stochastic_emission_v10051831.py \
+            arrhenius_fracture/persistent_site_event_driven_emission_v10051831.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_1_four_class_single_layer_load_ramp_stochastic_emission.py
           bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
       - name: No duplicated outer emission-action limiter
