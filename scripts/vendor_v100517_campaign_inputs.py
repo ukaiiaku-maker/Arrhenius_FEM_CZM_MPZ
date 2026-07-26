@@ -2,9 +2,10 @@
 """Vendor the exact frozen inputs used by the v10.0.5.17 paper7 campaign.
 
 This utility does not modify any FEM, CZM, stochastic-event, or moving-process-zone
-code.  It reads the provenance written by the completed campaign and copies the
-required parameter registries, stable option maps, audited-entry source records,
-and signed-kernel family from the exact recorded source commit into this checkout.
+code. It reads the provenance written by the completed campaign, copies the
+parameter registries and option maps from the exact recorded parameter-source
+commit, and copies the independently recorded signed-kernel family byte-for-byte
+from its recorded path after verifying its frozen SHA-256.
 """
 from __future__ import annotations
 
@@ -31,6 +32,12 @@ DEFAULT_DESTINATION = ROOT / "runtime_inputs" / "v10_0_5_17_frozen_pf_inputs"
 CONFIGURATION_NAME = "campaign_configuration.txt"
 MANIFEST_NAME = "frozen_input_manifest_v10_0_5_17.json"
 CATALOG_NAME = "frozen_parameter_catalog_v10_0_5_17.json"
+EXPECTED_KERNEL_FAMILY_SHA256 = (
+    "a876ea042bf291ca9607b586205d75ce2b5cb95c668fef53d713d611dfe59cde"
+)
+KERNEL_FAMILY_DESTINATION = (
+    "signed_kernel/v10_2_14_active_only_campaign_family.json"
+)
 
 ENTRY_FILES = {
     "v10.2.25": (
@@ -110,15 +117,31 @@ def _git_file(repo: Path, commit: str, relative_path: str) -> bytes:
     return completed.stdout
 
 
-def _relative_to_repo(path: Path, repo: Path) -> str:
-    resolved = path.expanduser().resolve()
-    try:
-        return resolved.relative_to(repo.resolve()).as_posix()
-    except ValueError as exc:
-        raise ValueError(
-            "the recorded kernel family is not inside the recorded source repository: "
-            f"family={resolved}, repository={repo.resolve()}"
-        ) from exc
+def _git_root(path: Path) -> Path | None:
+    candidate = path.resolve() if path.is_dir() else path.resolve().parent
+    completed = subprocess.run(
+        ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return None
+    return Path(completed.stdout.strip()).resolve()
+
+
+def _git_head(repo: Path | None) -> str | None:
+    if repo is None:
+        return None
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    return completed.stdout.strip() if completed.returncode == 0 else None
 
 
 def _write_file(root: Path, relative_path: str, data: bytes) -> dict[str, Any]:
@@ -159,6 +182,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--campaign-root", type=Path, required=True)
     parser.add_argument("--destination", type=Path, default=DEFAULT_DESTINATION)
+    parser.add_argument(
+        "--kernel-family-source",
+        type=Path,
+        default=None,
+        help="Override the kernel-family path recorded by the campaign.",
+    )
+    parser.add_argument(
+        "--expected-kernel-family-sha256",
+        default=EXPECTED_KERNEL_FAMILY_SHA256,
+    )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
@@ -166,15 +199,41 @@ def main() -> int:
     configuration_path = campaign_root / CONFIGURATION_NAME
     configuration = _parse_configuration(configuration_path)
 
-    source_repo = Path(configuration["PF_repo_root"]).expanduser().resolve()
-    source_commit = configuration["PF_commit"]
-    if not (source_repo / ".git").exists():
-        raise FileNotFoundError(f"recorded source repository is unavailable: {source_repo}")
-    _git_object_exists(source_repo, f"{source_commit}^{{commit}}")
+    parameter_source_repo = Path(configuration["PF_repo_root"]).expanduser().resolve()
+    parameter_source_commit = configuration["PF_commit"]
+    if not (parameter_source_repo / ".git").exists():
+        raise FileNotFoundError(
+            "recorded parameter-source repository is unavailable: "
+            f"{parameter_source_repo}"
+        )
+    _git_object_exists(
+        parameter_source_repo,
+        f"{parameter_source_commit}^{{commit}}",
+    )
 
-    family_relative = _relative_to_repo(Path(configuration["kernel_family"]), source_repo)
-    required_paths = sorted(
-        {path for paths in ENTRY_FILES.values() for path in paths} | {family_relative}
+    recorded_family_path = Path(configuration["kernel_family"]).expanduser().resolve()
+    family_source = (
+        args.kernel_family_source.expanduser().resolve()
+        if args.kernel_family_source is not None
+        else recorded_family_path
+    )
+    if not family_source.is_file():
+        raise FileNotFoundError(
+            "recorded kernel-family file is unavailable: "
+            f"{family_source}; pass --kernel-family-source PATH only when using an "
+            "identical byte-for-byte copy"
+        )
+    family_data = family_source.read_bytes()
+    family_sha256 = _sha256_bytes(family_data)
+    expected_family_sha256 = str(args.expected_kernel_family_sha256).strip()
+    if expected_family_sha256 and family_sha256 != expected_family_sha256:
+        raise ValueError(
+            "kernel-family SHA mismatch: "
+            f"{family_sha256} != {expected_family_sha256}"
+        )
+
+    required_parameter_paths = sorted(
+        {path for paths in ENTRY_FILES.values() for path in paths}
     )
 
     destination = args.destination.expanduser().resolve()
@@ -192,29 +251,49 @@ def main() -> int:
 
     try:
         file_records = []
-        for relative_path in required_paths:
-            data = _git_file(source_repo, source_commit, relative_path)
-            file_records.append(_write_file(staging, relative_path, data))
+        for relative_path in required_parameter_paths:
+            data = _git_file(
+                parameter_source_repo,
+                parameter_source_commit,
+                relative_path,
+            )
+            record = _write_file(staging, relative_path, data)
+            record["source_kind"] = "parameter_source_commit"
+            file_records.append(record)
+
+        family_record = _write_file(
+            staging,
+            KERNEL_FAMILY_DESTINATION,
+            family_data,
+        )
+        family_record["source_kind"] = "recorded_kernel_family"
+        file_records.append(family_record)
 
         catalog_records = _validate_catalog(staging)
-        family_record = next(
-            row for row in file_records if row["relative_path"] == family_relative
-        )
+        family_repo = _git_root(family_source)
         manifest = {
-            "schema": "v10.0.5.17_frozen_external_input_vendor_v1",
+            "schema": "v10.0.5.17_frozen_external_input_vendor_v2",
             "fem_czm_baseline_commit": BASELINE_COMMIT,
             "source_campaign_root": str(campaign_root),
             "source_campaign_configuration": str(configuration_path),
             "source_release": configuration["release"],
-            "source_repository_recorded_path": str(source_repo),
-            "source_repository_commit": source_commit,
-            "kernel_family_relative_path": family_relative,
+            "parameter_source_repository_recorded_path": str(parameter_source_repo),
+            "parameter_source_repository_commit": parameter_source_commit,
+            "parameter_files_vendored_from_recorded_commit": True,
+            "kernel_family_recorded_path": str(recorded_family_path),
+            "kernel_family_source_path": str(family_source),
+            "kernel_family_source_repository": (
+                str(family_repo) if family_repo is not None else None
+            ),
+            "kernel_family_source_repository_head": _git_head(family_repo),
+            "kernel_family_relative_path": KERNEL_FAMILY_DESTINATION,
             "kernel_family_sha256": family_record["sha256"],
+            "kernel_family_expected_sha256": expected_family_sha256,
+            "kernel_family_vendored_byte_for_byte": True,
             "file_count": len(file_records),
             "files": file_records,
             "solver_or_constitutive_files_modified": False,
             "parameter_values_reconstructed": False,
-            "vendored_byte_for_byte_from_recorded_commit": True,
         }
         (staging / MANIFEST_NAME).write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"
@@ -223,7 +302,7 @@ def main() -> int:
             json.dumps(
                 {
                     "schema": "v10.0.5.17_frozen_parameter_catalog_v1",
-                    "source_repository_commit": source_commit,
+                    "parameter_source_repository_commit": parameter_source_commit,
                     "records": catalog_records,
                 },
                 indent=2,
@@ -242,8 +321,8 @@ def main() -> int:
         "destination": str(destination),
         "manifest": str(destination / MANIFEST_NAME),
         "catalog": str(destination / CATALOG_NAME),
-        "source_commit": source_commit,
-        "kernel_family": str(destination / family_relative),
+        "parameter_source_commit": parameter_source_commit,
+        "kernel_family": str(destination / KERNEL_FAMILY_DESTINATION),
         "kernel_family_sha256": family_record["sha256"],
         "validated_parameter_options": len(catalog_records),
     }
