@@ -20,14 +20,42 @@ MODEL_ID = "FEM_CZM_full_2D_audited_PF_paper_parameter_stochastic_parity_v10_0_5
 PRODUCTION_MANIFEST = "persistent_site_production_manifest_v10_0_5_17.json"
 SELECTION_MANIFEST = "persistent_site_parameter_selection_v10_0_5_17.json"
 TRANSFER_MANIFEST = "audited_PF_paper_parameter_transfer_v10_0_5_17.json"
+DEFAULT_PARAMETER_SOURCE_ROOT = (
+    Path(__file__).resolve().parents[1]
+    / "runtime_inputs"
+    / "v10_0_5_17_frozen_pf_inputs"
+)
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    parser.add_argument("--pf-repo-root", type=Path, required=True)
+    parser.add_argument("--parameter-source-root", type=Path, default=None)
+    parser.add_argument(
+        "--pf-repo-root",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--parameter-entry", choices=tuple(ENTRY_SPECS), required=True)
     parser.add_argument("--parameter-option", required=True)
     return parser
+
+
+def _parameter_source_root(wrapper: argparse.Namespace) -> Path:
+    direct = wrapper.parameter_source_root
+    legacy = wrapper.pf_repo_root
+    if direct is not None and legacy is not None:
+        direct_resolved = direct.expanduser().resolve()
+        legacy_resolved = legacy.expanduser().resolve()
+        if direct_resolved != legacy_resolved:
+            raise SystemExit(
+                "--parameter-source-root and legacy --pf-repo-root disagree"
+            )
+        return direct_resolved
+    selected = direct if direct is not None else legacy
+    if selected is None:
+        selected = DEFAULT_PARAMETER_SOURCE_ROOT
+    return selected.expanduser().resolve()
 
 
 def _replace_option(argv: list[str], name: str, value: str) -> None:
@@ -90,6 +118,8 @@ def _rewrite_output_metadata(out: Path | None, audit: dict[str, Any]) -> None:
                 "audited_PF_selection_sha256": audit["selection_sha256"],
                 "parameter_values_manually_reconstructed": False,
                 "constitutive_parameters_changed_from_selected_registry_row": False,
+                "external_PF_runtime_dependency": False,
+                "parameter_source_vendored_into_FEM_CZM_checkout": True,
                 "persistent_sites": True,
                 "finite_source_inventory": False,
                 "source_refresh": False,
@@ -113,6 +143,7 @@ def _rewrite_output_metadata(out: Path | None, audit: dict[str, Any]) -> None:
         selection["candidate_id"] = audit["candidate_id"]
         selection["material_class"] = audit.get("material_class")
         selection["paper_role"] = audit.get("paper_role")
+        selection["external_PF_runtime_dependency"] = False
         (out / SELECTION_MANIFEST).write_text(
             json.dumps(selection, indent=2, sort_keys=True, default=str) + "\n"
         )
@@ -122,11 +153,15 @@ def _rewrite_output_metadata(out: Path | None, audit: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None):
     user_args = list(sys.argv[1:] if argv is None else argv)
     wrapper, remaining = _parser().parse_known_args(user_args)
+    source_root = _parameter_source_root(wrapper)
     candidate, audit = load_audited_parameter_option(
-        wrapper.pf_repo_root,
+        source_root,
         wrapper.parameter_entry,
         wrapper.parameter_option,
     )
+    audit["runtime_parameter_source_root"] = str(source_root)
+    audit["external_PF_runtime_dependency"] = False
+    audit["parameter_source_vendored_into_FEM_CZM_checkout"] = True
     out = _out_path(remaining)
     _replace_option(remaining, "--persistent-site-option", candidate.option_key)
 
@@ -152,6 +187,7 @@ if __name__ == "__main__":
 
 
 __all__ = [
+    "DEFAULT_PARAMETER_SOURCE_ROOT",
     "MODEL_ID",
     "POINT_RELEASE",
     "PRODUCTION_MANIFEST",
