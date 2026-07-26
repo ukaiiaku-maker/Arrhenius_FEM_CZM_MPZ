@@ -23,12 +23,12 @@ jobs:
             arrhenius_fracture/persistent_site_stochastic_emission_v100518.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py
           bash -n run_v10_0_5_18_four_class_focused_100um.sh
-      - name: Four-class transfer and stochastic emission tests
-        run: |
-          python -m pytest -q --tb=short \
-            tests/test_four_class_parameter_bridge_v100518.py \
-            tests/test_stochastic_emission_v100518.py \
-            tests/test_v100518_runner_contract.py
+      - name: Exact four-class parameter transfer
+        run: python -m pytest -q --tb=short tests/test_four_class_parameter_bridge_v100518.py
+      - name: Stochastic emission and moving-tip advection
+        run: python -m pytest -q --tb=short tests/test_stochastic_emission_v100518.py
+      - name: Focused runner contract
+        run: python -m pytest -q --tb=short tests/test_v100518_runner_contract.py
       - name: Preserve stochastic cleavage and moving-tip coupling
         run: |
           python -m pytest -q --tb=short \
