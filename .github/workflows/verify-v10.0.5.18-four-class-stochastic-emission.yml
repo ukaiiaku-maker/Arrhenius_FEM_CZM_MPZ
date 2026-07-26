@@ -1,4 +1,4 @@
-name: Verify v10.0.5.18 four-class stochastic emission
+name: Verify v10.0.5.18.1 four-class stochastic onset emission
 
 on:
   push:
@@ -16,17 +16,27 @@ jobs:
           python-version: "3.12"
       - name: Install package
         run: python -m pip install -q -e '.[dev]'
-      - name: Compile v10.0.5.18
+      - name: Verify package version
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          assert version("arrhenius-fem-czm") == "10.0.5.18.1"
+          PY
+      - name: Compile v10.0.5.18.1
         run: |
           python -m py_compile \
             arrhenius_fracture/four_class_parameter_bridge_v100518.py \
             arrhenius_fracture/persistent_site_stochastic_emission_v100518.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py
+            arrhenius_fracture/persistent_site_stochastic_onset_burst_v1005181.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_1_four_class_stochastic_onset_burst.py
           bash -n run_v10_0_5_18_four_class_focused_100um.sh
       - name: Exact four-class parameter transfer
         run: python -m pytest -q --tb=short tests/test_four_class_parameter_bridge_v100518.py
-      - name: Stochastic emission and moving-tip advection
+      - name: Microscopic stochastic-emission regression
         run: python -m pytest -q --tb=short tests/test_stochastic_emission_v100518.py
+      - name: Stiff stochastic-onset burst integration
+        run: python -m pytest -q --tb=short tests/test_stochastic_emission_onset_burst_v1005181.py
       - name: Focused runner contract
         run: python -m pytest -q --tb=short tests/test_v100518_runner_contract.py
       - name: Preserve stochastic cleavage and moving-tip coupling
