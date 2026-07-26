@@ -1,11 +1,11 @@
 """Event-driven exact signed-emission transport for v10.0.5.18.3.1.
 
-The stochastic threshold law is unchanged.  Instead of advancing a fixed 0.05
+The stochastic threshold law is unchanged. Instead of advancing a fixed 0.05
 hazard action before every event, the integrator proposes a horizon slightly
-beyond the next threshold predicted from the current aggregate hazard.  The PF
+beyond the next threshold predicted from the current aggregate hazard. The PF
 transport map is evaluated transactionally over that horizon, the hazard
 variation is checked, and the horizon is refined only when the state-dependent
-hazard changes too strongly.  A threshold crossing is then localized with the
+hazard changes too strongly. A threshold crossing is then localized with the
 same linearly integrated hazard solve used by v10.0.5.18.
 
 This removes the approximately twenty transport proposals per event without
@@ -339,6 +339,8 @@ class PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831(
                 rate_function=self._emission_rate_per_site,
             )
 
+        rho_back = np.asarray(last_hazard["rho_back_m2"], dtype=float).copy()
+        sigma_back = np.asarray(last_hazard["sigma_back_Pa"], dtype=float).copy()
         result: dict[str, Any] = {
             **diagnostics,
             "dN_emit": emitted_lines,
@@ -358,12 +360,16 @@ class PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831(
             "rate_final_by_system_s": np.asarray(
                 last_hazard["rate_per_site_s"], dtype=float
             ),
-            "multiplicity_final": float(last_hazard["multiplicity"]),
-            "rho_back_final_m2": float(last_hazard["rho_back_m2"]),
-            "sigma_back_final_Pa": float(last_hazard["sigma_back_Pa"]),
-            "source_area_final_m2": float(geometry["source_area_m2"]),
-            "front_width_final_m": float(geometry["front_width_m"]),
-            "tip_radius_final_m": float(geometry["tip_radius_m"]),
+            "persistent_site_geometry": geometry,
+            "persistent_site_multiplicity_per_system": float(
+                geometry["multiplicity_per_system"]
+            ),
+            "rho_back_final_by_system_m2": rho_back,
+            "rho_back_final_max_m2": float(np.max(rho_back)),
+            "sigma_back_final_by_system_Pa": sigma_back,
+            "sigma_back_final_max_Pa": float(np.max(sigma_back)),
+            "stochastic_emission_schema": EMISSION_HAZARD_SCHEMA,
+            "stochastic_emission_transport_schema": EMISSION_TRANSPORT_SCHEMA,
             "transport_integrator": PF_UPDATE_MAP,
             "emission_internal_substeps": proposals,
             "event_driven_refinements": refinements,
@@ -371,6 +377,10 @@ class PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831(
             "event_driven_max_log_hazard_change": float(max_log_change),
             "event_driven_max_proposed_action": float(max_proposed_action),
             "emission_transport_time_s": elapsed,
+            "finite_source_inventory_active": False,
+            "source_depletion_active": False,
+            "source_refresh_active": False,
+            "explicit_recovery_active": False,
         }
         self.mpz_state.last_emission = copy.deepcopy(result)
         return result
