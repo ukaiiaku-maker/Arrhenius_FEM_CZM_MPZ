@@ -10,10 +10,13 @@ import arrhenius_fracture.persistent_site_load_ramp_stochastic_emission_v1005183
 from arrhenius_fracture.four_class_parameter_bridge_v100518 import (
     load_four_class_parameter_option,
 )
+from arrhenius_fracture.persistent_site_event_driven_emission_v10051831 import (
+    EVENT_DRIVEN_SCHEMA,
+    PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831,
+)
 from arrhenius_fracture.persistent_site_load_ramp_stochastic_emission_v10051831 import (
     LOAD_RAMP_SCHEMA,
     OUTER_EMISSION_LIMITER_SCHEMA,
-    PersistentSiteSingleLayerLoadRampStochasticEmissionFrontEngineV10051831,
 )
 from arrhenius_fracture.sharp_front import (
     FrontConfig,
@@ -40,9 +43,12 @@ def _engine(monkeypatch, factors=(1.0, 0.5)):
     monkeypatch.setenv("EMISSION_HAZARD_SEED", "331085649")
     monkeypatch.setenv("EMISSION_RAMP_MAX_LOG_RATE_CHANGE", "0.5")
     monkeypatch.setenv("EMISSION_RAMP_ACTION_FLOOR", "1e-6")
+    monkeypatch.setenv("EMISSION_INNER_MAX_LOG_HAZARD_CHANGE", "0.5")
+    monkeypatch.setenv("EMISSION_INNER_ACTION_FLOOR", "1e-6")
+    monkeypatch.setenv("EMISSION_EVENT_HORIZON_FACTOR", "1.25")
     candidate, _ = load_four_class_parameter_option(PARAMETER_ROOT, OPTION)
     family = load_signed_shielding_artifact_v1005141(FAMILY)
-    cls = PersistentSiteSingleLayerLoadRampStochasticEmissionFrontEngineV10051831
+    cls = PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831
     cls.configure(candidate, family)
     cls.configure_stochastic(
         hazard_mode="exponential",
@@ -148,4 +154,9 @@ def test_audit_records_single_layer_action_control(monkeypatch):
     assert audit["outer_emission_action_limiter_active"] is False
     assert audit["outer_emission_limiter_schema"] == OUTER_EMISSION_LIMITER_SCHEMA
     assert audit["inner_exact_emission_action_control"] is True
+    assert audit["event_driven_transport_active"] is True
+    assert audit["event_driven_transport_schema"] == EVENT_DRIVEN_SCHEMA
+    assert audit["fixed_inner_action_substep_per_event"] is False
+    assert audit["threshold_crossings_localized_individually"] is True
+    assert audit["events_batched"] is False
     assert audit["global_FEM_state_change_predictor"] is False
