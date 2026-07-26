@@ -2,12 +2,11 @@
 set -euo pipefail
 
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
-PFROOT=${PFROOT:-/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_22_physical_front_width_top5_dbtt_screen}
-PF_BRANCH_REQUIRED=${PF_BRANCH_REQUIRED:-v10.2.22-physical-front-width-top5-dbtt-screen}
-FAMILY_JSON=${FAMILY_JSON:-$PFROOT/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json}
+PARAMETER_SOURCE_ROOT=${PARAMETER_SOURCE_ROOT:-$ROOT/runtime_inputs/v10_0_5_17_frozen_pf_inputs}
+FAMILY_JSON=${FAMILY_JSON:-$PARAMETER_SOURCE_ROOT/signed_kernel/v10_2_14_active_only_campaign_family.json}
+FAMILY_JSON_SHA256_REQUIRED=${FAMILY_JSON_SHA256_REQUIRED:-a876ea042bf291ca9607b586205d75ce2b5cb95c668fef53d713d611dfe59cde}
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1}
 
-# The 50 K transition-region points resolve the selected 950 K and 1050 K peaks.
 TEMPERATURES=${TEMPERATURES:-"300 400 500 600 700 800 850 900 950 1000 1050 1100 1150 1200"}
 TARGET_EXT_UM=${TARGET_EXT_UM:-200}
 STEPS=${STEPS:-100000}
@@ -36,34 +35,61 @@ PRIMARY_OPTIONS=(
 )
 CONTROL_OPTION=v913_paper_control01_0086420_persistent_sites
 
-if [[ ! -d "$PFROOT/.git" ]]; then
-  echo "ERROR: PFROOT is not a Git clone: $PFROOT" >&2
-  exit 1
-fi
-PF_BRANCH=$(git -C "$PFROOT" branch --show-current)
-PF_COMMIT=$(git -C "$PFROOT" rev-parse HEAD)
-if [[ "$PF_BRANCH" != "$PF_BRANCH_REQUIRED" ]]; then
-  echo "ERROR: PFROOT is on '$PF_BRANCH'; required '$PF_BRANCH_REQUIRED'" >&2
-  exit 1
-fi
-
-REQUIRED_PF_FILES=(
-  "$PFROOT/arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_registry.csv"
-  "$PFROOT/arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_selection.json"
-  "$PFROOT/arrhenius_fracture/sharp_front_v10_2_25.py"
-  "$PFROOT/arrhenius_fracture/sharp_front_v10_2_25_audited.py"
-  "$PFROOT/arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_registry.csv"
-  "$PFROOT/arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_selection.json"
-  "$PFROOT/arrhenius_fracture/sharp_front_v10_2_26.py"
-  "$PFROOT/arrhenius_fracture/sharp_front_v10_2_26_audited.py"
+MANIFEST="$PARAMETER_SOURCE_ROOT/frozen_input_manifest_v10_0_5_17.json"
+CATALOG="$PARAMETER_SOURCE_ROOT/frozen_parameter_catalog_v10_0_5_17.json"
+REQUIRED_INPUTS=(
+  "$MANIFEST"
+  "$CATALOG"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_registry.csv"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_selection.json"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/sharp_front_v10_2_25.py"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/sharp_front_v10_2_25_audited.py"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_registry.csv"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_selection.json"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/sharp_front_v10_2_26.py"
+  "$PARAMETER_SOURCE_ROOT/arrhenius_fracture/sharp_front_v10_2_26_audited.py"
   "$FAMILY_JSON"
 )
-for path in "${REQUIRED_PF_FILES[@]}"; do
+for path in "${REQUIRED_INPUTS[@]}"; do
   if [[ ! -f "$path" ]]; then
-    echo "ERROR: missing audited PF input: $path" >&2
+    echo "ERROR: missing local frozen FEM/CZM input: $path" >&2
     exit 1
   fi
 done
+
+FAMILY_JSON=$(cd "$(dirname "$FAMILY_JSON")" && pwd)/$(basename "$FAMILY_JSON")
+FAMILY_JSON_SHA256=$(python - "$FAMILY_JSON" <<'PY'
+from pathlib import Path
+import hashlib
+import sys
+print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+PY
+)
+if [[ "$FAMILY_JSON_SHA256" != "$FAMILY_JSON_SHA256_REQUIRED" ]]; then
+  echo "ERROR: signed-kernel family SHA-256 mismatch" >&2
+  echo "Expected: $FAMILY_JSON_SHA256_REQUIRED" >&2
+  echo "Observed: $FAMILY_JSON_SHA256" >&2
+  exit 1
+fi
+
+python - "$MANIFEST" "$FAMILY_JSON_SHA256" <<'PY'
+import json
+import pathlib
+import sys
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+observed = sys.argv[2]
+errors = []
+if manifest.get("solver_or_constitutive_files_modified") is not False:
+    errors.append("vendor manifest reports solver or constitutive changes")
+if manifest.get("parameter_values_reconstructed") is not False:
+    errors.append("vendor manifest reports reconstructed parameter values")
+if manifest.get("kernel_family_vendored_byte_for_byte") is not True:
+    errors.append("kernel family was not vendored byte-for-byte")
+if manifest.get("kernel_family_sha256") != observed:
+    errors.append("vendor manifest kernel SHA does not match local family")
+if errors:
+    raise SystemExit("; ".join(errors))
+PY
 
 OPTIONS=("${PRIMARY_OPTIONS[@]}")
 if [[ "$INCLUDE_CONTROL" == "1" ]]; then
@@ -122,9 +148,9 @@ PY
 cat > "$CAMPAIGN_ROOT/campaign_configuration.txt" <<EOF
 release=10.0.5.17
 entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaign
-PF_repo_root=$PFROOT
-PF_branch_required=$PF_BRANCH_REQUIRED
-PF_commit=$PF_COMMIT
+parameter_source_root=$PARAMETER_SOURCE_ROOT
+external_PF_runtime_dependency=false
+parameter_source_vendored_into_FEM_CZM_checkout=true
 parameter_options=${OPTIONS[*]}
 include_rehardening_control=$INCLUDE_CONTROL
 temperatures_K=$TEMPERATURES
@@ -140,6 +166,7 @@ save_snapshots=$SAVE_SNAPSHOTS
 snapshot_cols=$SNAPSHOT_COLS
 generate_solver_plots=$GENERATE_SOLVER_PLOTS
 kernel_family=$FAMILY_JSON
+kernel_family_sha256=$FAMILY_JSON_SHA256
 max_jobs=$MAX_JOBS
 EOF
 
@@ -178,7 +205,7 @@ run_case() {
     CLEAVAGE_EVENT_MIN_FACTOR="$EVENT_MIN_FACTOR" \
     CLEAVAGE_EVENT_MAX_FACTOR="$EVENT_MAX_FACTOR" \
     python -m arrhenius_fracture.mode_i_first_passage_v10_0_5_17_paper_parameter_campaign \
-      --pf-repo-root "$PFROOT" \
+      --parameter-source-root "$PARAMETER_SOURCE_ROOT" \
       --parameter-entry "$ENTRY" \
       --parameter-option "$OPTION" \
       --signed-kernel-family "$FAMILY_JSON" \
@@ -225,7 +252,7 @@ run_case() {
 }
 
 export -f run_case
-export ROOT PFROOT FAMILY_JSON CAMPAIGN_ROOT TARGET_EXT_UM STEPS DU DT
+export ROOT PARAMETER_SOURCE_ROOT FAMILY_JSON CAMPAIGN_ROOT TARGET_EXT_UM STEPS DU DT
 export SKIP_FINISHED PRINT_EVERY EVENT_MIN_FACTOR EVENT_MAX_FACTOR
 export SNAPSHOT_BY_EXT_UM SAVE_SNAPSHOTS SNAPSHOT_COLS GENERATE_SOLVER_PLOTS
 
