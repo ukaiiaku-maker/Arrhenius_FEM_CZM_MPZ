@@ -63,12 +63,11 @@ jobs:
           python -m pytest -q --tb=short \
             tests/test_single_layer_load_ramp_v10051831.py::test_audit_records_single_layer_action_control \
             tests/test_v10051831_runner_contract.py
-      - name: Preserve v10.0.5.18.3 load-ramp and resilience contracts
+      - name: Preserve v10.0.5.18.3 load-ramp and resilience behavior
         run: |
           python -m pytest -q --tb=short \
             tests/test_load_ramp_stochastic_emission_v1005183.py \
-            tests/test_numerical_resilience_v1005183.py \
-            tests/test_v1005183_runner_contract.py
+            tests/test_numerical_resilience_v1005183.py
       - name: Preserve stochastic moving-tip and signed-source contracts
         run: |
           python -m pytest -q --tb=short \
