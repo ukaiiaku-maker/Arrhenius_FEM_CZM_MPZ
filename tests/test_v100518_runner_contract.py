@@ -15,7 +15,8 @@ def test_theta_is_runtime_input_not_material_selector():
     assert "THETA=${THETA:-30}" in runner
     assert '--crystal-theta-deg "$THETA"' in runner
     assert "theta_is_runtime_input=true" in runner
-    assert "--crystal-theta-deg" not in entry
+    assert '_option_value(solver_args, "--crystal-theta-deg")' in entry
+    assert '_replace_option(remaining, "--crystal-theta-deg"' not in entry
     assert "EXPECTED_OPTIONS" in entry
 
 
