@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+import arrhenius_fracture.persistent_site_event_driven_emission_v10051831 as event31
 import arrhenius_fracture.persistent_site_load_ramp_stochastic_emission_v10051831 as ramp31
 from arrhenius_fracture.four_class_parameter_bridge_v100518 import (
     load_four_class_parameter_option,
@@ -118,6 +119,53 @@ def test_outer_ramp_does_not_duplicate_inner_emission_action_limiter(monkeypatch
     assert diagnostics["outer_emission_action_limiter_active"] == 0.0
 
 
+def test_event_driven_transport_localizes_one_event_without_twenty_proposals(monkeypatch):
+    engine = _engine(monkeypatch)
+    engine.emission_threshold_action = np.asarray([0.5, 100.0], dtype=float)
+    engine.emission_action_current = np.zeros(2, dtype=float)
+
+    def fake_hazards(state, **kwargs):
+        geometry = state.source_geometry()
+        multiplicity = float(geometry["multiplicity_per_system"])
+        return {
+            "geometry": geometry,
+            "multiplicity": multiplicity,
+            "rho_back_m2": np.zeros(2, dtype=float),
+            "sigma_back_Pa": np.zeros(2, dtype=float),
+            "rate_per_site_s": np.asarray([1.0 / multiplicity, 0.0]),
+            "aggregate_hazard_s": np.asarray([1.0, 0.0]),
+            "signs": np.asarray([1.0, -1.0]),
+        }
+
+    def fake_transport(state, *, dt_s, **kwargs):
+        state.time_s += float(dt_s)
+        return {
+            "dN_emit": 0.0,
+            "dN_trapped": 0.0,
+            "dN_released": 0.0,
+            "dN_recovered": 0.0,
+            "dN_escaped": 0.0,
+            "transport_substeps": 1,
+        }
+
+    monkeypatch.setattr(event31, "_emission_hazards", fake_hazards)
+    monkeypatch.setattr(event31, "advance_pf_transport_only_v10222", fake_transport)
+    monkeypatch.setattr(event31, "_draw_exponential", lambda rng, floor: 100.0)
+
+    result = engine._stochastic_emission_transport(
+        dt_s=1.1,
+        T_K=300.0,
+        opening_stress_Pa=1.0e9,
+        drive_factors=np.asarray([1.0, 0.5]),
+        tau_signed_Pa=np.asarray([1.0e8, -1.0e8]),
+    )
+
+    assert result["stochastic_emission_event_count"] == 1
+    assert result["emission_internal_substeps"] <= 3
+    assert result["event_driven_refinements"] == 0
+    assert result["stochastic_emission_events"][0]["time_within_half_step_s"] == pytest.approx(0.5)
+
+
 def test_actual_weakT_startup_predictor_remains_finite_and_nonmutating(monkeypatch):
     engine = _engine(monkeypatch)
     before = engine._capture_state()
@@ -138,8 +186,8 @@ def test_actual_weakT_startup_predictor_remains_finite_and_nonmutating(monkeypat
 def test_bounded_maximum_two_channel_factor_predictor_is_finite(monkeypatch):
     engine = _engine(monkeypatch, factors=(5.0, 5.0))
     predicted = engine.predict_clock_increment_drives(
-        80.0e6,
-        80.0e6,
+        2.0e6,
+        2.0e6,
         300.0,
         840.0,
     )
