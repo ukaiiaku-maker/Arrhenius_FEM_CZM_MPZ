@@ -8,8 +8,8 @@ import numpy as np
 from arrhenius_fracture.four_class_parameter_bridge_v100518 import (
     load_four_class_parameter_option,
 )
-from arrhenius_fracture.persistent_site_state_coupled_stochastic_emission_v1005182 import (
-    PersistentSiteStateCoupledStochasticEmissionFrontEngineV1005182,
+from arrhenius_fracture.persistent_site_action_weighted_stochastic_emission_v1005182 import (
+    PersistentSiteActionWeightedStochasticEmissionFrontEngineV1005182,
 )
 from arrhenius_fracture.sharp_front import (
     FrontConfig,
@@ -43,7 +43,7 @@ def test_trial_fraction_subdivision_reaches_exact_predictor(monkeypatch):
         "v913_paper_weakT01_0129902_persistent_sites",
     )
     family = load_signed_shielding_artifact_v1005141(FAMILY)
-    cls = PersistentSiteStateCoupledStochasticEmissionFrontEngineV1005182
+    cls = PersistentSiteActionWeightedStochasticEmissionFrontEngineV1005182
     cls.configure(candidate, family)
     cls.configure_stochastic(
         hazard_mode="exponential",
@@ -105,5 +105,6 @@ def test_trial_fraction_subdivision_reaches_exact_predictor(monkeypatch):
     assert accepted_audit["backstress_fraction"] <= 0.05 * (1.0 + 1.0e-10)
     assert accepted_audit["geometry_fraction"] <= 0.05 * (1.0 + 1.0e-10)
     assert accepted_audit["load_log_hazard_change"] <= 0.25 * (1.0 + 1.0e-10)
+    assert accepted_audit["action_weighting_schema"].startswith("v10.0.5.18.2")
     assert engine.mpz_state.state_dict() == before
     assert engine.emission_event_count_total == 0
