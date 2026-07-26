@@ -1,4 +1,4 @@
-"""v10.0.5.18.3.1 four-class single-layer stochastic load-ramp FEM/CZM."""
+"""v10.0.5.18.3.1 four-class event-driven stochastic load-ramp FEM/CZM."""
 from __future__ import annotations
 
 import json
@@ -14,16 +14,17 @@ from .numerical_resilience_v1005183 import (
     RetryingAdaptiveCZMBackendV1005183,
     make_robust_process_zone_traction_probe,
 )
-from .persistent_site_load_ramp_stochastic_emission_v10051831 import (
+from .persistent_site_event_driven_emission_v10051831 import (
+    EVENT_DRIVEN_SCHEMA,
     LOAD_RAMP_SCHEMA,
     OUTER_EMISSION_LIMITER_SCHEMA,
     PROBE_FALLBACK_SCHEMA,
-    PersistentSiteSingleLayerLoadRampStochasticEmissionFrontEngineV10051831,
+    PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831,
     two_channel_absolute_opening_drives_v1005183,
 )
 
 POINT_RELEASE = "10.0.5.18.3.1"
-MODEL_ID = "FEM_CZM_four_class_exact_single_layer_load_ramp_v10_0_5_18_3_1"
+MODEL_ID = "FEM_CZM_four_class_exact_event_driven_load_ramp_v10_0_5_18_3_1"
 PRODUCTION_MANIFEST = "persistent_site_production_manifest_v10_0_5_18_3_1.json"
 SELECTION_MANIFEST = "persistent_site_parameter_selection_v10_0_5_18_3_1.json"
 TRANSFER_MANIFEST = "four_class_parameter_transfer_v10_0_5_18_3_1.json"
@@ -31,7 +32,7 @@ SEED_MANIFEST = "stochastic_seed_manifest_v10_0_5_18_3_1.json"
 
 
 class ProductionSingleLayerLoadRampStochasticEmissionFrontEngineV10051831(
-    PersistentSiteSingleLayerLoadRampStochasticEmissionFrontEngineV10051831
+    PersistentSiteEventDrivenSingleLayerLoadRampFrontEngineV10051831
 ):
     """Production adapter retaining the instantaneous aggregate hazard audit."""
 
@@ -91,6 +92,11 @@ def _rewrite_point_release_metadata(
                 "local_load_ramp_schema": LOAD_RAMP_SCHEMA,
                 "outer_emission_action_limiter_active": False,
                 "outer_emission_limiter_schema": OUTER_EMISSION_LIMITER_SCHEMA,
+                "event_driven_emission_transport_active": True,
+                "event_driven_emission_transport_schema": EVENT_DRIVEN_SCHEMA,
+                "fixed_inner_action_substep_per_event": False,
+                "emission_threshold_crossings_localized_individually": True,
+                "emission_events_batched": False,
                 "inner_exact_emission_action_control": True,
                 "emission_scalar_directional_factor_applied_to_opening_K": False,
                 "emission_signed_channel_factors_applied_once": True,
@@ -125,6 +131,10 @@ def _rewrite_point_release_metadata(
                 "local_linear_K_ramp_kinetics": True,
                 "load_ramp_schema": LOAD_RAMP_SCHEMA,
                 "outer_emission_action_limiter_active": False,
+                "event_driven_emission_transport_active": True,
+                "event_driven_emission_transport_schema": EVENT_DRIVEN_SCHEMA,
+                "fixed_inner_action_substep_per_event": False,
+                "emission_events_batched": False,
                 "inner_exact_emission_action_control": True,
                 "two_channel_absolute_opening_drive": True,
                 "tensor_probe_retry_schema": PROBE_RETRY_SCHEMA,
@@ -143,6 +153,10 @@ def _rewrite_point_release_metadata(
         payload["local_linear_K_ramp_kinetics"] = True
         payload["load_ramp_schema"] = LOAD_RAMP_SCHEMA
         payload["outer_emission_action_limiter_active"] = False
+        payload["event_driven_emission_transport_active"] = True
+        payload["event_driven_emission_transport_schema"] = EVENT_DRIVEN_SCHEMA
+        payload["fixed_inner_action_substep_per_event"] = False
+        payload["emission_events_batched"] = False
         payload["inner_exact_emission_action_control"] = True
         payload["scalar_emission_factor_applied_to_opening_K"] = False
         payload["signed_channel_factors_applied_once"] = True
