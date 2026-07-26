@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - v10.0.5.17-paper-parameter-campaign-parity
+      - v10.0.5.17-paper7-self-contained-inputs
   pull_request:
 
 jobs:
@@ -22,9 +23,13 @@ jobs:
             arrhenius_fracture/audited_pf_parameter_bridge_v100517.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_17_paper_parameter_campaign.py \
             scripts/validate_v100517_paper_parameter_inputs.py \
+            scripts/vendor_v100517_campaign_inputs.py \
             scripts/analyze_v100517_paper_parameter_campaign.py
-      - name: Audited PF registry bridge tests
-        run: python -m pytest -q --tb=short tests/test_audited_pf_parameter_bridge_v100517.py
+      - name: Audited parameter bridge and self-contained input tests
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_audited_pf_parameter_bridge_v100517.py \
+            tests/test_v100517_self_contained_inputs.py
       - name: Multi-parameter analysis tests
         run: python -m pytest -q --tb=short tests/test_analyze_v100517_paper_campaign.py
       - name: Preserve stochastic and moving-tip parity
