@@ -22,6 +22,7 @@ jobs:
             arrhenius_fracture/four_class_parameter_bridge_v100518.py \
             arrhenius_fracture/persistent_site_stochastic_emission_v100518.py \
             arrhenius_fracture/persistent_site_state_coupled_stochastic_emission_v1005182.py \
+            arrhenius_fracture/persistent_site_action_weighted_stochastic_emission_v1005182.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_2_four_class_state_coupled_stochastic_emission.py
           bash -n run_v10_0_5_18_2_four_class_focused_100um.sh
       - name: State-coupled emission and runner contracts
