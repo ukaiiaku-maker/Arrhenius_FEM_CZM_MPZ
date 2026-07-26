@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tomllib
 
 RUNNER = Path("run_v10_0_5_18_four_class_focused_100um.sh")
 ENTRY = Path(
     "arrhenius_fracture/"
     "mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py"
 )
+PYPROJECT = Path("pyproject.toml")
+
+
+def test_package_metadata_matches_point_release():
+    project = tomllib.loads(PYPROJECT.read_text())["project"]
+    assert project["name"] == "arrhenius-fem-czm"
+    assert project["version"] == "10.0.5.18"
+    assert "stochastic cleavage and signed emission" in project["description"]
 
 
 def test_theta_is_runtime_input_not_material_selector():
