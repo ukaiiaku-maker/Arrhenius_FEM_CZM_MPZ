@@ -24,8 +24,19 @@ jobs:
           bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
       - name: No duplicated outer emission-action limiter
         run: |
-          python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter
+          set +e
+          python -m pytest -vv --tb=long \
+            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter \
+            > single_layer_test.log 2>&1
+          rc=$?
+          cat single_layer_test.log
+          exit "$rc"
+      - name: Upload single-layer diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: single-layer-test-log
+          path: single_layer_test.log
       - name: Actual weak-T 300 K predictor
         run: |
           python -m pytest -q --tb=short \
