@@ -30,6 +30,7 @@ jobs:
             tests/test_four_class_parameter_bridge_v100518.py \
             tests/test_stochastic_emission_v100518.py \
             tests/test_state_coupled_stochastic_emission_v1005182.py \
+            tests/test_v1005182_adaptive_trial_convergence.py \
             tests/test_v1005182_runner_contract.py
       - name: Preserve stochastic cleavage and moving-tip contracts
         run: |
