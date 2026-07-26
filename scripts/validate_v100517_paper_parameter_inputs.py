@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve and audit all v10.0.5.17 PF paper parameter inputs before simulation."""
+"""Resolve and audit all v10.0.5.17 paper parameter inputs before simulation."""
 from __future__ import annotations
 
 import argparse
@@ -22,7 +22,7 @@ ENTRY_BY_OPTION = {
 }
 
 
-def validate(pf_root: Path, options: list[str], out: Path) -> dict:
+def validate(parameter_source_root: Path, options: list[str], out: Path) -> dict:
     if len(options) != len(set(options)):
         raise ValueError("parameter option list contains duplicates")
     records = []
@@ -33,17 +33,28 @@ def validate(pf_root: Path, options: list[str], out: Path) -> dict:
             entry = ENTRY_BY_OPTION[option]
         except KeyError as exc:
             raise KeyError(f"unknown paper parameter option {option!r}") from exc
-        candidate, audit = load_audited_parameter_option(pf_root, entry, option)
+        candidate, audit = load_audited_parameter_option(
+            parameter_source_root,
+            entry,
+            option,
+        )
         if candidate.candidate_id in candidate_ids:
             raise ValueError(f"duplicate candidate id {candidate.candidate_id}")
         if audit["selected_row_sha256"] in fingerprints:
             raise ValueError(f"duplicate active parameter fingerprint for {option}")
         candidate_ids.add(candidate.candidate_id)
         fingerprints.add(audit["selected_row_sha256"])
+        audit["runtime_parameter_source_root"] = str(
+            parameter_source_root.resolve()
+        )
+        audit["external_PF_runtime_dependency"] = False
+        audit["parameter_source_vendored_into_FEM_CZM_checkout"] = True
         records.append(audit)
     payload = {
-        "schema": "v10.0.5.17_audited_PF_paper_parameter_preflight",
-        "PF_repo_root": str(pf_root.resolve()),
+        "schema": "v10.0.5.17_audited_paper_parameter_preflight",
+        "parameter_source_root": str(parameter_source_root.resolve()),
+        "external_PF_runtime_dependency": False,
+        "parameter_source_vendored_into_FEM_CZM_checkout": True,
         "n_options": len(records),
         "all_candidate_ids_unique": True,
         "all_selected_row_fingerprints_unique": True,
@@ -58,14 +69,48 @@ def validate(pf_root: Path, options: list[str], out: Path) -> dict:
     return payload
 
 
+def _source_root(args: argparse.Namespace) -> Path:
+    direct = args.parameter_source_root
+    legacy = args.pf_repo_root
+    if direct is not None and legacy is not None:
+        if direct.expanduser().resolve() != legacy.expanduser().resolve():
+            raise SystemExit(
+                "--parameter-source-root and legacy --pf-repo-root disagree"
+            )
+    selected = direct if direct is not None else legacy
+    if selected is None:
+        raise SystemExit("--parameter-source-root is required")
+    return selected.expanduser().resolve()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pf-repo-root", type=Path, required=True)
+    parser.add_argument("--parameter-source-root", type=Path, default=None)
+    parser.add_argument(
+        "--pf-repo-root",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("options", nargs="+")
     args = parser.parse_args()
-    payload = validate(args.pf_repo_root.expanduser().resolve(), args.options, args.out.expanduser().resolve())
-    print(json.dumps({"n_options": payload["n_options"], "out": str(args.out)}, indent=2))
+    payload = validate(
+        _source_root(args),
+        args.options,
+        args.out.expanduser().resolve(),
+    )
+    print(
+        json.dumps(
+            {
+                "n_options": payload["n_options"],
+                "parameter_source_root": payload["parameter_source_root"],
+                "external_PF_runtime_dependency": False,
+                "out": str(args.out),
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
