@@ -4,7 +4,8 @@
   "source_commit": "0a340f6feb8de47200b7733fe8f1d9663c75a43e",
   "source_registry_path": "arrhenius_fracture/data/materials/v10_2_27_v913_four_class_paper_registry.csv",
   "source_registry_sha256": "760ce58801c978b5d9f06be151b8d3e8be46debfa0ef3a8df8dee390cbcc4bf3",
-  "source_active_parameter_fingerprint_sha256": "eeb992cb8f956351833ff148d7611c8fc9e210f2a02eb44a00caa85558001fc5",
+  "source_weakT_ceramic_active_parameter_fingerprint_sha256": "eeb992cb8f956351833ff148d7611c8fc9e210f2a02eb44a00caa85558001fc5",
+  "installed_four_row_active_parameter_fingerprint_sha256": "923463f936ddbdb5a997de7d1859b82774df2257b1faf1dde9fef44283816010",
   "active_parameter_fields": [
     "Tref_K",
     "cleave_G00_eV",
