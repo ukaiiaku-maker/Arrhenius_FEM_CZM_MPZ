@@ -7,6 +7,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+import numpy as np
+
 from . import mode_i_first_passage_v10_0_5_16_stochastic_pf_parity as _base
 from .four_class_parameter_bridge_v100518 import (
     EXPECTED_OPTIONS,
@@ -30,6 +32,35 @@ DEFAULT_PARAMETER_SOURCE_ROOT = (
     / "runtime_inputs"
     / "v10_0_5_18_four_class"
 )
+
+
+class ProductionStochasticEmissionFrontEngineV100518(
+    PersistentSiteStochasticEmissionMovingTipFrontEngineV100518
+):
+    """Production adapter preserving the legacy lambda_e diagnostic contract."""
+
+    def step_drives(self, K_cleave, K_emit, T, dt, metadata=None):
+        out = super().step_drives(
+            K_cleave,
+            K_emit,
+            T,
+            dt,
+            metadata=metadata,
+        )
+        last = dict(self.mpz_state.last_emission or {})
+        aggregate = np.asarray(
+            last.get(
+                "aggregate_hazard_final_by_system_s",
+                last.get("aggregate_hazard_initial_by_system_s", np.zeros(2)),
+            ),
+            dtype=float,
+        ).reshape(-1)
+        out["lambda_e"] = float(np.sum(aggregate))
+        out["lambda_e_semantics"] = (
+            "instantaneous_sum_stochastic_signed_channel_aggregate_hazards"
+        )
+        return out
+
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -66,6 +97,19 @@ def _replace_option(argv: list[str], name: str, value: str) -> None:
         index = argv.index(name)
         del argv[index : min(index + 2, len(argv))]
     argv.extend([name, str(value)])
+
+
+def _single_temperature(argv: list[str]) -> float | str | None:
+    raw = _option_value(argv, "--temperatures")
+    if raw is None:
+        return None
+    tokens = str(raw).split()
+    if len(tokens) == 1:
+        try:
+            return float(tokens[0])
+        except ValueError:
+            return tokens[0]
+    return raw
 
 
 def _rewrite_output_metadata(
@@ -135,7 +179,7 @@ def _rewrite_output_metadata(
         )
         payload["physics_contract"] = physics
         payload["front_engine"] = (
-            PersistentSiteStochasticEmissionMovingTipFrontEngineV100518.audit_payload()
+            ProductionStochasticEmissionFrontEngineV100518.audit_payload()
         )
         (out / PRODUCTION_MANIFEST).write_text(
             json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
@@ -169,9 +213,7 @@ def _rewrite_output_metadata(
         )
         old_selection.unlink()
 
-    engine_audit = (
-        PersistentSiteStochasticEmissionMovingTipFrontEngineV100518.audit_payload()
-    )
+    engine_audit = ProductionStochasticEmissionFrontEngineV100518.audit_payload()
     cleavage = dict(engine_audit.get("stochastic_hazard", {}) or {})
     emission = dict(engine_audit.get("stochastic_emission", {}) or {})
     seed_payload = {
@@ -179,11 +221,7 @@ def _rewrite_output_metadata(
         "parameter_option": audit["parameter_option"],
         "candidate_id": audit["candidate_id"],
         "material_class": audit["material_class"],
-        "temperature_K": (
-            None
-            if _option_value(solver_args, "--temperatures") is None
-            else float(_option_value(solver_args, "--temperatures"))
-        ),
+        "temperature_K": _single_temperature(solver_args),
         "theta_deg": theta_deg,
         "cleavage_case_seed": cleavage.get("seed"),
         "emission_case_seed": emission.get("case_seed"),
@@ -224,7 +262,7 @@ def main(argv: list[str] | None = None):
     ROWS[candidate.option_key] = candidate
     saved_engine = _base.PersistentSitePFStochasticMovingTipFrontEngineV100516
     _base.PersistentSitePFStochasticMovingTipFrontEngineV100516 = (
-        PersistentSiteStochasticEmissionMovingTipFrontEngineV100518
+        ProductionStochasticEmissionFrontEngineV100518
     )
     try:
         return _base.main(remaining)
@@ -246,6 +284,7 @@ __all__ = [
     "MODEL_ID",
     "POINT_RELEASE",
     "PRODUCTION_MANIFEST",
+    "ProductionStochasticEmissionFrontEngineV100518",
     "SEED_MANIFEST",
     "SELECTION_MANIFEST",
     "TRANSFER_MANIFEST",
