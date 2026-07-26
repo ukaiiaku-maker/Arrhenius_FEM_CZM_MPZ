@@ -30,7 +30,7 @@ jobs:
             arrhenius_fracture/persistent_site_stochastic_onset_burst_v1005181.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_1_four_class_stochastic_onset_burst.py
-          bash -n run_v10_0_5_18_four_class_focused_100um.sh
+          bash -n run_v10_0_5_18_1_four_class_focused_100um.sh
       - name: Exact four-class parameter transfer
         run: python -m pytest -q --tb=short tests/test_four_class_parameter_bridge_v100518.py
       - name: Microscopic stochastic-emission regression
