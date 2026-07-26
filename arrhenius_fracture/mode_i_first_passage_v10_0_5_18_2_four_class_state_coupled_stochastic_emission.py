@@ -7,9 +7,12 @@ import sys
 
 from . import mixed_mode_first_passage_v8 as _mm
 from . import mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission as _v18
+from .persistent_site_action_weighted_stochastic_emission_v1005182 import (
+    ACTION_WEIGHTING_SCHEMA,
+    PersistentSiteActionWeightedStochasticEmissionFrontEngineV1005182,
+)
 from .persistent_site_state_coupled_stochastic_emission_v1005182 import (
     ADAPTIVE_SCHEMA,
-    PersistentSiteStateCoupledStochasticEmissionFrontEngineV1005182,
     two_channel_absolute_opening_drives,
 )
 
@@ -22,7 +25,7 @@ SEED_MANIFEST = "stochastic_seed_manifest_v10_0_5_18_2.json"
 
 
 class ProductionStateCoupledStochasticEmissionFrontEngineV1005182(
-    PersistentSiteStateCoupledStochasticEmissionFrontEngineV1005182
+    PersistentSiteActionWeightedStochasticEmissionFrontEngineV1005182
 ):
     """Production adapter preserving the instantaneous lambda_e diagnostic."""
 
@@ -80,6 +83,8 @@ def _rewrite_point_release_metadata(
                 "stochastic_emission_post_onset_mean_field_burst": False,
                 "emission_outer_load_state_adaptivity": True,
                 "emission_adaptive_schema": ADAPTIVE_SCHEMA,
+                "emission_action_weighting_schema": ACTION_WEIGHTING_SCHEMA,
+                "emission_negligible_hazard_does_not_force_subdivision": True,
                 "emission_scalar_directional_factor_applied_to_opening_K": False,
                 "emission_signed_channel_factors_applied_once": True,
                 "emission_backstress_is_physical_limiter": True,
@@ -105,6 +110,7 @@ def _rewrite_point_release_metadata(
                 "post_onset_mean_field_burst": False,
                 "emission_outer_load_state_adaptivity": True,
                 "emission_adaptive_schema": ADAPTIVE_SCHEMA,
+                "emission_action_weighting_schema": ACTION_WEIGHTING_SCHEMA,
                 "two_channel_absolute_opening_drive": True,
             }
         )
@@ -118,6 +124,7 @@ def _rewrite_point_release_metadata(
         payload["post_onset_mean_field_burst"] = False
         payload["emission_outer_load_state_adaptivity"] = True
         payload["emission_adaptive_schema"] = ADAPTIVE_SCHEMA
+        payload["emission_action_weighting_schema"] = ACTION_WEIGHTING_SCHEMA
         payload["scalar_emission_factor_applied_to_opening_K"] = False
         payload["signed_channel_factors_applied_once"] = True
 
