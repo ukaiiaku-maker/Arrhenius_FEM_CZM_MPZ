@@ -23,10 +23,11 @@ jobs:
             arrhenius_fracture/persistent_site_event_driven_emission_v10051831.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_1_four_class_single_layer_load_ramp_stochastic_emission.py
           bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
-      - name: No duplicated outer emission-action limiter
+      - name: Single-layer event-horizon controls
         run: |
           python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter
+            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter \
+            tests/test_single_layer_load_ramp_v10051831.py::test_event_driven_transport_localizes_one_event_without_twenty_proposals
       - name: Actual weak-T 300 K predictor
         run: |
           set +e
