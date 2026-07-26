@@ -1,0 +1,44 @@
+name: Verify v10.0.5.18 four-class stochastic emission
+
+on:
+  push:
+    branches:
+      - v10.0.5.18-four-class-stochastic-emission
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -q -e '.[dev]'
+      - name: Compile v10.0.5.18
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/four_class_parameter_bridge_v100518.py \
+            arrhenius_fracture/persistent_site_stochastic_emission_v100518.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission.py
+          bash -n run_v10_0_5_18_four_class_focused_100um.sh
+      - name: Four-class transfer and stochastic emission tests
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_four_class_parameter_bridge_v100518.py \
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_v100518_runner_contract.py
+      - name: Preserve stochastic cleavage and moving-tip coupling
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_stochastic_hazard_event_length_v100516.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py
+      - name: Preserve signed source geometry and adaptive CZM
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
