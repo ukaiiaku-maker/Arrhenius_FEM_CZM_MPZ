@@ -36,7 +36,10 @@ jobs:
       - name: Microscopic stochastic-emission regression
         run: python -m pytest -q --tb=short tests/test_stochastic_emission_v100518.py
       - name: Stiff stochastic-onset burst integration
-        run: python -m pytest -q --tb=short tests/test_stochastic_emission_onset_burst_v1005181.py
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_stochastic_emission_onset_burst_v1005181.py \
+            tests/test_v1005181_real_weakT_startup_regression.py
       - name: Focused runner contract
         run: python -m pytest -q --tb=short tests/test_v100518_runner_contract.py
       - name: Preserve stochastic cleavage and moving-tip coupling
