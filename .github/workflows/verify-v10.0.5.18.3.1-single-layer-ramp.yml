@@ -25,27 +25,38 @@ jobs:
           bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
       - name: No duplicated outer emission-action limiter
         run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter
+      - name: Actual weak-T 300 K predictor
+        run: |
           set +e
           python -m pytest -vv --tb=long \
-            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter \
-            > single_layer_test.log 2>&1
+            tests/test_single_layer_load_ramp_v10051831.py::test_actual_weakT_startup_predictor_remains_finite_and_nonmutating \
+            > weakT_predictor_test.log 2>&1
           rc=$?
-          cat single_layer_test.log
+          cat weakT_predictor_test.log
           exit "$rc"
-      - name: Upload single-layer diagnostic
+      - name: Upload weak-T predictor diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: single-layer-test-log
-          path: single_layer_test.log
-      - name: Actual weak-T 300 K predictor
-        run: |
-          python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py::test_actual_weakT_startup_predictor_remains_finite_and_nonmutating
+          name: weakT-predictor-test-log
+          path: weakT_predictor_test.log
       - name: Bounded factor-5 predictor
         run: |
-          python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py::test_bounded_maximum_two_channel_factor_predictor_is_finite
+          set +e
+          python -m pytest -vv --tb=long \
+            tests/test_single_layer_load_ramp_v10051831.py::test_bounded_maximum_two_channel_factor_predictor_is_finite \
+            > factor5_predictor_test.log 2>&1
+          rc=$?
+          cat factor5_predictor_test.log
+          exit "$rc"
+      - name: Upload factor-5 predictor diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: factor5-predictor-test-log
+          path: factor5_predictor_test.log
       - name: Single-layer audit and runner contracts
         run: |
           python -m pytest -q --tb=short \
