@@ -1,0 +1,91 @@
+{
+  "schema": "v10.0.5.18_four_class_exact_parameter_transfer_v1",
+  "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",
+  "source_commit": "0a340f6feb8de47200b7733fe8f1d9663c75a43e",
+  "source_registry_path": "arrhenius_fracture/data/materials/v10_2_27_v913_four_class_paper_registry.csv",
+  "source_registry_sha256": "760ce58801c978b5d9f06be151b8d3e8be46debfa0ef3a8df8dee390cbcc4bf3",
+  "source_active_parameter_fingerprint_sha256": "eeb992cb8f956351833ff148d7611c8fc9e210f2a02eb44a00caa85558001fc5",
+  "active_parameter_fields": [
+    "Tref_K",
+    "cleave_G00_eV",
+    "cleave_gT_eV_per_K",
+    "cleave_sigc0_GPa",
+    "cleave_sT_GPa_per_K",
+    "cleave_exp_a",
+    "cleave_exp_n",
+    "cleave_floor_frac",
+    "emit_G00_eV",
+    "emit_gT_eV_per_K",
+    "emit_sigc0_GPa",
+    "emit_sT_GPa_per_K",
+    "emit_exp_a",
+    "emit_exp_n",
+    "emit_floor_frac",
+    "peierls_H0_eV",
+    "peierls_activation_entropy_kB",
+    "peierls_exp_a",
+    "peierls_exp_n",
+    "peierls_nu0_s",
+    "taylor_H0_eV",
+    "taylor_activation_entropy_kB",
+    "taylor_exp_a",
+    "taylor_exp_n",
+    "taylor_nu0_s",
+    "rho_source0_m2",
+    "taylor_corr_rho_c_m2",
+    "taylor_corr_scale",
+    "c_blunt"
+  ],
+  "primary_candidates": [
+    {
+      "material_class": "peak",
+      "candidate_id": "v913_zeroD_sobol_0242980",
+      "option_key": "v913_paper_peak01_0242980_persistent_sites"
+    },
+    {
+      "material_class": "DBTT",
+      "candidate_id": "v913_zeroD_sobol_0202500",
+      "option_key": "v913_paper_dbtt01_0202500_persistent_sites"
+    },
+    {
+      "material_class": "weakT",
+      "candidate_id": "v913_zeroD_sobol_0129902",
+      "option_key": "v913_paper_weakT01_0129902_persistent_sites"
+    },
+    {
+      "material_class": "ceramic",
+      "candidate_id": "v913_zeroD_sobol_0077080",
+      "option_key": "v913_paper_ceramic01_0077080_persistent_sites"
+    }
+  ],
+  "backup_candidates": [
+    {
+      "material_class": "weakT",
+      "candidate_id": "v913_zeroD_sobol_0008816",
+      "option_key": "v913_paper_weakT02_0008816_persistent_sites"
+    },
+    {
+      "material_class": "ceramic",
+      "candidate_id": "v913_zeroD_sobol_0008536",
+      "option_key": "v913_paper_ceramic02_0008536_persistent_sites"
+    }
+  ],
+  "fixed_closure": {
+    "persistent_sites": true,
+    "finite_source_inventory": false,
+    "source_depletion_on_emission": false,
+    "source_refresh_on_crack_advance": false,
+    "explicit_recovery": false,
+    "dynamic_tip_radius": true,
+    "dynamic_front_width": true
+  },
+  "transfer_contract": {
+    "mechanics_changed_by_parameter_transfer": false,
+    "source_closure_changed_by_parameter_transfer": false,
+    "parameter_values_refit": false,
+    "parameter_values_rounded": false,
+    "PF_runtime_dependency": false,
+    "theta_is_runtime_input": true,
+    "backups_are_production_classes": false
+  }
+}
