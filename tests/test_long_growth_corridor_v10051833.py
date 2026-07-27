@@ -41,6 +41,8 @@ def test_1000um_corridor_is_process_zone_resolved_and_compact(monkeypatch):
     assert audit["corridor_guard_um"] == pytest.approx(10.0)
     assert audit["full_requested_corridor_covered"] is True
     assert audit["target_propagated_before_mesh_construction"] is True
+    assert audit["center_gap_requirement_passed"] is True
+    assert audit["center_gap_um"] <= 100.0 + 1.0e-12
     assert audit["minimum_initial_triangle_quality"] >= 0.035
     assert audit["maximum_sampled_hbar_tip_over_L_pz"] <= 0.25
     assert audit["tip_h_over_da_enforced_as_veto"] is False
