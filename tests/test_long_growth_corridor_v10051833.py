@@ -96,3 +96,18 @@ def test_runner_keeps_child_area_floor_and_uses_new_entrypoint():
     assert "ARRHENIUS_CORRIDOR_MAX_CENTER_GAP_UM" in text
     assert "ARRHENIUS_MAX_CORRIDOR_H_OVER_LPZ" in text
     assert "child_area_ratio_floor_relaxed=false" in text
+
+
+def test_four_class_sweep_defaults_to_400um():
+    root = Path(__file__).resolve().parents[1]
+    wrapper = root / "run_v10_0_5_18_3_3_four_class_14T_400um_target_corridor_sweep.sh"
+    text = wrapper.read_text()
+
+    assert 'TARGET_EXT_UM=${TARGET_EXT_UM:-400}' in text
+    assert 'SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-8}' in text
+    assert 'SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-50}' in text
+    assert 'MAX_JOBS=${MAX_JOBS:-2}' in text
+    assert "run_v10_0_5_18_3_3_four_class_focused_long_growth.sh" in text
+    assert "target_aware_long_growth_corridor=true" in text
+    assert "child_area_ratio_floor_relaxed=false" in text
+    assert "1000um" not in wrapper.name
