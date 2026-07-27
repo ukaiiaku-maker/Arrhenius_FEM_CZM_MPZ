@@ -50,35 +50,42 @@ cls.configure_stochastic(
     event_minimum_factor=0.5,
     event_maximum_factor=4.0,
 )
-front = FrontConfig()
-front.r0 = 1.0e-6
-front.L_pz = 50.0e-6
-front.da = 5.0e-6
-front.sigma_cap = 30.0e9
-engine = cls(
-    front,
-    default_cleavage_barrier(),
-    default_emission_barrier(2.74e-10),
-    160.0e9,
-    0.28,
-    2.74e-10,
-    SimpleNamespace(
-        blunting_length_m=0.5e-6,
-        max_transport_cfl=0.35,
-        max_transport_substeps=2000,
-    ),
-)
-engine._mm = SimpleNamespace(
-    latest={
-        "two_channel_drive_reliable": True,
-        "two_channel_drive_factors": [1.0, 0.5],
-        "two_channel_tau_signed_Pa": [1.0e8, -1.0e8],
-        "two_channel_names": ["positive", "negative"],
-        "cleavage_factor": 1.0,
-        "emission_factor": 4.0,
-    }
-)
 
+
+def build_engine() -> PersistentSiteJointKSingleTrialFrontEngineV10051832:
+    front = FrontConfig()
+    front.r0 = 1.0e-6
+    front.L_pz = 50.0e-6
+    front.da = 5.0e-6
+    front.sigma_cap = 30.0e9
+
+    engine = cls(
+        front,
+        default_cleavage_barrier(),
+        default_emission_barrier(2.74e-10),
+        160.0e9,
+        0.28,
+        2.74e-10,
+        SimpleNamespace(
+            blunting_length_m=0.5e-6,
+            max_transport_cfl=0.35,
+            max_transport_substeps=2000,
+        ),
+    )
+    engine._mm = SimpleNamespace(
+        latest={
+            "two_channel_drive_reliable": True,
+            "two_channel_drive_factors": [1.0, 0.5],
+            "two_channel_tau_signed_Pa": [1.0e8, -1.0e8],
+            "two_channel_names": ["positive", "negative"],
+            "cleavage_factor": 1.0,
+            "emission_factor": 4.0,
+        }
+    )
+    return engine
+
+
+engine = build_engine()
 before = engine._capture_state()
 predicted = engine.predict_clock_increment_drives(
     16.5e6,
@@ -100,7 +107,7 @@ if after["emission_event_count_total"] != before["emission_event_count_total"]:
 if after["hazard_rng_state"] != before["hazard_rng_state"]:
     errors.append("predictor mutated RNG state")
 
-trial = engine.copy()
+trial = build_engine()
 trial._integrate_coupled(
     K_cleave=16.5e6,
     K_emit=16.5e6,
