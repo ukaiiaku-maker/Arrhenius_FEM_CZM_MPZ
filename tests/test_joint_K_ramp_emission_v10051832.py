@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import faulthandler
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -165,6 +165,59 @@ def test_zero_initial_hazard_is_localized_inside_linear_K_ramp(monkeypatch):
     assert result["joint_K_ramp_inside_event_horizon"] is True
 
 
+def test_peak_1000K_diagnostic_event_transport_counts(monkeypatch, capsys):
+    engine = _engine(
+        monkeypatch,
+        option=PEAK,
+        seed=3100913530,
+        factors=(1.0, 0.5),
+    )
+    counts = {"hazard_calls": 0, "transport_calls": 0, "events": 0}
+    limit = 2000
+    original_hazards = joint32._emission_hazards
+    original_transport = joint32.advance_pf_transport_only_v10222
+    original_deposit = joint32._deposit_one_emission_event
+
+    class DiagnosticStop(RuntimeError):
+        pass
+
+    def counted_hazards(*args, **kwargs):
+        counts["hazard_calls"] += 1
+        if counts["hazard_calls"] > limit:
+            raise DiagnosticStop("peak-1000 diagnostic hazard-call limit reached")
+        return original_hazards(*args, **kwargs)
+
+    def counted_transport(*args, **kwargs):
+        counts["transport_calls"] += 1
+        return original_transport(*args, **kwargs)
+
+    def counted_deposit(*args, **kwargs):
+        counts["events"] += 1
+        return original_deposit(*args, **kwargs)
+
+    monkeypatch.setattr(joint32, "_emission_hazards", counted_hazards)
+    monkeypatch.setattr(joint32, "advance_pf_transport_only_v10222", counted_transport)
+    monkeypatch.setattr(joint32, "_deposit_one_emission_event", counted_deposit)
+
+    completed = False
+    try:
+        engine.predict_clock_increment_drives(
+            16.5e6,
+            16.5e6,
+            1000.0,
+            840.0,
+        )
+        completed = True
+    except DiagnosticStop:
+        pass
+
+    payload = {**counts, "completed_before_limit": completed, "limit": limit}
+    print("PEAK1000_DIAGNOSTIC " + json.dumps(payload, sort_keys=True))
+    captured = capsys.readouterr()
+    assert "PEAK1000_DIAGNOSTIC" in captured.out
+    assert completed or counts["hazard_calls"] > limit
+
+
 def test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating(monkeypatch):
     engine = _engine(
         monkeypatch,
@@ -173,16 +226,12 @@ def test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating(monkeyp
         factors=(1.0, 0.5),
     )
     before = engine._capture_state()
-    faulthandler.dump_traceback_later(30.0, repeat=True)
-    try:
-        predicted = engine.predict_clock_increment_drives(
-            16.5e6,
-            16.5e6,
-            1000.0,
-            840.0,
-        )
-    finally:
-        faulthandler.cancel_dump_traceback_later()
+    predicted = engine.predict_clock_increment_drives(
+        16.5e6,
+        16.5e6,
+        1000.0,
+        840.0,
+    )
     assert np.isfinite(predicted)
     assert 0.0 <= predicted <= 1.0 + 1.0e-12
     after = engine._capture_state()
