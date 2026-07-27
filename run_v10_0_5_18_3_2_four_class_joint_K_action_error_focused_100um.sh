@@ -11,6 +11,7 @@ fi
 
 export ROOT
 export EMISSION_INNER_MAX_ACTION_ERROR=${EMISSION_INNER_MAX_ACTION_ERROR:-0.01}
+export EMISSION_INNER_MAX_REFINEMENTS=${EMISSION_INNER_MAX_REFINEMENTS:-64}
 
 TMP=$(mktemp "${TMPDIR:-/tmp}/v10051832_action_error_runner.XXXXXX")
 trap 'rm -f "$TMP"' EXIT
@@ -20,7 +21,8 @@ sed \
   -e '/K_ramp_evaluated_inside_event_horizon=true/a\
 action_error_control_active=true\
 action_error_schema=v10.0.5.18.3.2_full_vs_two_half_integrated_hazard_action_error\
-action_error_tolerance='"$EMISSION_INNER_MAX_ACTION_ERROR" \
+action_error_tolerance='"$EMISSION_INNER_MAX_ACTION_ERROR"'\
+action_error_max_refinements='"$EMISSION_INNER_MAX_REFINEMENTS" \
   "$BASE_RUNNER" > "$TMP"
 
 chmod +x "$TMP"
