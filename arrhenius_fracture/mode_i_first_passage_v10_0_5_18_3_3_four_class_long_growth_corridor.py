@@ -6,9 +6,11 @@ import os
 from pathlib import Path
 import sys
 
+from . import long_growth_corridor_v10051833 as _corridor
 from . import mode_i_first_passage_v9_18_5_3 as _v91853
 from . import mode_i_first_passage_v10_0_5_13_2_barrier_only as _v1005132
 from . import mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_single_trial_stochastic_emission as _base
+from . import physical_refinement_mesh_v100510 as _physical
 from .long_growth_corridor_v10051833 import (
     CORRIDOR_SCHEMA,
     MODEL_ID as CORRIDOR_MODEL,
@@ -54,6 +56,17 @@ def _out_path(argv: list[str]) -> Path | None:
     return None if raw is None else Path(raw).expanduser().resolve()
 
 
+def _active_physical_refinement_provider(_function) -> bool:
+    """Detect the production physical provider through any nested callable wrapper.
+
+    v10.0.5.13 configures one validated physical-refinement specification before
+    entering the v9.18.5 corridor chain and clears it afterward.  That active
+    specification is the authoritative runtime signal; callable identity is not,
+    because intermediate point releases may wrap the provider.
+    """
+    return _physical._ACTIVE_SPEC is not None
+
+
 def _rewrite_outputs(out: Path | None, target_um: float, da_um: float, lpz_um: float) -> None:
     if out is None:
         return
@@ -74,6 +87,7 @@ def _rewrite_outputs(out: Path | None, target_um: float, da_um: float, lpz_um: f
         "process_zone_length_um_propagated_before_mesh": lpz_um,
         "corridor_acceptance_metric": "triangle_quality_and_h_tip_over_L_pz",
         "tip_h_over_da_role": "audit_warning_only",
+        "physical_provider_detection": "active_validated_refinement_spec",
         "child_area_ratio_floor_relaxed": False,
         "constitutive_physics_changed": False,
     }
@@ -128,14 +142,19 @@ def main(argv: list[str] | None = None):
     saved_env = {key: os.environ.get(key) for key in requested_env}
     saved_v91853_corridor = _v91853._quality_selected_corridor_mesh
     saved_v1005132_corridor = _v1005132._quality_selected_corridor_mesh_v1005132
+    saved_provider_detector = _corridor._is_production_physical_constructor
 
     # The nested v10.0.5.13.2 wrapper replaces the v9.18.5.3 selector during
     # startup. Patch both symbols so the final function installed into the lower
-    # mesh slot is target-aware. v9.18.5 attaches the raw mesh constructor to
-    # ``_original`` immediately before the selected function is called.
+    # mesh slot is target-aware.  The lower chain may wrap the physical provider,
+    # so detect it from the validated active refinement specification rather than
+    # from fragile callable module/name identity.
     _v91853._quality_selected_corridor_mesh = target_aware_long_growth_corridor_mesh
     _v1005132._quality_selected_corridor_mesh_v1005132 = (
         target_aware_long_growth_corridor_mesh
+    )
+    _corridor._is_production_physical_constructor = (
+        _active_physical_refinement_provider
     )
     for key, value in requested_env.items():
         os.environ[key] = value
@@ -143,6 +162,7 @@ def main(argv: list[str] | None = None):
     try:
         return _base.main(user_args)
     finally:
+        _corridor._is_production_physical_constructor = saved_provider_detector
         _v1005132._quality_selected_corridor_mesh_v1005132 = saved_v1005132_corridor
         _v91853._quality_selected_corridor_mesh = saved_v91853_corridor
         for key, value in saved_env.items():
