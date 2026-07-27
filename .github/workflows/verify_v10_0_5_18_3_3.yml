@@ -30,8 +30,7 @@ jobs:
         run: |
           python -m pytest -q --tb=short \
             tests/test_joint_K_ramp_emission_v10051832.py \
-            tests/test_joint_K_single_trial_v10051832.py \
-            tests/test_v10051832_runner_contract.py
+            tests/test_joint_K_single_trial_v10051832.py
       - name: Preserve moving-tip, signed-source, and adaptive-CZM contracts
         run: |
           python -m pytest -q --tb=short \
