@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import re
 import sys
@@ -32,7 +33,11 @@ TEMPERATURES = [
 MANIFEST_NAME = "persistent_site_production_manifest_v10_0_5_18_3_3.json"
 EVENTS_NAME = "stochastic_geometry_events_v10_0_5_16.json"
 CORRIDOR_NAME = "compact_corridor_mesh_v91852.json"
+SWEPT_POLICY = "fixed_physical_radius_swept_capsule_same_size_law"
+PHYSICAL_RADIUS_M = 330.0e-6
 FAILURE_SIGNATURES = [
+    "STARTUP_FAILURE",
+    "found no corridor",
     "Traceback (most recent call last)",
     "max_internal_steps",
     "proposal budget",
@@ -49,6 +54,14 @@ FAILURE_SIGNATURES = [
 
 def _load_json(path: pathlib.Path) -> Any:
     return json.loads(path.read_text())
+
+
+def _close(value: Any, expected: float, *, atol: float = 1.0e-15) -> bool:
+    try:
+        observed = float(value)
+    except (TypeError, ValueError):
+        return False
+    return math.isclose(observed, expected, rel_tol=1.0e-12, abs_tol=atol)
 
 
 def _case_record(
@@ -121,6 +134,11 @@ def _case_record(
     center_gap_um = corridor.get("center_gap_um")
     qmin = corridor.get("minimum_initial_triangle_quality")
     h_over_lpz = corridor.get("maximum_sampled_hbar_tip_over_L_pz")
+    physical_provider = corridor.get("production_physical_provider_detected")
+    swept_active = corridor.get("swept_physical_refinement_active")
+    swept_policy = corridor.get("swept_physical_refinement_policy")
+    mesh_provider = corridor.get("mesh_provider")
+    radius_m = corridor.get("production_refinement_radius_m")
 
     completion_errors: list[str] = []
     if manifest.get("run_completed_without_exception") is True:
@@ -152,6 +170,22 @@ def _case_record(
             )
         if corridor.get("tip_h_over_da_enforced_as_veto") is not False:
             completion_errors.append("h_tip/da incorrectly enforced as veto")
+        if physical_provider is not True:
+            completion_errors.append("production physical-refinement provider not detected")
+        if swept_active is not True:
+            completion_errors.append("swept physical-refinement capsule not active")
+        if swept_policy != SWEPT_POLICY:
+            completion_errors.append(
+                f"wrong swept physical-refinement policy {swept_policy!r}"
+            )
+        if mesh_provider != SWEPT_POLICY:
+            completion_errors.append(f"wrong mesh provider {mesh_provider!r}")
+        if not _close(radius_m, PHYSICAL_RADIUS_M):
+            completion_errors.append(
+                f"physical refinement radius {radius_m!r} is not 330 um"
+            )
+        if corridor.get("constitutive_physics_changed") is not False:
+            completion_errors.append("corridor reports constitutive physics change")
         if signatures:
             completion_errors.append("failure signature present")
 
@@ -182,6 +216,10 @@ def _case_record(
         "corridor_center_gap_um": center_gap_um,
         "corridor_minimum_triangle_quality": qmin,
         "corridor_maximum_h_tip_over_L_pz": h_over_lpz,
+        "production_physical_provider_detected": physical_provider,
+        "swept_physical_refinement_active": swept_active,
+        "swept_physical_refinement_policy": swept_policy,
+        "production_refinement_radius_m": radius_m,
         "failure_signatures": signatures,
         "completion_errors": completion_errors,
         "case_directory": str(case),
@@ -241,11 +279,16 @@ def main() -> int:
         )
         print()
         print(
-            "class     T_K   status                  step   events  reject  extension_um  gap_um"
+            "class     T_K   status                  step   events  reject  extension_um  gap_um  swept"
         )
         for record in records:
             gap = record["corridor_center_gap_um"]
             gap_text = "-" if gap is None else f"{float(gap):.3f}"
+            swept_text = (
+                "yes"
+                if record["swept_physical_refinement_active"] is True
+                else "no"
+            )
             print(
                 f"{record['material_class']:<9} "
                 f"{record['temperature_K']:>4}  "
@@ -254,7 +297,8 @@ def main() -> int:
                 f"{record['accepted_geometry_events']:>7} "
                 f"{record['rejected_geometry_events']:>7} "
                 f"{record['committed_extension_um']:>13.6f} "
-                f"{gap_text:>8}"
+                f"{gap_text:>8} "
+                f"{swept_text:>6}"
             )
             issues = [
                 *record["failure_signatures"],
