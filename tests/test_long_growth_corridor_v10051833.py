@@ -27,18 +27,19 @@ def _set_corridor_env(monkeypatch, target_um="1000"):
     monkeypatch.setenv("ARRHENIUS_MAX_CORRIDOR_H_OVER_LPZ", "0.25")
     monkeypatch.setenv("ARRHENIUS_MIN_INITIAL_TRIANGLE_QUALITY", "0.035")
     monkeypatch.setenv("ARRHENIUS_MAX_TIP_H_OVER_DA", "0.75")
+    monkeypatch.setenv("ARRHENIUS_CORRIDOR_EXTRA_CENTER_COUNTS", "18")
 
 
-def test_1000um_corridor_is_process_zone_resolved_and_compact(monkeypatch):
-    _set_corridor_env(monkeypatch)
+def _build_and_check_corridor(monkeypatch, target_um: float):
+    _set_corridor_env(monkeypatch, str(target_um))
     geom = GeometryConfig()
     cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
     target_aware_long_growth_corridor_mesh._original = mesh_module.make_tri_mesh
-    mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=1)
+    mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
     audit = dict(v91852._STARTUP_AUDIT)
 
     assert audit["schema"] == CORRIDOR_SCHEMA
-    assert audit["corridor_target_extension_um"] == pytest.approx(1000.0)
+    assert audit["corridor_target_extension_um"] == pytest.approx(target_um)
     assert audit["corridor_guard_um"] == pytest.approx(10.0)
     assert audit["full_requested_corridor_covered"] is True
     assert audit["target_propagated_before_mesh_construction"] is True
@@ -47,11 +48,27 @@ def test_1000um_corridor_is_process_zone_resolved_and_compact(monkeypatch):
     assert audit["minimum_initial_triangle_quality"] >= 0.035
     assert audit["maximum_sampled_hbar_tip_over_L_pz"] <= 0.25
     assert audit["tip_h_over_da_enforced_as_veto"] is False
-    assert 2 < audit["selected_center_count"] < 20
+    assert audit["candidate_search_stopped_after_first_admissible"] is True
+    assert audit["candidate_center_counts"][0] == int(
+        np.ceil((target_um + 10.0) / 100.0)
+    ) + 1
     assert mesh.nn < 6000
     assert mesh.ne < 12000
     assert np.all(np.isfinite(mesh.area_e))
     assert np.all(mesh.area_e > 0.0)
+    return mesh, audit
+
+
+def test_400um_production_seed_corridor_is_admissible(monkeypatch):
+    mesh, audit = _build_and_check_corridor(monkeypatch, 400.0)
+    assert audit["selected_center_count"] >= 6
+    assert mesh.nn < 5000
+
+
+def test_1000um_production_seed_corridor_is_process_zone_resolved(monkeypatch):
+    mesh, audit = _build_and_check_corridor(monkeypatch, 1000.0)
+    assert audit["selected_center_count"] >= 12
+    assert mesh.nn < 6000
 
 
 def test_entrypoint_propagates_target_and_patches_both_corridor_slots(
