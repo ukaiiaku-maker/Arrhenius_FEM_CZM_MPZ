@@ -1,0 +1,76 @@
+name: Verify v10.0.5.18.3.2 joint K-ramp event horizon
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.3.2-joint-K-ramp-event-horizon
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile final point release
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/persistent_site_joint_K_ramp_emission_v10051832.py \
+            arrhenius_fracture/persistent_site_joint_K_single_trial_v10051832.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_single_trial_stochastic_emission.py \
+            scripts/verify_peak1000_single_trial_production_v10051832.py \
+            scripts/audit_v10051832_four_class_14T_sweep.py
+          bash -n run_v10_0_5_18_3_2_four_class_focused_100um.sh
+          bash -n run_v10_0_5_18_3_2_four_class_joint_K_single_trial_focused_100um.sh
+          bash -n run_v10_0_5_18_3_2_four_class_14T_joint_K_single_trial_sweep.sh
+          python scripts/audit_v10051832_four_class_14T_sweep.py /tmp/v10051832-empty-sweep --json > /tmp/v10051832-empty-sweep.json
+          python - <<'PY'
+          import json
+          payload = json.load(open('/tmp/v10051832-empty-sweep.json'))
+          assert payload['expected_cases'] == 56
+          assert payload['counts']['NOT_STARTED'] == 56
+          PY
+      - name: Final joint K-ramp contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_joint_K_ramp_emission_v10051832.py::test_outer_cell_has_no_emission_action_or_rate_limiter \
+            tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
+            tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
+            tests/test_joint_K_single_trial_v10051832.py \
+            tests/test_v10051832_runner_contract.py
+      - name: Peak 1000 K same-seed production predictor
+        run: |
+          /usr/bin/time -v timeout 60s \
+            python scripts/verify_peak1000_single_trial_production_v10051832.py \
+            | tee peak1000_single_trial_production.log
+      - name: Upload peak startup verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: peak1000-single-trial-production-log
+          path: peak1000_single_trial_production.log
+      - name: Preserve v10.0.5.18.3.1 event-driven behavior
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py
+      - name: Preserve load-ramp and numerical resilience behavior
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_load_ramp_stochastic_emission_v1005183.py \
+            tests/test_numerical_resilience_v1005183.py
+      - name: Preserve stochastic moving-tip and signed-source contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_stochastic_hazard_event_length_v100516.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py

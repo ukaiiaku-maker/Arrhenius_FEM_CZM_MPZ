@@ -1,0 +1,81 @@
+name: Verify v10.0.5.18.3.1 single-layer load ramp
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.3.1-single-layer-local-ramp
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile point release
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/persistent_site_load_ramp_stochastic_emission_v10051831.py \
+            arrhenius_fracture/persistent_site_event_driven_emission_v10051831.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_1_four_class_single_layer_load_ramp_stochastic_emission.py
+          bash -n run_v10_0_5_18_3_1_four_class_focused_100um.sh
+      - name: Single-layer event-horizon controls
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_outer_ramp_does_not_duplicate_inner_emission_action_limiter \
+            tests/test_single_layer_load_ramp_v10051831.py::test_event_driven_transport_localizes_one_event_without_twenty_proposals
+      - name: Actual weak-T 300 K predictor
+        run: |
+          set +e
+          python -m pytest -vv --tb=long \
+            tests/test_single_layer_load_ramp_v10051831.py::test_actual_weakT_startup_predictor_remains_finite_and_nonmutating \
+            > weakT_predictor_test.log 2>&1
+          rc=$?
+          cat weakT_predictor_test.log
+          exit "$rc"
+      - name: Upload weak-T predictor diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weakT-predictor-test-log
+          path: weakT_predictor_test.log
+      - name: Bounded factor-5 predictor
+        run: |
+          set +e
+          python -m pytest -vv --tb=long \
+            tests/test_single_layer_load_ramp_v10051831.py::test_bounded_maximum_two_channel_factor_predictor_is_finite \
+            > factor5_predictor_test.log 2>&1
+          rc=$?
+          cat factor5_predictor_test.log
+          exit "$rc"
+      - name: Upload factor-5 predictor diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: factor5-predictor-test-log
+          path: factor5_predictor_test.log
+      - name: Single-layer audit and runner contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_single_layer_load_ramp_v10051831.py::test_audit_records_single_layer_action_control \
+            tests/test_v10051831_runner_contract.py
+      - name: Preserve v10.0.5.18.3 load-ramp and resilience behavior
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_load_ramp_stochastic_emission_v1005183.py \
+            tests/test_numerical_resilience_v1005183.py
+      - name: Preserve stochastic moving-tip and signed-source contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_stochastic_hazard_event_length_v100516.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
