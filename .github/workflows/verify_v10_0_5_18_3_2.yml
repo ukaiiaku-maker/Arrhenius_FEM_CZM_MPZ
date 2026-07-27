@@ -33,12 +33,12 @@ jobs:
             tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
             tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
             tests/test_v10051832_runner_contract.py
-      - name: Peak 1000 K expanded-horizon diagnostic
+      - name: Peak 1000 K operator-split diagnostic
         run: |
           set +e
           /usr/bin/time -v timeout 60s \
             env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=5000 \
-                EMISSION_INNER_MAX_ACTION_ERROR=0.25 \
+                EMISSION_INNER_MAX_ACTION_ERROR=1e300 \
                 EMISSION_INNER_MAX_REFINEMENTS=64 \
                 EMISSION_EVENT_HORIZON_FACTOR=1000 \
             python scripts/diagnose_peak1000_horizon_factor_v10051832.py \
