@@ -14,7 +14,13 @@ from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_2_barrier_only as
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_3_3_four_class_long_growth_corridor as entry
 from arrhenius_fracture.long_growth_corridor_v10051833 import (
     CORRIDOR_SCHEMA,
+    SWEPT_PHYSICAL_POLICY,
     target_aware_long_growth_corridor_mesh,
+)
+from arrhenius_fracture.physical_refinement_mesh_v100510 import (
+    clear_physical_refinement_v100510,
+    configure_physical_refinement_v100510,
+    make_physical_refinement_mesh_v100510,
 )
 
 
@@ -30,14 +36,7 @@ def _set_corridor_env(monkeypatch, target_um="1000"):
     monkeypatch.setenv("ARRHENIUS_CORRIDOR_EXTRA_CENTER_COUNTS", "18")
 
 
-def _build_and_check_corridor(monkeypatch, target_um: float):
-    _set_corridor_env(monkeypatch, str(target_um))
-    geom = GeometryConfig()
-    cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
-    target_aware_long_growth_corridor_mesh._original = mesh_module.make_tri_mesh
-    mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
-    audit = dict(v91852._STARTUP_AUDIT)
-
+def _assert_common_corridor_contract(mesh, audit, target_um: float):
     assert audit["schema"] == CORRIDOR_SCHEMA
     assert audit["corridor_target_extension_um"] == pytest.approx(target_um)
     assert audit["corridor_guard_um"] == pytest.approx(10.0)
@@ -52,23 +51,67 @@ def _build_and_check_corridor(monkeypatch, target_um: float):
     assert audit["candidate_center_counts"][0] == int(
         np.ceil((target_um + 10.0) / 100.0)
     ) + 1
-    assert mesh.nn < 6000
-    assert mesh.ne < 12000
     assert np.all(np.isfinite(mesh.area_e))
     assert np.all(mesh.area_e > 0.0)
+
+
+def _build_raw_corridor(monkeypatch, target_um: float):
+    _set_corridor_env(monkeypatch, str(target_um))
+    geom = GeometryConfig()
+    cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
+    target_aware_long_growth_corridor_mesh._original = mesh_module.make_tri_mesh
+    mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
+    audit = dict(v91852._STARTUP_AUDIT)
+    _assert_common_corridor_contract(mesh, audit, target_um)
+    assert audit["production_physical_provider_detected"] is False
+    assert audit["swept_physical_refinement_active"] is False
     return mesh, audit
 
 
-def test_400um_production_seed_corridor_is_admissible(monkeypatch):
-    mesh, audit = _build_and_check_corridor(monkeypatch, 400.0)
+def _build_production_physical_corridor(monkeypatch, target_um: float):
+    _set_corridor_env(monkeypatch, str(target_um))
+    geom = GeometryConfig()
+    cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
+    configure_physical_refinement_v100510(330.0e-6)
+    target_aware_long_growth_corridor_mesh._original = (
+        make_physical_refinement_mesh_v100510
+    )
+    try:
+        mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
+        audit = dict(v91852._STARTUP_AUDIT)
+    finally:
+        clear_physical_refinement_v100510()
+
+    _assert_common_corridor_contract(mesh, audit, target_um)
+    assert audit["production_physical_provider_detected"] is True
+    assert audit["swept_physical_refinement_active"] is True
+    assert audit["swept_physical_refinement_policy"] == SWEPT_PHYSICAL_POLICY
+    assert audit["mesh_provider"] == SWEPT_PHYSICAL_POLICY
+    assert mesh.production_refinement_radius_m == pytest.approx(330.0e-6)
+    assert mesh.production_refinement_policy == SWEPT_PHYSICAL_POLICY
+    assert mesh.production_refinement_swept_capsule is True
+    return mesh, audit
+
+
+def test_400um_raw_provider_unit_contract(monkeypatch):
+    mesh, audit = _build_raw_corridor(monkeypatch, 400.0)
     assert audit["selected_center_count"] >= 6
     assert mesh.nn < 5000
+    assert mesh.ne < 10000
 
 
-def test_1000um_production_seed_corridor_is_process_zone_resolved(monkeypatch):
-    mesh, audit = _build_and_check_corridor(monkeypatch, 1000.0)
+def test_400um_production_physical_corridor_is_admissible(monkeypatch):
+    mesh, audit = _build_production_physical_corridor(monkeypatch, 400.0)
+    assert audit["selected_center_count"] >= 6
+    assert mesh.nn < 7000
+    assert mesh.ne < 14000
+
+
+def test_1000um_production_physical_corridor_is_process_zone_resolved(monkeypatch):
+    mesh, audit = _build_production_physical_corridor(monkeypatch, 1000.0)
     assert audit["selected_center_count"] >= 12
-    assert mesh.nn < 6000
+    assert mesh.nn < 12000
+    assert mesh.ne < 24000
 
 
 def test_entrypoint_propagates_target_and_patches_both_corridor_slots(
