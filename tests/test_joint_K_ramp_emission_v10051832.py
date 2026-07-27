@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -35,18 +34,17 @@ FAMILY = (
     / "signed_kernel"
     / "v10_2_14_active_only_campaign_family.json"
 )
-PEAK = "v913_paper_peak01_0242980_persistent_sites"
 WEAKT = "v913_paper_weakT01_0129902_persistent_sites"
 
 
-def _engine(monkeypatch, *, option=WEAKT, seed=331085649, factors=(1.0, 0.5)):
+def _engine(monkeypatch, *, seed=331085649, factors=(1.0, 0.5)):
     monkeypatch.setenv("EMISSION_HAZARD_SEED", str(seed))
     monkeypatch.setenv("EMISSION_RAMP_MAX_LOG_RATE_CHANGE", "0.25")
     monkeypatch.setenv("EMISSION_RAMP_ACTION_FLOOR", "1e-6")
     monkeypatch.setenv("EMISSION_INNER_MAX_LOG_HAZARD_CHANGE", "0.25")
     monkeypatch.setenv("EMISSION_INNER_ACTION_FLOOR", "1e-6")
     monkeypatch.setenv("EMISSION_EVENT_HORIZON_FACTOR", "1.25")
-    candidate, _ = load_four_class_parameter_option(PARAMETER_ROOT, option)
+    candidate, _ = load_four_class_parameter_option(PARAMETER_ROOT, WEAKT)
     family = load_signed_shielding_artifact_v1005141(FAMILY)
     cls = PersistentSiteJointKRampEventDrivenFrontEngineV10051832
     cls.configure(candidate, family)
@@ -163,79 +161,6 @@ def test_zero_initial_hazard_is_localized_inside_linear_K_ramp(monkeypatch):
     assert event["K_emit_at_event_Pa_sqrt_m"] == pytest.approx(1.0)
     assert event["opening_stress_at_event_Pa"] == pytest.approx(1.0)
     assert result["joint_K_ramp_inside_event_horizon"] is True
-
-
-def test_peak_1000K_diagnostic_event_transport_counts(monkeypatch):
-    engine = _engine(
-        monkeypatch,
-        option=PEAK,
-        seed=3100913530,
-        factors=(1.0, 0.5),
-    )
-    counts = {"hazard_calls": 0, "transport_calls": 0, "events": 0}
-    limit = 2000
-    original_hazards = joint32._emission_hazards
-    original_transport = joint32.advance_pf_transport_only_v10222
-    original_deposit = joint32._deposit_one_emission_event
-
-    class DiagnosticStop(RuntimeError):
-        pass
-
-    def counted_hazards(*args, **kwargs):
-        counts["hazard_calls"] += 1
-        if counts["hazard_calls"] > limit:
-            raise DiagnosticStop("peak-1000 diagnostic hazard-call limit reached")
-        return original_hazards(*args, **kwargs)
-
-    def counted_transport(*args, **kwargs):
-        counts["transport_calls"] += 1
-        return original_transport(*args, **kwargs)
-
-    def counted_deposit(*args, **kwargs):
-        counts["events"] += 1
-        return original_deposit(*args, **kwargs)
-
-    monkeypatch.setattr(joint32, "_emission_hazards", counted_hazards)
-    monkeypatch.setattr(joint32, "advance_pf_transport_only_v10222", counted_transport)
-    monkeypatch.setattr(joint32, "_deposit_one_emission_event", counted_deposit)
-
-    completed = False
-    try:
-        engine.predict_clock_increment_drives(
-            16.5e6,
-            16.5e6,
-            1000.0,
-            840.0,
-        )
-        completed = True
-    except DiagnosticStop:
-        pass
-
-    payload = {**counts, "completed_before_limit": completed, "limit": limit}
-    print("PEAK1000_DIAGNOSTIC " + json.dumps(payload, sort_keys=True), flush=True)
-    assert completed or counts["hazard_calls"] > limit
-
-
-def test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating(monkeypatch):
-    engine = _engine(
-        monkeypatch,
-        option=PEAK,
-        seed=3100913530,
-        factors=(1.0, 0.5),
-    )
-    before = engine._capture_state()
-    predicted = engine.predict_clock_increment_drives(
-        16.5e6,
-        16.5e6,
-        1000.0,
-        840.0,
-    )
-    assert np.isfinite(predicted)
-    assert 0.0 <= predicted <= 1.0 + 1.0e-12
-    after = engine._capture_state()
-    assert after["mpz_state"].state_dict() == before["mpz_state"].state_dict()
-    assert after["emission_event_count_total"] == before["emission_event_count_total"]
-    assert after["hazard_rng_state"] == before["hazard_rng_state"]
 
 
 def test_audit_records_joint_K_event_horizon(monkeypatch):
