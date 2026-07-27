@@ -35,7 +35,7 @@ jobs:
           set +e
           : > peak1000_horizon_convergence.log
           failed=0
-          for factor in 10 100 300 1000; do
+          for factor in 1.25 2 5 10; do
             echo "===== HORIZON_FACTOR=$factor =====" | tee -a peak1000_horizon_convergence.log
             /usr/bin/time -v timeout 90s \
               env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=50000 \
