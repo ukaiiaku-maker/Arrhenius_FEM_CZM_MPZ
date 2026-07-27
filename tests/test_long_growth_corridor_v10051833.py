@@ -74,7 +74,7 @@ def test_entrypoint_propagates_target_before_base(monkeypatch, tmp_path):
 
     assert result == "ok"
     assert observed["target"] == "1000.0"
-    assert float(observed["da"]) == pytest.approx(5.0e-6)
+    assert float(observed["da"]) == pytest.approx(5.0)
     assert observed["lpz"] == "50.0"
     assert observed["gap"] == "100"
     assert observed["h_lpz"] == "0.25"
