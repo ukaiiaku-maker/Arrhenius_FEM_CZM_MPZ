@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import faulthandler
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -172,12 +173,16 @@ def test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating(monkeyp
         factors=(1.0, 0.5),
     )
     before = engine._capture_state()
-    predicted = engine.predict_clock_increment_drives(
-        16.5e6,
-        16.5e6,
-        1000.0,
-        840.0,
-    )
+    faulthandler.dump_traceback_later(30.0, repeat=True)
+    try:
+        predicted = engine.predict_clock_increment_drives(
+            16.5e6,
+            16.5e6,
+            1000.0,
+            840.0,
+        )
+    finally:
+        faulthandler.cancel_dump_traceback_later()
     assert np.isfinite(predicted)
     assert 0.0 <= predicted <= 1.0 + 1.0e-12
     after = engine._capture_state()
