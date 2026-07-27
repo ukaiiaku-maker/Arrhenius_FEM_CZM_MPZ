@@ -105,7 +105,8 @@ def _rewrite_outputs(out: Path | None, target_um: float, da_um: float, lpz_um: f
 def main(argv: list[str] | None = None):
     user_args = list(sys.argv[1:] if argv is None else argv)
     target_um = _required_positive_option(user_args, "--target-crack-extension-um")
-    da_um = _required_positive_option(user_args, "--da-phys")
+    da_m = _required_positive_option(user_args, "--da-phys")
+    da_um = da_m * 1.0e6
     lpz_raw = _option_value(user_args, "--mpz-length-um")
     lpz_um = 50.0 if lpz_raw is None else float(lpz_raw)
     if lpz_um <= 0.0:
@@ -125,13 +126,8 @@ def main(argv: list[str] | None = None):
     }
     saved_env = {key: os.environ.get(key) for key in requested_env}
     saved_corridor = _v91853._quality_selected_corridor_mesh
-    target_aware_long_growth_corridor_mesh._original = (
-        saved_corridor._original
-        if hasattr(saved_corridor, "_original")
-        else None
-    )
-    # v9.18.5.3 assigns this function to the lower mesh slot and then attaches
-    # the raw mesh constructor as ``_original`` at runtime.
+    # v9.18.5.3 installs this function into the lower mesh slot.  v9.18.5 then
+    # attaches the raw mesh constructor as ``_original`` immediately before use.
     _v91853._quality_selected_corridor_mesh = target_aware_long_growth_corridor_mesh
     for key, value in requested_env.items():
         os.environ[key] = value
