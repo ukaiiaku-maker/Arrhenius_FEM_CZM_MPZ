@@ -165,7 +165,7 @@ def test_zero_initial_hazard_is_localized_inside_linear_K_ramp(monkeypatch):
     assert result["joint_K_ramp_inside_event_horizon"] is True
 
 
-def test_peak_1000K_diagnostic_event_transport_counts(monkeypatch, capsys):
+def test_peak_1000K_diagnostic_event_transport_counts(monkeypatch):
     engine = _engine(
         monkeypatch,
         option=PEAK,
@@ -212,9 +212,7 @@ def test_peak_1000K_diagnostic_event_transport_counts(monkeypatch, capsys):
         pass
 
     payload = {**counts, "completed_before_limit": completed, "limit": limit}
-    print("PEAK1000_DIAGNOSTIC " + json.dumps(payload, sort_keys=True))
-    captured = capsys.readouterr()
-    assert "PEAK1000_DIAGNOSTIC" in captured.out
+    print("PEAK1000_DIAGNOSTIC " + json.dumps(payload, sort_keys=True), flush=True)
     assert completed or counts["hazard_calls"] > limit
 
 
