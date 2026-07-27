@@ -23,7 +23,7 @@ jobs:
             arrhenius_fracture/persistent_site_joint_K_action_error_v10051832.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_action_error_stochastic_emission.py \
-            scripts/diagnose_peak1000_horizon_factor_v10051832.py
+            scripts/diagnose_peak1000_single_trial_v10051832.py
           bash -n run_v10_0_5_18_3_2_four_class_focused_100um.sh
           bash -n run_v10_0_5_18_3_2_four_class_joint_K_action_error_focused_100um.sh
       - name: Joint K-ramp architecture regressions
@@ -33,25 +33,25 @@ jobs:
             tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
             tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
             tests/test_v10051832_runner_contract.py
-      - name: Peak 1000 K operator-split diagnostic
+      - name: Peak 1000 K single-trial diagnostic
         run: |
           set +e
-          /usr/bin/time -v timeout 60s \
-            env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=5000 \
-                EMISSION_INNER_MAX_ACTION_ERROR=1e300 \
-                EMISSION_INNER_MAX_REFINEMENTS=64 \
+          /usr/bin/time -v timeout 180s \
+            env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=50000 \
+                EMISSION_INNER_MAX_LOG_HAZARD_CHANGE=1e300 \
                 EMISSION_EVENT_HORIZON_FACTOR=1000 \
-            python scripts/diagnose_peak1000_horizon_factor_v10051832.py \
-            > peak1000_horizon_factor.log 2>&1
+                EMISSION_MAX_EVENTS_PER_HALF_STEP=10000 \
+            python scripts/diagnose_peak1000_single_trial_v10051832.py \
+            > peak1000_single_trial.log 2>&1
           rc=$?
-          cat peak1000_horizon_factor.log
+          cat peak1000_single_trial.log
           exit "$rc"
       - name: Upload peak startup diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: peak1000-horizon-factor-log
-          path: peak1000_horizon_factor.log
+          name: peak1000-single-trial-log
+          path: peak1000_single_trial.log
       - name: Preserve v10.0.5.18.3.1 event-driven behavior
         run: |
           python -m pytest -q --tb=short \
