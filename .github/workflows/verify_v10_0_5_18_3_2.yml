@@ -29,22 +29,22 @@ jobs:
             tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
             tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
             tests/test_v10051832_runner_contract.py
-      - name: Peak 1000 K startup predictor
+      - name: Peak 1000 K event and transport diagnostic
         run: |
           set +e
-          /usr/bin/time -v timeout 180s \
-            python -m pytest -vv --tb=long \
-            tests/test_joint_K_ramp_emission_v10051832.py::test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating \
-            > peak1000_predictor.log 2>&1
+          /usr/bin/time -v timeout 60s \
+            python -m pytest -s -vv --tb=long \
+            tests/test_joint_K_ramp_emission_v10051832.py::test_peak_1000K_diagnostic_event_transport_counts \
+            > peak1000_diagnostic.log 2>&1
           rc=$?
-          cat peak1000_predictor.log
+          cat peak1000_diagnostic.log
           exit "$rc"
       - name: Upload peak startup diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: peak1000-predictor-log
-          path: peak1000_predictor.log
+          name: peak1000-diagnostic-log
+          path: peak1000_diagnostic.log
       - name: Preserve v10.0.5.18.3.1 event-driven behavior
         run: |
           python -m pytest -q --tb=short \
