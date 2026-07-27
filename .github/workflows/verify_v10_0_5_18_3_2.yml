@@ -39,6 +39,7 @@ jobs:
           /usr/bin/time -v timeout 60s \
             env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=5000 \
                 EMISSION_INNER_MAX_ACTION_ERROR=0.01 \
+                EMISSION_INNER_MAX_REFINEMENTS=64 \
             python scripts/diagnose_peak1000_action_error_v10051832.py \
             > peak1000_action_error.log 2>&1
           rc=$?
