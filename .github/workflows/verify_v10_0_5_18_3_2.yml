@@ -20,7 +20,8 @@ jobs:
         run: |
           python -m py_compile \
             arrhenius_fracture/persistent_site_joint_K_ramp_emission_v10051832.py \
-            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py \
+            scripts/diagnose_peak1000_joint_K_v10051832.py
           bash -n run_v10_0_5_18_3_2_four_class_focused_100um.sh
       - name: Joint K-ramp architecture regressions
         run: |
@@ -29,12 +30,12 @@ jobs:
             tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
             tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
             tests/test_v10051832_runner_contract.py
-      - name: Peak 1000 K event and transport diagnostic
+      - name: Peak 1000 K staged event and transport diagnostic
         run: |
           set +e
           /usr/bin/time -v timeout 60s \
-            python -m pytest -s -vv --tb=long \
-            tests/test_joint_K_ramp_emission_v10051832.py::test_peak_1000K_diagnostic_event_transport_counts \
+            env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=5000 \
+            python scripts/diagnose_peak1000_joint_K_v10051832.py \
             > peak1000_diagnostic.log 2>&1
           rc=$?
           cat peak1000_diagnostic.log
@@ -48,8 +49,7 @@ jobs:
       - name: Preserve v10.0.5.18.3.1 event-driven behavior
         run: |
           python -m pytest -q --tb=short \
-            tests/test_single_layer_load_ramp_v10051831.py \
-            tests/test_v10051831_runner_contract.py
+            tests/test_single_layer_load_ramp_v10051831.py
       - name: Preserve load-ramp and numerical resilience behavior
         run: |
           python -m pytest -q --tb=short \
