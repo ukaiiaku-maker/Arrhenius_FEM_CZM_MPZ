@@ -17,7 +17,6 @@ from typing import Any
 
 import numpy as np
 
-from . import mesh as _mesh
 from . import mode_i_first_passage_v9_18_5 as _v9185
 from . import mode_i_first_passage_v9_18_5_2 as _v91852
 from . import mode_i_first_passage_v9_18_5_3 as _v91853
@@ -101,14 +100,18 @@ def target_aware_long_growth_corridor_mesh(
             hmax = float(resolution["maximum_sampled_hbar_tip_m"])
             h_over_da = hmax / max(da_m, 1.0e-300)
             h_over_lpz = hmax / max(lpz_m, 1.0e-300)
+            center_gap_um = float(
+                length_m * 1.0e6 / max(len(centers) - 1, 1)
+            )
+            gap_ok = bool(center_gap_um <= max_gap_um + 1.0e-12)
             quality_ok = bool(qmin >= qfloor)
             process_zone_ok = bool(h_over_lpz <= max_h_over_lpz)
-            ok = bool(quality_ok and process_zone_ok)
+            ok = bool(gap_ok and quality_ok and process_zone_ok)
             row = {
                 "center_count": int(len(centers)),
-                "center_gap_um": float(
-                    length_m * 1.0e6 / max(len(centers) - 1, 1)
-                ),
+                "center_gap_um": center_gap_um,
+                "maximum_center_gap_um_required": max_gap_um,
+                "center_gap_requirement_passed": gap_ok,
                 "node_count": int(compact.nn),
                 "triangle_count": int(compact.ne),
                 "minimum_initial_triangle_quality": qmin,
@@ -125,8 +128,6 @@ def target_aware_long_growth_corridor_mesh(
             }
             candidates.append(row)
             if ok:
-                # Among fully admissible meshes, prefer fewer unknowns first;
-                # then larger quality and process-zone-resolution margins.
                 score = (
                     -float(compact.nn),
                     qmin - qfloor,
@@ -155,9 +156,10 @@ def target_aware_long_growth_corridor_mesh(
             "constitutive_physics_changed": False,
         })
         raise RuntimeError(
-            "v10.0.5.18.3.3 found no corridor satisfying both initial triangle "
-            f"quality >= {qfloor:.6g} and h_tip/L_pz <= {max_h_over_lpz:.6g} "
-            f"over {target_um + guard_um:.6g} um"
+            "v10.0.5.18.3.3 found no corridor satisfying maximum center gap "
+            f"<= {max_gap_um:.6g} um, initial triangle quality >= {qfloor:.6g}, "
+            f"and h_tip/L_pz <= {max_h_over_lpz:.6g} over "
+            f"{target_um + guard_um:.6g} um"
         )
 
     _, selected, selected_audit, centers = max(accepted, key=lambda item: item[0])
