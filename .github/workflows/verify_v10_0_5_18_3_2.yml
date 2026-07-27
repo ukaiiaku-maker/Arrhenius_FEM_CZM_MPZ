@@ -16,47 +16,35 @@ jobs:
           python-version: "3.11"
       - name: Install package
         run: python -m pip install -e '.[dev]'
-      - name: Compile point release
+      - name: Compile final point release
         run: |
           python -m py_compile \
             arrhenius_fracture/persistent_site_joint_K_ramp_emission_v10051832.py \
+            arrhenius_fracture/persistent_site_joint_K_single_trial_v10051832.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py \
-            scripts/diagnose_peak1000_single_trial_v10051832.py
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_single_trial_stochastic_emission.py \
+            scripts/verify_peak1000_single_trial_production_v10051832.py
           bash -n run_v10_0_5_18_3_2_four_class_focused_100um.sh
-      - name: Joint K-ramp architecture regressions
+          bash -n run_v10_0_5_18_3_2_four_class_joint_K_single_trial_focused_100um.sh
+      - name: Final joint K-ramp contracts
         run: |
           python -m pytest -q --tb=short \
             tests/test_joint_K_ramp_emission_v10051832.py::test_outer_cell_has_no_emission_action_or_rate_limiter \
             tests/test_joint_K_ramp_emission_v10051832.py::test_zero_initial_hazard_is_localized_inside_linear_K_ramp \
             tests/test_joint_K_ramp_emission_v10051832.py::test_audit_records_joint_K_event_horizon \
+            tests/test_joint_K_single_trial_v10051832.py \
             tests/test_v10051832_runner_contract.py
-      - name: Peak 1000 K horizon-factor convergence
+      - name: Peak 1000 K same-seed production predictor
         run: |
-          set +e
-          : > peak1000_horizon_convergence.log
-          failed=0
-          for factor in 1.25 2 5 10; do
-            echo "===== HORIZON_FACTOR=$factor =====" | tee -a peak1000_horizon_convergence.log
-            /usr/bin/time -v timeout 90s \
-              env PEAK1000_DIAGNOSTIC_HAZARD_LIMIT=50000 \
-                  EMISSION_INNER_MAX_LOG_HAZARD_CHANGE=1e300 \
-                  EMISSION_EVENT_HORIZON_FACTOR="$factor" \
-                  EMISSION_MAX_EVENTS_PER_HALF_STEP=10000 \
-              python scripts/diagnose_peak1000_single_trial_v10051832.py \
-              >> peak1000_horizon_convergence.log 2>&1
-            rc=$?
-            if [[ "$rc" != "0" ]]; then
-              failed=1
-            fi
-          done
-          cat peak1000_horizon_convergence.log
-          exit "$failed"
-      - name: Upload peak startup diagnostic
+          /usr/bin/time -v timeout 60s \
+            python scripts/verify_peak1000_single_trial_production_v10051832.py \
+            | tee peak1000_single_trial_production.log
+      - name: Upload peak startup verification
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: peak1000-horizon-convergence-log
-          path: peak1000_horizon_convergence.log
+          name: peak1000-single-trial-production-log
+          path: peak1000_single_trial_production.log
       - name: Preserve v10.0.5.18.3.1 event-driven behavior
         run: |
           python -m pytest -q --tb=short \
