@@ -7,7 +7,9 @@ law.  It corrects the numerical mesh contract used by long-growth campaigns:
 * the static refinement corridor spans that extension plus a guard distance;
 * corridor acceptance is based on triangle quality and process-zone resolution
   ``h_tip / L_pz`` rather than the stochastic event-length ratio ``h_tip / da``;
-* ``h_tip / da`` remains recorded as an audit warning only, matching v9.18.5.6.
+* ``h_tip / da`` remains recorded as an audit warning only, matching v9.18.5.6;
+* the deterministic center-count search starts at the minimum count required by
+  the maximum-gap contract and continues until the first admissible mesh is found.
 """
 from __future__ import annotations
 
@@ -40,6 +42,16 @@ def _required_positive_env(name: str) -> float:
             f"v10.0.5.18.3.3 requires positive {name}; observed {os.environ.get(name)!r}"
         )
     return value
+
+
+def _production_candidate_counts(length_um: float, max_gap_um: float) -> list[int]:
+    """Return an ascending bounded search satisfying the center-gap contract."""
+    minimum = max(
+        2,
+        int(math.ceil(max(float(length_um), 0.0) / max(float(max_gap_um), 1.0))) + 1,
+    )
+    extra = int(max(_float_env("ARRHENIUS_CORRIDOR_EXTRA_CENTER_COUNTS", 18.0), 0.0))
+    return list(range(minimum, minimum + extra + 1))
 
 
 def target_aware_long_growth_corridor_mesh(
@@ -86,10 +98,13 @@ def target_aware_long_growth_corridor_mesh(
             f"requested_stop={requested_stop:.9e} domain_stop={float(geom.Lx):.9e}"
         )
     length_m = max(stop - start, 0.0)
-    counts = _v91853._candidate_counts(length_m * 1.0e6, max_gap_um)
+    counts = _production_candidate_counts(length_m * 1.0e6, max_gap_um)
 
     candidates: list[dict[str, Any]] = []
-    accepted: list[tuple[tuple[float, float, float], Any, dict[str, Any], np.ndarray]] = []
+    selected = None
+    selected_audit: dict[str, Any] | None = None
+    selected_centers: np.ndarray | None = None
+
     for count in counts:
         centers = _v91853._centers_for_count(geom, length_m, count)
         try:
@@ -128,12 +143,10 @@ def target_aware_long_growth_corridor_mesh(
             }
             candidates.append(row)
             if ok:
-                score = (
-                    -float(compact.nn),
-                    qmin - qfloor,
-                    max_h_over_lpz - h_over_lpz,
-                )
-                accepted.append((score, compact, {**audit, **resolution, **row}, centers))
+                selected = compact
+                selected_audit = {**audit, **resolution, **row}
+                selected_centers = centers
+                break
         except Exception as exc:
             candidates.append({
                 "center_count": int(count),
@@ -141,11 +154,13 @@ def target_aware_long_growth_corridor_mesh(
                 "error": f"{type(exc).__name__}: {exc}",
             })
 
-    if not accepted:
+    if selected is None or selected_audit is None or selected_centers is None:
         _v91852._STARTUP_AUDIT.clear()
         _v91852._STARTUP_AUDIT.update({
             "schema": CORRIDOR_SCHEMA,
             "candidate_corridors": candidates,
+            "candidate_center_counts": counts,
+            "candidate_search_stopped_after_first_admissible": True,
             "corridor_target_extension_um": target_um,
             "corridor_guard_um": guard_um,
             "corridor_max_center_gap_um": max_gap_um,
@@ -159,17 +174,19 @@ def target_aware_long_growth_corridor_mesh(
             "v10.0.5.18.3.3 found no corridor satisfying maximum center gap "
             f"<= {max_gap_um:.6g} um, initial triangle quality >= {qfloor:.6g}, "
             f"and h_tip/L_pz <= {max_h_over_lpz:.6g} over "
-            f"{target_um + guard_um:.6g} um"
+            f"{target_um + guard_um:.6g} um after center counts "
+            f"{counts[0]} through {counts[-1]}"
         )
 
-    _, selected, selected_audit, centers = max(accepted, key=lambda item: item[0])
     payload = {
         **selected_audit,
         "schema": CORRIDOR_SCHEMA,
         "model": MODEL_ID,
         "candidate_corridors": candidates,
-        "selected_center_count": int(len(centers)),
-        "selected_corridor_centers_m": centers.tolist(),
+        "candidate_center_counts": counts,
+        "candidate_search_stopped_after_first_admissible": True,
+        "selected_center_count": int(len(selected_centers)),
+        "selected_corridor_centers_m": selected_centers.tolist(),
         "corridor_target_extension_um": target_um,
         "corridor_guard_um": guard_um,
         "corridor_max_center_gap_um": max_gap_um,
@@ -184,7 +201,7 @@ def target_aware_long_growth_corridor_mesh(
     }
     _v91852._STARTUP_AUDIT.clear()
     _v91852._STARTUP_AUDIT.update(payload)
-    _v9185._RUNTIME["corridor_centers"] = centers.tolist()
+    _v9185._RUNTIME["corridor_centers"] = selected_centers.tolist()
     _v9185._RUNTIME["mesh"] = selected
     return selected
 
