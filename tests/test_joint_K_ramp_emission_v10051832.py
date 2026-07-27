@@ -164,7 +164,7 @@ def test_zero_initial_hazard_is_localized_inside_linear_K_ramp(monkeypatch):
     assert result["joint_K_ramp_inside_event_horizon"] is True
 
 
-def test_peak_1000K_startup_predictor_is_finite_and_nonmutating(monkeypatch):
+def test_peak_1000K_physical_startup_predictor_is_finite_and_nonmutating(monkeypatch):
     engine = _engine(
         monkeypatch,
         option=PEAK,
@@ -173,8 +173,8 @@ def test_peak_1000K_startup_predictor_is_finite_and_nonmutating(monkeypatch):
     )
     before = engine._capture_state()
     predicted = engine.predict_clock_increment_drives(
-        25.0e6,
-        25.0e6,
+        16.5e6,
+        16.5e6,
         1000.0,
         840.0,
     )
