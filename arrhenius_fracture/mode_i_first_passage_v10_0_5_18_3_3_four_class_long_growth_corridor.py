@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 
 from . import mode_i_first_passage_v9_18_5_3 as _v91853
+from . import mode_i_first_passage_v10_0_5_13_2_barrier_only as _v1005132
 from . import mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_single_trial_stochastic_emission as _base
 from .long_growth_corridor_v10051833 import (
     CORRIDOR_SCHEMA,
@@ -125,17 +126,25 @@ def main(argv: list[str] | None = None):
         ),
     }
     saved_env = {key: os.environ.get(key) for key in requested_env}
-    saved_corridor = _v91853._quality_selected_corridor_mesh
-    # v9.18.5.3 installs this function into the lower mesh slot.  v9.18.5 then
-    # attaches the raw mesh constructor as ``_original`` immediately before use.
+    saved_v91853_corridor = _v91853._quality_selected_corridor_mesh
+    saved_v1005132_corridor = _v1005132._quality_selected_corridor_mesh_v1005132
+
+    # The nested v10.0.5.13.2 wrapper replaces the v9.18.5.3 selector during
+    # startup. Patch both symbols so the final function installed into the lower
+    # mesh slot is target-aware. v9.18.5 attaches the raw mesh constructor to
+    # ``_original`` immediately before the selected function is called.
     _v91853._quality_selected_corridor_mesh = target_aware_long_growth_corridor_mesh
+    _v1005132._quality_selected_corridor_mesh_v1005132 = (
+        target_aware_long_growth_corridor_mesh
+    )
     for key, value in requested_env.items():
         os.environ[key] = value
 
     try:
         return _base.main(user_args)
     finally:
-        _v91853._quality_selected_corridor_mesh = saved_corridor
+        _v1005132._quality_selected_corridor_mesh_v1005132 = saved_v1005132_corridor
+        _v91853._quality_selected_corridor_mesh = saved_v91853_corridor
         for key, value in saved_env.items():
             if value is None:
                 os.environ.pop(key, None)
