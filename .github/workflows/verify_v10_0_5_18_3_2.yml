@@ -23,9 +23,18 @@ jobs:
             arrhenius_fracture/persistent_site_joint_K_single_trial_v10051832.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_single_trial_stochastic_emission.py \
-            scripts/verify_peak1000_single_trial_production_v10051832.py
+            scripts/verify_peak1000_single_trial_production_v10051832.py \
+            scripts/audit_v10051832_four_class_14T_sweep.py
           bash -n run_v10_0_5_18_3_2_four_class_focused_100um.sh
           bash -n run_v10_0_5_18_3_2_four_class_joint_K_single_trial_focused_100um.sh
+          bash -n run_v10_0_5_18_3_2_four_class_14T_joint_K_single_trial_sweep.sh
+          python scripts/audit_v10051832_four_class_14T_sweep.py /tmp/v10051832-empty-sweep --json > /tmp/v10051832-empty-sweep.json
+          python - <<'PY'
+          import json
+          payload = json.load(open('/tmp/v10051832-empty-sweep.json'))
+          assert payload['expected_cases'] == 56
+          assert payload['counts']['NOT_STARTED'] == 56
+          PY
       - name: Final joint K-ramp contracts
         run: |
           python -m pytest -q --tb=short \
