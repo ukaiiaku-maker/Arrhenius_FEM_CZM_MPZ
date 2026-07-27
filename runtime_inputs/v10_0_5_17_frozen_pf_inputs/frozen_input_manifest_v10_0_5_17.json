@@ -1,0 +1,77 @@
+{
+  "fem_czm_baseline_commit": "75fc7f1ab1a82f0bb631d859f791cda3709e60fd",
+  "file_count": 9,
+  "files": [
+    {
+      "bytes": 7202,
+      "relative_path": "arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_registry.csv",
+      "sha256": "d2a427a5d78047fef652ca87d769da8b41124bfc3f6f982472ceddb710371ffd",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 5176,
+      "relative_path": "arrhenius_fracture/data/materials/v10_2_25_v913_paper_campaign_selection.json",
+      "sha256": "47e21de1c34ff220c5117caf937c907bc7b75374dc34dea0236ce97b7494af94",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 3342,
+      "relative_path": "arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_registry.csv",
+      "sha256": "04fd07113b2611f87727084bae9cffa1c740df35f0ca1ffec25fa89c0c50196a",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 5680,
+      "relative_path": "arrhenius_fracture/data/materials/v10_2_26_v913_weakT_ceramic_selection.json",
+      "sha256": "b8a539a7b15f8aec780747450dae803000ac7a2a7e7a3c808d57a349d8d6b9b8",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 4009,
+      "relative_path": "arrhenius_fracture/sharp_front_v10_2_25.py",
+      "sha256": "e97d627b97a2b519af1df84e6da5beac4825bb770f11dc0779910eef590452c3",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 857,
+      "relative_path": "arrhenius_fracture/sharp_front_v10_2_25_audited.py",
+      "sha256": "72aee570c7a586ac5d7432c45498347d87a590be7608aba5430fb9e0c63e4210",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 4036,
+      "relative_path": "arrhenius_fracture/sharp_front_v10_2_26.py",
+      "sha256": "80063e3245d552a868d46d200f0115f54b7077a4532d9a29f96edc8909cc6f5a",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 866,
+      "relative_path": "arrhenius_fracture/sharp_front_v10_2_26_audited.py",
+      "sha256": "975d3b2bf8f32b4ae691540b42ef30731c262db6434ec2128dd014fbc42c5646",
+      "source_kind": "parameter_source_commit"
+    },
+    {
+      "bytes": 2223021,
+      "relative_path": "signed_kernel/v10_2_14_active_only_campaign_family.json",
+      "sha256": "a876ea042bf291ca9607b586205d75ce2b5cb95c668fef53d713d611dfe59cde",
+      "source_kind": "recorded_kernel_family"
+    }
+  ],
+  "kernel_family_expected_sha256": "a876ea042bf291ca9607b586205d75ce2b5cb95c668fef53d713d611dfe59cde",
+  "kernel_family_recorded_path": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json",
+  "kernel_family_relative_path": "signed_kernel/v10_2_14_active_only_campaign_family.json",
+  "kernel_family_sha256": "a876ea042bf291ca9607b586205d75ce2b5cb95c668fef53d713d611dfe59cde",
+  "kernel_family_source_path": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_17_paper_campaign/runtime_inputs/v10_2_17/v10_2_14_active_only_campaign_family.json",
+  "kernel_family_source_repository": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_17_paper_campaign",
+  "kernel_family_source_repository_head": "6cf5627f288ae90bb6c78e08d61b1aae545f435c",
+  "kernel_family_vendored_byte_for_byte": true,
+  "parameter_files_vendored_from_recorded_commit": true,
+  "parameter_source_repository_commit": "05d78d072ff240ceb2446540bc236df74b74ea82",
+  "parameter_source_repository_recorded_path": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_22_physical_front_width_top5_dbtt_screen",
+  "parameter_values_reconstructed": false,
+  "schema": "v10.0.5.17_frozen_external_input_vendor_v2",
+  "solver_or_constitutive_files_modified": false,
+  "source_campaign_configuration": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_17_paper_campaign/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1/campaign_configuration.txt",
+  "source_campaign_root": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_v10_0_5_17_paper_campaign/runs/v10_0_5_17_paper7_300_1200K_200um_stochastic_pf_parity_v1",
+  "source_release": "10.0.5.17"
+}

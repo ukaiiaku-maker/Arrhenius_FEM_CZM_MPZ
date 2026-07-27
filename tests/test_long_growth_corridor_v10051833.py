@@ -1,0 +1,214 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from arrhenius_fracture import mesh as mesh_module
+from arrhenius_fracture.config import GeometryConfig, MeshConfig
+from arrhenius_fracture import mode_i_first_passage_v9_18_5_2 as v91852
+from arrhenius_fracture import mode_i_first_passage_v9_18_5_3 as v91853
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_2_barrier_only as v1005132
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_3_3_four_class_long_growth_corridor as entry
+from arrhenius_fracture.long_growth_corridor_v10051833 import (
+    CORRIDOR_SCHEMA,
+    SWEPT_PHYSICAL_POLICY,
+    target_aware_long_growth_corridor_mesh,
+)
+from arrhenius_fracture.physical_refinement_mesh_v100510 import (
+    clear_physical_refinement_v100510,
+    configure_physical_refinement_v100510,
+    make_physical_refinement_mesh_v100510,
+)
+
+
+def _set_corridor_env(monkeypatch, target_um="1000"):
+    monkeypatch.setenv("ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM", target_um)
+    monkeypatch.setenv("ARRHENIUS_PHYSICAL_DA_UM", "5")
+    monkeypatch.setenv("ARRHENIUS_CORRIDOR_PROCESS_ZONE_UM", "50")
+    monkeypatch.setenv("ARRHENIUS_CORRIDOR_GUARD_UM", "10")
+    monkeypatch.setenv("ARRHENIUS_CORRIDOR_MAX_CENTER_GAP_UM", "100")
+    monkeypatch.setenv("ARRHENIUS_MAX_CORRIDOR_H_OVER_LPZ", "0.25")
+    monkeypatch.setenv("ARRHENIUS_MIN_INITIAL_TRIANGLE_QUALITY", "0.035")
+    monkeypatch.setenv("ARRHENIUS_MAX_TIP_H_OVER_DA", "0.75")
+    monkeypatch.setenv("ARRHENIUS_CORRIDOR_EXTRA_CENTER_COUNTS", "18")
+
+
+def _assert_common_corridor_contract(mesh, audit, target_um: float):
+    assert audit["schema"] == CORRIDOR_SCHEMA
+    assert audit["corridor_target_extension_um"] == pytest.approx(target_um)
+    assert audit["corridor_guard_um"] == pytest.approx(10.0)
+    assert audit["full_requested_corridor_covered"] is True
+    assert audit["target_propagated_before_mesh_construction"] is True
+    assert audit["center_gap_requirement_passed"] is True
+    assert audit["center_gap_um"] <= 100.0 + 1.0e-12
+    assert audit["minimum_initial_triangle_quality"] >= 0.035
+    assert audit["maximum_sampled_hbar_tip_over_L_pz"] <= 0.25
+    assert audit["tip_h_over_da_enforced_as_veto"] is False
+    assert audit["candidate_search_stopped_after_first_admissible"] is True
+    assert audit["candidate_center_counts"][0] == int(
+        np.ceil((target_um + 10.0) / 100.0)
+    ) + 1
+    assert np.all(np.isfinite(mesh.area_e))
+    assert np.all(mesh.area_e > 0.0)
+
+
+def _build_raw_corridor(monkeypatch, target_um: float):
+    _set_corridor_env(monkeypatch, str(target_um))
+    geom = GeometryConfig()
+    cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
+    target_aware_long_growth_corridor_mesh._original = mesh_module.make_tri_mesh
+    mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
+    audit = dict(v91852._STARTUP_AUDIT)
+    _assert_common_corridor_contract(mesh, audit, target_um)
+    assert audit["production_physical_provider_detected"] is False
+    assert audit["swept_physical_refinement_active"] is False
+    return mesh, audit
+
+
+def _build_production_physical_corridor(monkeypatch, target_um: float):
+    _set_corridor_env(monkeypatch, str(target_um))
+    geom = GeometryConfig()
+    cfg = MeshConfig(nx=36, ny=72, tip_h_fine=2.5e-6, tip_ratio=1.15)
+    configure_physical_refinement_v100510(330.0e-6)
+    target_aware_long_growth_corridor_mesh._original = (
+        make_physical_refinement_mesh_v100510
+    )
+    try:
+        mesh = target_aware_long_growth_corridor_mesh(geom, cfg, seed=42)
+        audit = dict(v91852._STARTUP_AUDIT)
+    finally:
+        clear_physical_refinement_v100510()
+
+    _assert_common_corridor_contract(mesh, audit, target_um)
+    assert audit["production_physical_provider_detected"] is True
+    assert audit["swept_physical_refinement_active"] is True
+    assert audit["swept_physical_refinement_policy"] == SWEPT_PHYSICAL_POLICY
+    assert audit["mesh_provider"] == SWEPT_PHYSICAL_POLICY
+    assert mesh.production_refinement_radius_m == pytest.approx(330.0e-6)
+    assert mesh.production_refinement_policy == SWEPT_PHYSICAL_POLICY
+    assert mesh.production_refinement_swept_capsule is True
+    return mesh, audit
+
+
+def test_400um_raw_provider_unit_contract(monkeypatch):
+    mesh, audit = _build_raw_corridor(monkeypatch, 400.0)
+    assert audit["selected_center_count"] >= 6
+    assert mesh.nn < 5000
+    assert mesh.ne < 10000
+
+
+def test_400um_production_physical_corridor_is_admissible(monkeypatch):
+    mesh, audit = _build_production_physical_corridor(monkeypatch, 400.0)
+    assert audit["selected_center_count"] >= 6
+    assert mesh.nn < 7000
+    assert mesh.ne < 14000
+
+
+def test_1000um_production_physical_corridor_is_process_zone_resolved(monkeypatch):
+    mesh, audit = _build_production_physical_corridor(monkeypatch, 1000.0)
+    assert audit["selected_center_count"] >= 12
+    assert mesh.nn < 12000
+    assert mesh.ne < 24000
+
+
+def test_entrypoint_propagates_target_and_patches_both_corridor_slots(
+    monkeypatch,
+    tmp_path,
+):
+    observed = {}
+
+    def fake_base(argv):
+        observed["target"] = os.environ.get("ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM")
+        observed["da"] = os.environ.get("ARRHENIUS_PHYSICAL_DA_UM")
+        observed["lpz"] = os.environ.get("ARRHENIUS_CORRIDOR_PROCESS_ZONE_UM")
+        observed["gap"] = os.environ.get("ARRHENIUS_CORRIDOR_MAX_CENTER_GAP_UM")
+        observed["h_lpz"] = os.environ.get("ARRHENIUS_MAX_CORRIDOR_H_OVER_LPZ")
+        observed["v91853_corridor"] = v91853._quality_selected_corridor_mesh
+        observed["v1005132_corridor"] = (
+            v1005132._quality_selected_corridor_mesh_v1005132
+        )
+        return "ok"
+
+    monkeypatch.setattr(entry._base, "main", fake_base)
+    original_v91853 = v91853._quality_selected_corridor_mesh
+    original_v1005132 = v1005132._quality_selected_corridor_mesh_v1005132
+    result = entry.main([
+        "--target-crack-extension-um", "1000",
+        "--da-phys", "5e-6",
+        "--mpz-length-um", "50",
+        "--out", str(tmp_path),
+    ])
+
+    assert result == "ok"
+    assert observed["target"] == "1000.0"
+    assert float(observed["da"]) == pytest.approx(5.0)
+    assert observed["lpz"] == "50.0"
+    assert observed["gap"] == "100"
+    assert observed["h_lpz"] == "0.25"
+    assert observed["v91853_corridor"] is target_aware_long_growth_corridor_mesh
+    assert observed["v1005132_corridor"] is target_aware_long_growth_corridor_mesh
+    assert v91853._quality_selected_corridor_mesh is original_v91853
+    assert v1005132._quality_selected_corridor_mesh_v1005132 is original_v1005132
+
+
+def test_nested_v1005132_wrapper_installs_target_aware_corridor(
+    monkeypatch,
+    tmp_path,
+):
+    observed = {}
+
+    def fake_leaf(argv):
+        observed["installed"] = v91853._quality_selected_corridor_mesh
+        return "nested-ok"
+
+    def fake_v10051832(argv):
+        return v1005132.main(argv)
+
+    monkeypatch.setattr(v1005132._base, "main", fake_leaf)
+    monkeypatch.setattr(entry._base, "main", fake_v10051832)
+
+    original_v91853 = v91853._quality_selected_corridor_mesh
+    original_v1005132 = v1005132._quality_selected_corridor_mesh_v1005132
+    result = entry.main([
+        "--target-crack-extension-um", "400",
+        "--da-phys", "5e-6",
+        "--mpz-length-um", "50",
+        "--out", str(tmp_path),
+    ])
+
+    assert result == "nested-ok"
+    assert observed["installed"] is target_aware_long_growth_corridor_mesh
+    assert v91853._quality_selected_corridor_mesh is original_v91853
+    assert v1005132._quality_selected_corridor_mesh_v1005132 is original_v1005132
+
+
+def test_entrypoint_rejects_missing_target():
+    with pytest.raises(SystemExit, match="target-crack-extension"):
+        entry.main(["--da-phys", "5e-6", "--mpz-length-um", "50"])
+
+
+def test_runner_keeps_child_area_floor_and_uses_new_entrypoint():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "run_v10_0_5_18_3_3_four_class_focused_long_growth.sh").read_text()
+    assert "mode_i_first_passage_v10_0_5_18_3_3_four_class_long_growth_corridor" in text
+    assert "ARRHENIUS_CORRIDOR_MAX_CENTER_GAP_UM" in text
+    assert "ARRHENIUS_MAX_CORRIDOR_H_OVER_LPZ" in text
+    assert "child_area_ratio_floor_relaxed=false" in text
+
+
+def test_four_class_sweep_defaults_to_400um():
+    root = Path(__file__).resolve().parents[1]
+    wrapper = root / "run_v10_0_5_18_3_3_four_class_14T_400um_target_corridor_sweep.sh"
+    text = wrapper.read_text()
+
+    assert 'TARGET_EXT_UM=${TARGET_EXT_UM:-400}' in text
+    assert 'SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-8}' in text
+    assert 'SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-50}' in text
+    assert 'MAX_JOBS=${MAX_JOBS:-2}' in text
+    assert "run_v10_0_5_18_3_3_four_class_focused_long_growth.sh" in text
+    assert "target_aware_long_growth_corridor=true" in text
+    assert "child_area_ratio_floor_relaxed=false" in text
+    assert "1000um" not in wrapper.name
