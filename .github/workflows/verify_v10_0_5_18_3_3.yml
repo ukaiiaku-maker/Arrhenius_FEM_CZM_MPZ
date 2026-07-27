@@ -21,14 +21,16 @@ jobs:
           python -m py_compile \
             arrhenius_fracture/long_growth_corridor_v10051833.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_3_four_class_long_growth_corridor.py \
-            scripts/audit_v10051833_four_class_14T_400um_sweep.py
+            scripts/audit_v10051833_four_class_14T_400um_sweep.py \
+            tests/test_long_growth_corridor_active_spec_v10051833.py
           bash -n run_v10_0_5_18_3_3_four_class_focused_long_growth.sh
           bash -n run_v10_0_5_18_3_3_four_class_14T_400um_target_corridor_sweep.sh
           python scripts/audit_v10051833_four_class_14T_400um_sweep.py --help >/dev/null
       - name: Full 1000 um corridor and 400 um sweep contracts
         run: |
           /usr/bin/time -v python -m pytest -q --tb=short \
-            tests/test_long_growth_corridor_v10051833.py
+            tests/test_long_growth_corridor_v10051833.py \
+            tests/test_long_growth_corridor_active_spec_v10051833.py
       - name: Preserve joint-K single-trial stochastic kinetics
         run: |
           python -m pytest -q --tb=short \
