@@ -30,6 +30,7 @@ sed \
   -e 's/mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission/mode_i_first_passage_v10_0_5_18_3_4_four_class_path_aware_growth_envelope/g' \
   -e 's/persistent_site_production_manifest_v10_0_5_18_3_2.json/persistent_site_production_manifest_v10_0_5_18_3_4.json/g' \
   -e 's/release=10.0.5.18.3.2/release=10.0.5.18.3.4/g' \
+  -e 's/Focused v10.0.5.18.3.2 validation complete/Focused v10.0.5.18.3.4 path-envelope validation complete/g' \
   -e '/theta_deg=\$THETA/a\
 minimum_global_forward_cosine=$MIN_GLOBAL_FORWARD' \
   -e '/--crystal-theta-deg "\$THETA"/a\
