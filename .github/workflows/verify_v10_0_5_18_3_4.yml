@@ -30,6 +30,45 @@ jobs:
         run: |
           /usr/bin/time -v python -m pytest -q --tb=short \
             tests/test_path_aware_growth_envelope_v10051834.py
+      - name: Actual production-entry startup smoke
+        run: |
+          rm -rf /tmp/v10051834_production_smoke
+          OPTIONS="v913_paper_weakT01_0129902_persistent_sites" \
+          TEMPERATURES="300" \
+          TARGET_EXT_UM=20 \
+          STEPS=1 \
+          MAX_JOBS=1 \
+          PRINT_EVERY=1 \
+          GENERATE_SOLVER_PLOTS=0 \
+          SAVE_SNAPSHOTS=1 \
+          SNAPSHOT_BY_EXT_UM=20 \
+          CAMPAIGN_ROOT=/tmp/v10051834_production_smoke \
+            bash run_v10_0_5_18_3_4_four_class_focused_long_growth.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          case = (
+              Path("/tmp/v10051834_production_smoke")
+              / "v913_paper_weakT01_0129902_persistent_sites"
+              / "T0300K"
+          )
+          manifest = json.loads(
+              (case / "persistent_site_production_manifest_v10_0_5_18_3_4.json").read_text()
+          )
+          corridor = json.loads(
+              (case / "compact_corridor_mesh_v91852.json").read_text()
+          )
+          assert manifest["point_release"] == "10.0.5.18.3.4"
+          assert manifest["run_completed_without_exception"] is True
+          assert corridor["path_aware_growth_envelope"] is True
+          assert corridor["production_physical_provider_detected"] is True
+          assert corridor["path_aware_physical_refinement_active"] is True
+          assert corridor["swept_physical_refinement_active"] is False
+          assert corridor["maximum_sampled_hbar_tip_over_L_pz"] <= 0.25
+          assert corridor["minimum_initial_triangle_quality"] >= 0.035
+          assert corridor["committed_endpoint_support_certified"] is True
+          PY
       - name: Preserve joint-K single-trial stochastic kinetics
         run: |
           python -m pytest -q --tb=short \
