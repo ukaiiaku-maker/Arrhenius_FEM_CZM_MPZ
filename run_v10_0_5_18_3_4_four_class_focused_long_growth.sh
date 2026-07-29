@@ -33,7 +33,7 @@ sed \
   -e '/theta_deg=\$THETA/a\
 minimum_global_forward_cosine=$MIN_GLOBAL_FORWARD' \
   -e '/--crystal-theta-deg "\$THETA"/a\
-      --min-global-forward "$MIN_GLOBAL_FORWARD" \' \
+      --min-global-forward "$MIN_GLOBAL_FORWARD" \\' \
   -e '/K_ramp_evaluated_inside_event_horizon=true/a\
 single_trial_event_horizon_active=true\
 state_dependent_log_rate_rejection_active=false\
