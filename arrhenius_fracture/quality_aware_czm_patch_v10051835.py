@@ -121,7 +121,8 @@ def _candidate_edges(mesh: Any, elem_id: int, p0: np.ndarray):
     non_tip = [
         node
         for node in conn
-        if np.linalg.norm(mesh.nodes[node] - p0) > max(1.0e-12, 1.0e-7 * scale)
+        if np.linalg.norm(mesh.nodes[node] - p0)
+        > max(1.0e-12, 1.0e-7 * scale)
     ]
     edges: list[tuple[int, int]] = []
     if len(non_tip) >= 2:
@@ -133,9 +134,12 @@ def _candidate_edges(mesh: Any, elem_id: int, p0: np.ndarray):
         ),
         reverse=True,
     )
+    known = {tuple(sorted(item)) for item in edges}
     for edge in all_edges:
-        if tuple(sorted(edge)) not in {tuple(sorted(item)) for item in edges}:
+        key = tuple(sorted(edge))
+        if key not in known:
             edges.append(edge)
+            known.add(key)
     return edges
 
 
@@ -163,7 +167,6 @@ def refine_once(
         "ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO",
         float(self.min_area_ratio),
     )
-    accepted = []
     errors = []
     for edge_i, edge_j in _candidate_edges(state.mesh, elem_id, p0):
         midpoint = 0.5 * (
@@ -233,17 +236,16 @@ def refine_once(
             "n_new_elements": int(mesh1.ne - state.mesh.ne),
             **dict(meta or {}),
         }
-        accepted.append((qmin, amin, next_state, record))
+        # The edge opposite the active cohesive tip is offered first. Use the
+        # first valid conforming split so refinement does not migrate the tip.
+        return next_state, record
 
-    if not accepted:
-        return None, {
-            "level": level,
-            "accepted": False,
-            "reason": "no_quality_safe_midpoint_bisection",
-            "errors": errors,
-        }
-    accepted.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return accepted[0][2], accepted[0][3]
+    return None, {
+        "level": level,
+        "accepted": False,
+        "reason": "no_quality_safe_midpoint_bisection",
+        "errors": errors,
+    }
 
 
 __all__ = [
