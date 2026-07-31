@@ -227,18 +227,16 @@ def quality_aware_strict_advance_v10051835(self: Any, *args, **kwargs):
         if state is None:
             last_reason = str(record.get("reason", "patch_refinement_failed"))
             break
+        log0 = len(self.advance_log)
         result = _call_on_state(original, self, state, kwargs, p0, p1, direction)
         if result.inserted:
-            for row in self.advance_log:
-                if row.get("v91856_quality_gate_passed") and not row.get(
-                    "v10051835_quality_aware_retry"
-                ):
-                    row.update(
-                        v10051835_quality_aware_retry=True,
-                        v10051835_retry_kind="shape_regular_patch",
-                        v10051835_patch_refinement_levels=level,
-                        v10051835_physical_event_requested_length_m=requested,
-                    )
+            for row in self.advance_log[log0:]:
+                row.update(
+                    v10051835_quality_aware_retry=True,
+                    v10051835_retry_kind="shape_regular_patch",
+                    v10051835_patch_refinement_levels=level,
+                    v10051835_physical_event_requested_length_m=requested,
+                )
             _v91856._AUDIT["quality_aware_retry_successes"].append(
                 {
                     "front_id": int(kwargs.get("front_id", -1)),
