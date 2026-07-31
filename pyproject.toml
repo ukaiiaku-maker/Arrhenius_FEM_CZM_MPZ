@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.18.3.4"
-description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K single-trial local kinetics, path-aware globally admissible process-zone support for long growth, resilient tensor probes, atomic adaptive-CZM topology retries, persistent sites, and continuous moving-tip coupling"
+version = "10.0.5.18.3.5"
+description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K single-trial local kinetics, path-aware globally admissible process-zone support for long growth, quality-aware adaptive-CZM transaction retries with shape-regular local tip-patch refinement, resilient tensor probes, persistent sites, and continuous moving-tip coupling"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
