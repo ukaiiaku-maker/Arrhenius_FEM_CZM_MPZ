@@ -36,6 +36,8 @@ class Mesh:
 class RefineBackend:
     def __init__(self):
         self.geom = SimpleNamespace(Lx=10.0, Ly=10.0)
+        self.min_triangle_quality = 0.035
+        self.min_area_ratio = 0.08
 
     @staticmethod
     def _tip_geometric_node_ids(mesh, p0, front_id):
