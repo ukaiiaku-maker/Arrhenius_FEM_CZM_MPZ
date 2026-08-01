@@ -65,6 +65,7 @@ def _quality_fields() -> dict[str, Any]:
         "quality_gate_evaluated_inside_retry_transaction": True,
         "shape_regular_local_tip_patch_bisection": True,
         "tip_fan_ray_handoff_after_safe_split": True,
+        "adjacent_ray_target_cavity_refinement": True,
         "target_may_leave_tip_one_ring_during_refinement": True,
         "exact_stochastic_event_endpoint_preserved": True,
         "exact_selected_crack_direction_preserved": True,
