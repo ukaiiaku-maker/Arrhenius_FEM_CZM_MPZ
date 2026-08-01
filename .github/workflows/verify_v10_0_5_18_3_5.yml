@@ -22,13 +22,15 @@ jobs:
             arrhenius_fracture/quality_aware_czm_patch_v10051835.py \
             arrhenius_fracture/quality_aware_czm_retry_v10051835.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_5_four_class_quality_aware_czm_retry.py \
-            tests/test_quality_aware_czm_retry_v10051835.py
+            tests/test_quality_aware_czm_retry_v10051835.py \
+            tests/test_quality_aware_czm_long_event_v10051835.py
           bash -n run_v10_0_5_18_3_5_four_class_focused_long_growth.sh
           bash -n run_v10_0_5_18_3_5_four_class_14T_400um_quality_aware_sweep.sh
       - name: Quality-aware transaction contracts
         run: |
           python -m pytest -q --tb=short \
             tests/test_quality_aware_czm_retry_v10051835.py \
+            tests/test_quality_aware_czm_long_event_v10051835.py \
             tests/test_numerical_resilience_v1005183.py
       - name: Preserve substantive path-aware envelope contracts
         run: |
@@ -78,6 +80,8 @@ jobs:
           assert corridor["minimum_initial_triangle_quality"] >= 0.035
           assert retry["quality_gate_inside_retry_transaction"] is True
           assert retry["run_completed_without_exception"] is True
+          assert retry["long_event_partition_segments_receive_patch_retry"] is True
+          assert retry["failed_trial_subsegments_removed_from_accepted_event_audit"] is True
           PY
       - name: Preserve joint-K and moving-tip physics
         run: |
