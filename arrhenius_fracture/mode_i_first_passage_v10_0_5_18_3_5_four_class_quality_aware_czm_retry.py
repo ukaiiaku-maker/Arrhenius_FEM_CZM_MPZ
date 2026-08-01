@@ -19,6 +19,9 @@ from .quality_aware_czm_retry_v10051835 import (
     quality_aware_strict_advance_v10051835,
     reset_audit,
 )
+from .quality_aware_czm_ray_handoff_v10051835 import (
+    install as install_ray_handoff,
+)
 
 
 POINT_RELEASE = "10.0.5.18.3.5"
@@ -61,6 +64,8 @@ def _quality_fields() -> dict[str, Any]:
         "quality_aware_CZM_retry_model": QUALITY_MODEL,
         "quality_gate_evaluated_inside_retry_transaction": True,
         "shape_regular_local_tip_patch_bisection": True,
+        "tip_fan_ray_handoff_after_safe_split": True,
+        "target_may_leave_tip_one_ring_during_refinement": True,
         "exact_stochastic_event_endpoint_preserved": True,
         "exact_selected_crack_direction_preserved": True,
         "collinear_partition_retry_after_patch_refinement": True,
@@ -122,6 +127,7 @@ def _rewrite_outputs(out: Path | None, error: BaseException | None) -> None:
             old_path.unlink()
 
     quality = audit_payload()
+    quality.update(fields)
     quality.update(
         {
             "point_release": POINT_RELEASE,
@@ -140,6 +146,7 @@ def main(argv: list[str] | None = None):
     user_args = list(sys.argv[1:] if argv is None else argv)
     out = _out_path(user_args)
     saved_wrapper = _v91856._strict_quality_advance_v91856
+    install_ray_handoff()
     configure_legacy_quality_wrapper(saved_wrapper)
     reset_audit()
     _v91856._strict_quality_advance_v91856 = (
