@@ -155,7 +155,7 @@ def test_archived_step71_partition_segment_reaches_both_quality_floors(
     )
 
     initial = _target_metrics(backend, state, target)
-    assert initial["predicted_min_triangle_quality"] == np.testing.assert_allclose(
+    np.testing.assert_allclose(
         initial["predicted_min_triangle_quality"],
         0.013649178395857288,
         rtol=1.0e-10,
