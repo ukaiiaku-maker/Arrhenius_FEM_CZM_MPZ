@@ -42,7 +42,8 @@ class RefineBackend:
     @staticmethod
     def _tip_geometric_node_ids(mesh, p0, front_id):
         distance = np.linalg.norm(mesh.nodes - np.asarray(p0)[None, :], axis=1)
-        return [int(np.argmin(distance))]
+        dmin = float(np.min(distance))
+        return np.where(distance <= dmin + 1.0e-12)[0].astype(int).tolist()
 
     @staticmethod
     def _incident_elements(elems, node_ids):
@@ -104,6 +105,26 @@ class RefineBackend:
         )
 
 
+def _state(mesh):
+    return quality._State(
+        mesh=mesh,
+        boundary=object(),
+        damage=np.zeros(mesh.nn),
+        displacement=np.zeros(2 * mesh.nn),
+        parent_to_root=np.arange(mesh.ne, dtype=int),
+    )
+
+
+def _predicted(backend, state, p0, target):
+    elem = patch._target_tip_triangle(
+        backend, state.mesh, p0, target, front_id=0
+    )
+    assert elem is not None
+    return patch._predicted_exact_target_metrics(
+        backend, state.mesh, elem, target
+    )
+
+
 def test_archived_step67_candidate_is_rejected_without_relaxing_floors():
     issues = quality._floor_issues(
         0.02108230,
@@ -117,9 +138,7 @@ def test_archived_step67_candidate_is_rejected_without_relaxing_floors():
     ]
 
 
-def test_shape_regular_opposite_edge_bisection_preserves_immediate_area_floor(
-    monkeypatch,
-):
+def test_endpoint_centered_refinement_splits_a_tip_radial_edge(monkeypatch):
     monkeypatch.setattr(patch, "make_boundary_data", lambda mesh, geom: object())
     monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY", "0.035")
     monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO", "0.08")
@@ -128,16 +147,9 @@ def test_shape_regular_opposite_edge_bisection_preserves_immediate_area_floor(
         [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         [[0, 1, 2]],
     )
-    state = quality._State(
-        mesh=mesh,
-        boundary=object(),
-        damage=np.zeros(3),
-        displacement=np.zeros(6),
-        parent_to_root=np.array([0]),
-    )
     refined, record = quality._refine_once(
         RefineBackend(),
-        state,
+        _state(mesh),
         p0=np.array([0.0, 0.0]),
         target=np.array([0.1, 0.1]),
         front_id=0,
@@ -146,12 +158,81 @@ def test_shape_regular_opposite_edge_bisection_preserves_immediate_area_floor(
 
     assert refined is not None
     assert record["accepted"] is True
-    assert {record["split_edge_i"], record["split_edge_j"]} == {1, 2}
+    assert record["refinement_kind"] == (
+        "endpoint_centered_tip_radial_midpoint"
+    )
+    assert record["tip_node"] in (record["edge_i"], record["edge_j"])
+    assert {record["edge_i"], record["edge_j"]} != {1, 2}
     assert record["min_immediate_child_area_ratio"] == pytest.approx(0.5)
     assert record["min_triangle_quality"] >= 0.035
+    assert record["predicted_limiting_margin"] > 0.0
     assert refined.mesh.ne == 2
     assert refined.mesh.nn == 4
     assert refined.parent_to_root.tolist() == [0, 0]
+
+
+def test_archived_step67_geometry_reaches_a_quality_safe_endpoint(monkeypatch):
+    monkeypatch.setattr(patch, "make_boundary_data", lambda mesh, geom: object())
+    monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY", "0.035")
+    monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO", "0.08")
+
+    # Reconstructed exactly from the archived step-67 p0/p1 diagnostic and
+    # the first two opposite-edge midpoint audit records.
+    p0 = np.array([0.0005861866667123705, 1.200896179212802e-05])
+    target = np.array([0.0005887734388763731, 1.2527425261258408e-05])
+    midpoint_1 = np.array([0.0005971874999999998, 1.0369721710082628e-05])
+    midpoint_2 = np.array([0.0005987187499999999, 1.3021924509172447e-05])
+    vertex_a = 2.0 * midpoint_2 - midpoint_1
+    vertex_b = 2.0 * midpoint_1 - vertex_a
+
+    backend = RefineBackend()
+    state = _state(
+        Mesh(
+            [p0, vertex_a, vertex_b],
+            [[0, 1, 2]],
+            hbar_tip=1.1196217271646168e-05,
+        )
+    )
+
+    initial = _predicted(backend, state, p0, target)
+    assert initial["predicted_min_triangle_quality"] == pytest.approx(
+        0.021082302341594004
+    )
+    assert initial["predicted_min_child_area_ratio"] == pytest.approx(
+        0.017275666997289947
+    )
+
+    records = []
+    final = initial
+    for level in range(1, 9):
+        state, record = quality._refine_once(
+            backend,
+            state,
+            p0=p0,
+            target=target,
+            front_id=0,
+            level=level,
+        )
+        assert state is not None, record
+        records.append(record)
+        assert record["min_triangle_quality"] >= 0.035
+        assert record["min_immediate_child_area_ratio"] >= 0.08
+        final = _predicted(backend, state, p0, target)
+        if (
+            final["predicted_min_triangle_quality"] >= 0.035
+            and final["predicted_min_child_area_ratio"] >= 0.08
+        ):
+            break
+
+    assert len(records) <= 4
+    assert all(
+        row["refinement_kind"]
+        == "endpoint_centered_tip_radial_midpoint"
+        for row in records
+    )
+    assert final["predicted_min_triangle_quality"] >= 0.035
+    assert final["predicted_min_child_area_ratio"] >= 0.08
+    assert state.parent_to_root.tolist() == [0] * state.mesh.ne
 
 
 def test_quality_failure_reaches_patch_retry_before_final_veto(monkeypatch):
