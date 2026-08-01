@@ -333,12 +333,17 @@ def _target_cavity_candidate(
         amargin = pa / max(afloor, 1.0e-300)
         limiting = min(qmargin, amargin)
         exact_pass = bool(pq >= qfloor and pa >= afloor)
+        # For non-passing candidates, preserve an edge connection (two shared
+        # nodes) between the target triangle and the current tip fan before
+        # optimizing the one-step quality margin. The archived step-71 case
+        # otherwise greedily chose a slightly better margin that reduced the
+        # connection to one vertex and produced a deterministic dead end.
         score = (
             int(exact_pass),
+            int(candidate_shared),
             float(limiting),
             float(min(qmargin, 10.0)),
             float(min(amargin, 10.0)),
-            int(candidate_shared),
             -int(edge_j),
             -int(edge_i),
         )
