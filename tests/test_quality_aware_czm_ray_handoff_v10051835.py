@@ -78,6 +78,11 @@ def test_safe_forward_split_can_hand_off_to_exact_ray_march(monkeypatch):
         "_tip_node_in_triangle",
         lambda mesh, elem_id, p0: 0,
     )
+    monkeypatch.setattr(
+        handoff,
+        "_adjacent_target_triangle",
+        lambda self, mesh, p0, target, front_id: (7, 2),
+    )
 
     def fake_split(self, state, edge_i, edge_j, qfloor, afloor):
         if edge_j == 1:
@@ -118,30 +123,118 @@ def test_safe_forward_split_can_hand_off_to_exact_ray_march(monkeypatch):
     )
     assert record["target_remains_in_tip_triangle"] is False
     assert record["exact_ray_march_required_after_refinement"] is True
+    assert record["target_fan_shared_node_count"] == 2
     assert record["ray_forward_projection_m"] > 0.0
     assert record["ray_alignment_cosine"] > 0.0
     assert record["predicted_exact_target_pass"] is False
 
 
-def test_non_midpoint_failure_remains_fail_closed(monkeypatch):
+def test_adjacent_target_cavity_selects_best_safe_midpoint(monkeypatch):
+    root_mesh = SimpleNamespace(
+        elems=np.array([[10, 11, 12]], dtype=int),
+    )
+    root = _state(root_mesh)
+    states = {
+        (10, 11): _state(SimpleNamespace(name="a")),
+        (11, 12): _state(SimpleNamespace(name="b")),
+        (10, 12): _state(SimpleNamespace(name="c")),
+    }
+
+    def adjacent(self, mesh, p0, target, front_id):
+        if mesh is root_mesh:
+            return 0, 2
+        return 4, 1
+
+    monkeypatch.setattr(handoff, "_adjacent_target_triangle", adjacent)
+
+    def fake_split(self, state, edge_i, edge_j, qfloor, afloor):
+        edge = tuple(sorted((edge_i, edge_j)))
+        return states[edge], {
+            "edge_i": edge[0],
+            "edge_j": edge[1],
+            "midpoint_m": [0.5, 0.0],
+            "min_triangle_quality": 0.10,
+            "min_immediate_child_area_ratio": 0.5,
+        }
+
+    monkeypatch.setattr(base, "_midpoint_split_candidate", fake_split)
+
+    def predicted(self, mesh, elem_id, target):
+        values = {
+            "a": (0.026, 0.14),
+            "b": (0.056, 0.21),
+            "c": (0.031, 0.18),
+        }
+        qmin, amin = values[mesh.name]
+        return {
+            "target_parent_element": elem_id,
+            "target_barycentric_weights": [amin, 0.5, 0.5 - amin],
+            "predicted_min_child_area_ratio": amin,
+            "predicted_min_triangle_quality": qmin,
+        }
+
+    monkeypatch.setattr(base, "_predicted_exact_target_metrics", predicted)
+
+    backend = SimpleNamespace(
+        min_triangle_quality=0.035,
+        min_area_ratio=0.08,
+    )
+    state, record = handoff._target_cavity_candidate(
+        backend,
+        root,
+        np.array([0.0, 0.0]),
+        np.array([1.0, 0.0]),
+        0,
+        2,
+    )
+
+    assert state is states[(11, 12)]
+    assert record["accepted"] is True
+    assert record["refinement_kind"] == (
+        "endpoint_centered_adjacent_target_cavity_midpoint"
+    )
+    assert record["predicted_exact_target_pass"] is True
+    assert record["predicted_min_triangle_quality"] == 0.056
+    assert record["predicted_min_child_area_ratio"] == 0.21
+    assert record["target_fan_shared_node_count_before"] == 2
+    assert record["target_fan_shared_node_count_after"] == 1
+
+
+def test_distant_target_without_tip_fan_adjacency_remains_fail_closed(
+    monkeypatch,
+):
     failure = {"accepted": False, "reason": "no_target_tip_triangle"}
     monkeypatch.setattr(
         handoff,
         "_ORIGINAL_REFINE_ONCE",
         lambda *args, **kwargs: (None, failure),
     )
+    monkeypatch.setattr(
+        handoff,
+        "_target_cavity_candidate",
+        lambda *args, **kwargs: (
+            None,
+            {
+                "accepted": False,
+                "reason": "no_adjacent_ray_target_triangle",
+            },
+        ),
+    )
 
     state, record = handoff.refine_once(
         object(),
         object(),
         np.array([0.0, 0.0]),
-        np.array([1.0, 0.0]),
+        np.array([10.0, 0.0]),
         0,
         1,
     )
 
     assert state is None
-    assert record is failure
+    assert record["reason"] == "no_target_tip_triangle"
+    assert record["target_cavity_failure"]["reason"] == (
+        "no_adjacent_ray_target_triangle"
+    )
 
 
 def test_install_changes_only_retry_refinement_hook(monkeypatch):
