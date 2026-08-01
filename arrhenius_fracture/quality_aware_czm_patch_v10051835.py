@@ -1,4 +1,4 @@
-"""Shape-regular local patch helpers for v10.0.5.18.3.5."""
+"""Endpoint-centered shape-regular patch helpers for v10.0.5.18.3.5."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -115,32 +115,143 @@ def _target_tip_triangle(
     return choices[0][1]
 
 
-def _candidate_edges(mesh: Any, elem_id: int, p0: np.ndarray):
-    conn = list(map(int, mesh.elems[elem_id]))
-    scale = max(float(mesh.hbar_tip), float(mesh.hbar), 1.0e-12)
-    non_tip = [
-        node
-        for node in conn
-        if np.linalg.norm(mesh.nodes[node] - p0)
-        > max(1.0e-12, 1.0e-7 * scale)
-    ]
-    edges: list[tuple[int, int]] = []
-    if len(non_tip) >= 2:
-        edges.append((non_tip[0], non_tip[1]))
-    all_edges = [(conn[0], conn[1]), (conn[1], conn[2]), (conn[2], conn[0])]
-    all_edges.sort(
-        key=lambda edge: np.linalg.norm(
-            mesh.nodes[edge[1]] - mesh.nodes[edge[0]]
-        ),
-        reverse=True,
+def _tip_node_in_triangle(
+    mesh: Any,
+    elem_id: int,
+    p0: np.ndarray,
+) -> int | None:
+    conn = np.asarray(mesh.elems[int(elem_id)], dtype=int)
+    distance = np.linalg.norm(
+        np.asarray(mesh.nodes[conn], dtype=float) - np.asarray(p0)[None, :],
+        axis=1,
     )
-    known = {tuple(sorted(item)) for item in edges}
-    for edge in all_edges:
-        key = tuple(sorted(edge))
-        if key not in known:
-            edges.append(edge)
-            known.add(key)
-    return edges
+    local = int(np.argmin(distance))
+    scale = max(
+        float(getattr(mesh, "hbar_tip", 0.0)),
+        float(getattr(mesh, "hbar", 0.0)),
+        1.0e-12,
+    )
+    tol = max(1.0e-12, 1.0e-6 * scale)
+    if float(distance[local]) > tol:
+        return None
+    return int(conn[local])
+
+
+def _predicted_exact_target_metrics(
+    self: Any,
+    mesh: Any,
+    elem_id: int,
+    target: np.ndarray,
+) -> dict[str, Any] | None:
+    conn = np.asarray(mesh.elems[int(elem_id)], dtype=int)
+    triangle = np.asarray(mesh.nodes[conn], dtype=float)
+    weights = _barycentric(triangle, np.asarray(target, dtype=float))
+    if weights is None or float(np.min(weights)) < -1.0e-10:
+        return None
+
+    nodes = np.vstack([np.asarray(mesh.nodes, dtype=float), target[None, :]])
+    target_id = int(len(mesh.nodes))
+    children = np.array(
+        [
+            [int(conn[0]), int(conn[1]), target_id],
+            [int(conn[1]), int(conn[2]), target_id],
+            [int(conn[2]), int(conn[0]), target_id],
+        ],
+        dtype=int,
+    )
+    quality = self._triangle_quality(nodes, children)
+    return {
+        "target_parent_element": int(elem_id),
+        "target_barycentric_weights": np.asarray(weights, dtype=float).tolist(),
+        "predicted_min_child_area_ratio": float(np.min(weights)),
+        "predicted_min_triangle_quality": (
+            float(np.min(quality)) if quality.size else 1.0
+        ),
+    }
+
+
+def _midpoint_split_candidate(
+    self: Any,
+    state: State,
+    edge_i: int,
+    edge_j: int,
+    qfloor: float,
+    afloor: float,
+):
+    midpoint = 0.5 * (
+        np.asarray(state.mesh.nodes[edge_i], dtype=float)
+        + np.asarray(state.mesh.nodes[edge_j], dtype=float)
+    )
+    try:
+        mesh1, u1, reason, meta, parent = self._insert_point_on_edge(
+            state.mesh,
+            state.displacement,
+            midpoint,
+            edge_i,
+            edge_j,
+        )
+    except Exception as exc:
+        return None, {
+            "edge_i": int(edge_i),
+            "edge_j": int(edge_j),
+            "reason": f"{type(exc).__name__}:{exc}",
+        }
+    if mesh1 is None or parent is None:
+        return None, {
+            "edge_i": int(edge_i),
+            "edge_j": int(edge_j),
+            "reason": str(reason),
+        }
+
+    parent = np.asarray(parent, dtype=int)
+    affected = _v9185._affected_elements(state.mesh, mesh1)
+    quality = self._triangle_quality(mesh1.nodes, mesh1.elems[affected])
+    qmin = float(np.min(quality)) if quality.size else 1.0
+    ratios = [
+        float(mesh1.area_e[e])
+        / max(float(state.mesh.area_e[parent[e]]), 1.0e-300)
+        for e in np.asarray(affected, dtype=int)
+        if e < len(parent) and 0 <= parent[e] < int(state.mesh.ne)
+    ]
+    amin = min(ratios) if ratios else 1.0
+    issues = floor_issues(qmin, amin, qfloor, afloor)
+    valid = (
+        np.all(np.isfinite(mesh1.area_e))
+        and np.all(np.asarray(mesh1.area_e) > 0.0)
+        and not issues
+    )
+    if not valid:
+        return None, {
+            "edge_i": int(edge_i),
+            "edge_j": int(edge_j),
+            "reason": ";".join(issues) or "invalid_refined_mesh",
+            "min_triangle_quality": qmin,
+            "min_immediate_child_area_ratio": amin,
+        }
+
+    next_state = State(
+        mesh=mesh1,
+        boundary=make_boundary_data(mesh1, self.geom),
+        damage=_extend_damage(
+            state.mesh, mesh1, state.damage, edge_i, edge_j
+        ),
+        displacement=np.asarray(u1, dtype=float),
+        parent_to_root=state.parent_to_root[parent],
+    )
+    record = {
+        "edge_i": int(edge_i),
+        "edge_j": int(edge_j),
+        "midpoint_m": np.asarray(midpoint, dtype=float).tolist(),
+        "min_triangle_quality": qmin,
+        "triangle_quality_floor": qfloor,
+        "min_immediate_child_area_ratio": amin,
+        "child_area_ratio_floor": afloor,
+        "immediate_parent_area_ratio_enforced": True,
+        "n_new_nodes": int(mesh1.nn - state.mesh.nn),
+        "n_new_elements": int(mesh1.ne - state.mesh.ne),
+        **dict(meta or {}),
+    }
+    return next_state, record
 
 
 def refine_once(
@@ -151,12 +262,31 @@ def refine_once(
     front_id: int,
     level: int,
 ):
+    """Bisect one tip-radial edge chosen to improve exact endpoint quality.
+
+    For a target inside a tip triangle, the three child-area ratios created by
+    exact point insertion are its barycentric coordinates. The former
+    opposite-edge cascade halved the parent area but left the sliver-defining
+    tip-radial edge unchanged. This policy evaluates both edges emanating from
+    the active cohesive tip and selects the conforming midpoint split that most
+    improves the limiting normalized triangle-quality/child-area margin of the
+    subsequent exact endpoint insertion.
+    """
     elem_id = _target_tip_triangle(self, state.mesh, p0, target, front_id)
     if elem_id is None:
         return None, {
             "level": level,
             "accepted": False,
             "reason": "no_target_tip_triangle",
+        }
+
+    tip_node = _tip_node_in_triangle(state.mesh, elem_id, p0)
+    if tip_node is None:
+        return None, {
+            "level": level,
+            "accepted": False,
+            "reason": "target_triangle_has_no_tip_vertex",
+            "target_parent_element": int(elem_id),
         }
 
     qfloor = float_env(
@@ -167,85 +297,110 @@ def refine_once(
         "ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO",
         float(self.min_area_ratio),
     )
+
+    conn = [int(value) for value in state.mesh.elems[int(elem_id)]]
+    radial_edges = [
+        (int(tip_node), int(node))
+        for node in conn
+        if int(node) != int(tip_node)
+    ]
+    radial_edges.sort(key=lambda edge: (edge[1], edge[0]))
+
+    candidates = []
     errors = []
-    for edge_i, edge_j in _candidate_edges(state.mesh, elem_id, p0):
-        midpoint = 0.5 * (
-            state.mesh.nodes[edge_i] + state.mesh.nodes[edge_j]
+    for edge_i, edge_j in radial_edges:
+        candidate_state, split = _midpoint_split_candidate(
+            self,
+            state,
+            edge_i,
+            edge_j,
+            qfloor,
+            afloor,
         )
-        try:
-            mesh1, u1, reason, meta, parent = self._insert_point_on_edge(
-                state.mesh,
-                state.displacement,
-                midpoint,
-                edge_i,
-                edge_j,
-            )
-        except Exception as exc:
-            errors.append(f"{edge_i},{edge_j}:{type(exc).__name__}:{exc}")
-            continue
-        if mesh1 is None or parent is None:
-            errors.append(f"{edge_i},{edge_j}:{reason}")
+        if candidate_state is None:
+            errors.append(split)
             continue
 
-        parent = np.asarray(parent, dtype=int)
-        affected = _v9185._affected_elements(state.mesh, mesh1)
-        quality = self._triangle_quality(mesh1.nodes, mesh1.elems[affected])
-        qmin = float(np.min(quality)) if quality.size else 1.0
-        ratios = [
-            float(mesh1.area_e[e])
-            / max(float(state.mesh.area_e[parent[e]]), 1.0e-300)
-            for e in np.asarray(affected, dtype=int)
-            if e < len(parent) and 0 <= parent[e] < int(state.mesh.ne)
-        ]
-        amin = min(ratios) if ratios else 1.0
-        issues = floor_issues(qmin, amin, qfloor, afloor)
-        valid = (
-            np.all(np.isfinite(mesh1.area_e))
-            and np.all(np.asarray(mesh1.area_e) > 0.0)
-            and not issues
+        candidate_elem = _target_tip_triangle(
+            self,
+            candidate_state.mesh,
+            p0,
+            target,
+            front_id,
         )
-        if not valid:
+        if candidate_elem is None:
             errors.append(
-                f"{edge_i},{edge_j}:q={qmin:.6e},area={amin:.6e}:"
-                + ";".join(issues)
+                {
+                    **split,
+                    "reason": "midpoint_split_moved_target_outside_tip_patch",
+                }
             )
             continue
 
-        next_state = State(
-            mesh=mesh1,
-            boundary=make_boundary_data(mesh1, self.geom),
-            damage=_extend_damage(
-                state.mesh, mesh1, state.damage, edge_i, edge_j
-            ),
-            displacement=np.asarray(u1, dtype=float),
-            parent_to_root=state.parent_to_root[parent],
+        predicted = _predicted_exact_target_metrics(
+            self,
+            candidate_state.mesh,
+            candidate_elem,
+            np.asarray(target, dtype=float),
         )
-        record = {
-            "level": level,
-            "accepted": True,
-            "refined_parent_element": elem_id,
-            "split_edge_i": edge_i,
-            "split_edge_j": edge_j,
-            "midpoint_m": np.asarray(midpoint).tolist(),
-            "min_triangle_quality": qmin,
-            "triangle_quality_floor": qfloor,
-            "min_immediate_child_area_ratio": amin,
-            "child_area_ratio_floor": afloor,
-            "immediate_parent_area_ratio_enforced": True,
-            "n_new_nodes": int(mesh1.nn - state.mesh.nn),
-            "n_new_elements": int(mesh1.ne - state.mesh.ne),
-            **dict(meta or {}),
-        }
-        # The edge opposite the active cohesive tip is offered first. Use the
-        # first valid conforming split so refinement does not migrate the tip.
-        return next_state, record
+        if predicted is None:
+            errors.append(
+                {
+                    **split,
+                    "reason": "cannot_predict_exact_target_insertion",
+                }
+            )
+            continue
 
-    return None, {
-        "level": level,
-        "accepted": False,
-        "reason": "no_quality_safe_midpoint_bisection",
-        "errors": errors,
+        pq = float(predicted["predicted_min_triangle_quality"])
+        pa = float(predicted["predicted_min_child_area_ratio"])
+        qmargin = pq / max(qfloor, 1.0e-300)
+        amargin = pa / max(afloor, 1.0e-300)
+        limiting_margin = min(qmargin, amargin)
+        exact_pass_predicted = bool(pq >= qfloor and pa >= afloor)
+        score = (
+            int(exact_pass_predicted),
+            float(limiting_margin),
+            float(min(qmargin, 10.0)),
+            float(min(amargin, 10.0)),
+            -int(edge_j),
+        )
+        candidates.append(
+            (
+                score,
+                candidate_state,
+                {
+                    **split,
+                    **predicted,
+                    "predicted_exact_target_pass": exact_pass_predicted,
+                    "predicted_quality_margin": qmargin,
+                    "predicted_area_margin": amargin,
+                    "predicted_limiting_margin": limiting_margin,
+                },
+            )
+        )
+
+    if not candidates:
+        return None, {
+            "level": level,
+            "accepted": False,
+            "reason": "no_quality_safe_tip_radial_midpoint_bisection",
+            "target_parent_element": int(elem_id),
+            "errors": errors,
+        }
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    _, selected_state, selected = candidates[0]
+    record = {
+        "level": int(level),
+        "accepted": True,
+        "refinement_kind": "endpoint_centered_tip_radial_midpoint",
+        "target_parent_element_before": int(elem_id),
+        "tip_node": int(tip_node),
+        "candidate_count": int(len(candidates)),
+        **selected,
     }
+    return selected_state, record
 
 
 __all__ = [
