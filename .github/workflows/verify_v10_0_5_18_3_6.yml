@@ -1,0 +1,99 @@
+name: Verify v10.0.5.18.3.6 committed-tip resolution audit
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.3.6-committed-tip-resolution-audit
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile telemetry point release
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/committed_tip_resolution_audit_v10051836.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_6_committed_tip_resolution_audit.py \
+            scripts/analyze_v10051836_joint_geometry_margins.py \
+            tests/test_committed_tip_resolution_audit_v10051836.py
+          bash -n run_v10_0_5_18_3_6_four_class_committed_tip_audit.sh
+          python scripts/analyze_v10051836_joint_geometry_margins.py --help >/dev/null
+          python - <<'PY'
+          from importlib.metadata import version
+          assert version("arrhenius-fem-czm") == "10.0.5.18.3.6"
+          PY
+      - name: Committed-tip telemetry contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_committed_tip_resolution_audit_v10051836.py \
+            tests/test_numerical_resilience_v1005183.py \
+            tests/test_stochastic_hazard_event_length_v100516.py
+      - name: Preserve path-aware envelope contracts
+        run: |
+          /usr/bin/time -v python -m pytest -q --tb=short \
+            tests/test_path_aware_growth_envelope_v10051834.py \
+            -k 'not test_runner_and_package_contracts'
+      - name: Actual production-entry startup smoke
+        run: |
+          rm -rf /tmp/v10051836_production_smoke
+          OPTIONS="v913_paper_weakT01_0129902_persistent_sites" \
+          TEMPERATURES="300" \
+          TARGET_EXT_UM=20 \
+          STEPS=1 \
+          MAX_JOBS=1 \
+          PRINT_EVERY=1 \
+          GENERATE_SOLVER_PLOTS=0 \
+          SAVE_SNAPSHOTS=1 \
+          SNAPSHOT_BY_EXT_UM=20 \
+          CAMPAIGN_ROOT=/tmp/v10051836_production_smoke \
+            bash run_v10_0_5_18_3_6_four_class_committed_tip_audit.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          case = (
+              Path("/tmp/v10051836_production_smoke")
+              / "v913_paper_weakT01_0129902_persistent_sites"
+              / "T0300K"
+          )
+          manifest = json.loads(
+              (case / "persistent_site_production_manifest_v10_0_5_18_3_6.json").read_text()
+          )
+          corridor = json.loads(
+              (case / "compact_corridor_mesh_v91852.json").read_text()
+          )
+          audit = json.loads(
+              (case / "committed_tip_resolution_audit_v10_0_5_18_3_6.json").read_text()
+          )
+          assert manifest["point_release"] == "10.0.5.18.3.6"
+          assert manifest["run_completed_without_exception"] is True
+          physics = manifest["physics_contract"]
+          assert physics["telemetry_only"] is True
+          assert physics["geometry_changed"] is False
+          assert physics["hazard_or_event_length_changed"] is False
+          assert physics["quality_floors_changed"] is False
+          assert corridor["path_aware_growth_envelope"] is True
+          assert corridor["committed_tip_resolution_audit_active"] is True
+          assert audit["telemetry_only"] is True
+          assert audit["tip_h_fine_contract"]["tip_h_fine_equals_one_ring_mean_edge"] is False
+          assert audit["run_completed_without_exception"] is True
+          PY
+      - name: Preserve joint-K, moving-tip, and persistent-source physics
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_joint_K_ramp_emission_v10051832.py \
+            tests/test_joint_K_single_trial_v10051832.py \
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
