@@ -16,6 +16,10 @@ from . import (
     mode_i_first_passage_v10_0_5_18_3_4_four_class_path_aware_growth_envelope
     as _base
 )
+from . import (
+    mode_i_first_passage_v10_0_5_18_3_6_committed_tip_resolution_audit
+    as _entry36
+)
 from . import committed_tip_resolution_audit_v10051836 as _audit36
 from . import mode_i_first_passage_v9_18_5_6 as _v91856
 from .event_resolved_czm_retry_v10051837 import (
@@ -101,7 +105,12 @@ def _fields() -> dict[str, Any]:
     }
 
 
-def _rewrite_payload(old_name: str, payload: dict[str, Any], resolution: dict[str, Any], retry: dict[str, Any]) -> dict[str, Any]:
+def _rewrite_payload(
+    old_name: str,
+    payload: dict[str, Any],
+    resolution: dict[str, Any],
+    retry: dict[str, Any],
+) -> dict[str, Any]:
     payload["point_release"] = POINT_RELEASE
     payload["model"] = MODEL_ID
     fields = _fields()
@@ -138,7 +147,9 @@ def _rewrite_outputs(out: Path | None, error: BaseException | None) -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     resolution = _audit36.audit_payload()
-    resolution["stochastic_event_enrichment"] = _audit36._enrich_stochastic_events(out, resolution)
+    resolution["stochastic_event_enrichment"] = _entry36._enrich_stochastic_events(
+        out, resolution
+    )
     resolution.update(
         {
             "point_release": POINT_RELEASE,
