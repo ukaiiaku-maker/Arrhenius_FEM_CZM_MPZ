@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.18.3.7"
-description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K single-trial local kinetics, path-aware long-growth support, committed-tip telemetry, and atomic exact-ray event-resolved local cavity refinement without equal physical partition retries"
+version = "10.0.5.18.3.8"
+description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K local kinetics, path-aware long growth, committed-tip telemetry, atomic exact-ray event routing, and exact-endpoint convex two-triangle cavity retriangulation"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
@@ -15,9 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest>=8",
-]
+dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 include = ["arrhenius_fracture*"]

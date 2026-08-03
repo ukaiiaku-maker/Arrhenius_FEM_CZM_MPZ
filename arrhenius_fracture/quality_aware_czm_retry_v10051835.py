@@ -23,6 +23,21 @@ _LEGACY_QUALITY_WRAPPER: Callable | None = None
 _State = _State
 
 
+class MeshOnlyRayHandoff:
+    """Accepted mesh refinement requiring exact-ray routing before tip motion.
+
+    The backend transaction has been restored to the current physical tip, but
+    ``state`` contains a conforming numerical refinement that must be retained.
+    The outer event-resolved controller must recompute the next exact mesh-ray
+    crossing on this refined mesh.  This object is deliberately not a crack
+    advance result and carries no physical motion.
+    """
+
+    def __init__(self, state: _State, record: dict[str, Any]):
+        self.state = state
+        self.record = copy.deepcopy(record)
+
+
 def configure_legacy_quality_wrapper(wrapper: Callable) -> None:
     global _LEGACY_QUALITY_WRAPPER
     _LEGACY_QUALITY_WRAPPER = wrapper
@@ -164,6 +179,17 @@ def _segment_retry(
             self._transaction_rollback(snap)
             return None, level - 1, str(record.get("reason", "patch_refinement_failed"))
         candidate_state = next_state
+
+        # Some accepted refinements intentionally move the target out of the
+        # directly reachable tip cavity.  Retrying the full endpoint from the
+        # unchanged tip after such a refinement is topologically incorrect: the
+        # refined mesh now contains an intervening exact ray crossing.  Preserve
+        # the numerical refinement, restore the backend transaction, and hand
+        # control to the outer exact-ray marcher before any physical motion.
+        if bool(record.get("exact_ray_march_required_after_refinement", False)):
+            self._transaction_rollback(snap)
+            return MeshOnlyRayHandoff(candidate_state, record), level, None
+
         result = _call_on_state(original, self, candidate_state, root_kwargs, p0, p1, direction)
         if result.inserted:
             return result, level, None
@@ -175,6 +201,7 @@ def _segment_retry(
 
 
 __all__ = [
+    "MeshOnlyRayHandoff",
     "_State",
     "_call_on_state",
     "_checked_call",
