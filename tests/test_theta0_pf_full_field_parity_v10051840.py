@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+
+from arrhenius_fracture import emission_derived_plasticity as installed_pt
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_14_persistent_site as v14
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor as base
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity as full
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as control
+from arrhenius_fracture.bulk_pt_detailed_balance_v1041_exact import (
+    EmissionDerivedPeierlsTaylorModel,
+    ExpFloorSurface,
+    config_from_dislocation_config,
+)
+
+
+def _row() -> dict[str, float]:
+    return {
+        "Tref_K": 481.33,
+        "rho_forest_floor_m2": 5.0e12,
+        "emit_G00_eV": 2.0446315124630927,
+        "emit_gT_eV_per_K": 0.000941995373927,
+        "emit_sigc0_GPa": 7.205215461552143,
+        "emit_sT_GPa_per_K": 0.0013325903080403,
+        "emit_exp_a": 0.0858719444833695,
+        "emit_exp_n": 1.1423492641188204,
+        "emit_floor_frac": 0.0058420097608974,
+        "peierls_H0_eV": 6.368386985268444,
+        "peierls_activation_entropy_kB": 12.2265643812716,
+        "peierls_exp_a": 1.9097672308795155,
+        "peierls_exp_n": 1.1372957159765065,
+        "peierls_stress_fraction": 0.5773502691896258,
+        "peierls_nu0_s": 1.0e12,
+        "taylor_H0_eV": 1.6986502355337143,
+        "taylor_activation_entropy_kB": 38.45378890633583,
+        "taylor_exp_a": 0.4561179580539465,
+        "taylor_exp_n": 1.2506696581840515,
+        "taylor_stress_fraction": 0.5773502691896258,
+        "taylor_nu0_s": 1.0e11,
+        "taylor_corr_rho_c_m2": 5.878007397057801e13,
+        "taylor_corr_scale": 0.8638954413677038,
+    }
+
+
+def test_detailed_balance_is_exactly_zero_at_zero_stress():
+    surface = ExpFloorSurface(
+        G00_eV=2.0,
+        gT_eV_per_K=1.0e-3,
+        sigc0_Pa=5.0e9,
+        sT_Pa_per_K=0.0,
+        alpha=0.5,
+        exponent=1.2,
+        floor_fraction=0.01,
+        floor_min_eV=1.0e-4,
+        floor_max_fraction=0.95,
+        Tref_K=481.33,
+        attempt_frequency_s=1.0e12,
+    )
+    rates = surface.rate_s(np.zeros(4), 1000.0)
+    assert np.array_equal(rates, np.zeros(4))
+    assert surface.rate_s(np.array([1.0e9]), 1000.0)[0] > 0.0
+
+
+def test_exact_bulk_mapping_uses_direct_selected_row_fields():
+    cfg = SimpleNamespace()
+    full._exact_bulk_parameters(cfg, _row())
+    model_cfg = config_from_dislocation_config(cfg)
+    row = _row()
+    assert model_cfg.peierls.G00_eV == row["peierls_H0_eV"]
+    assert model_cfg.taylor.G00_eV == row["taylor_H0_eV"]
+    assert model_cfg.peierls.sigc0_Pa == row["peierls_stress_fraction"] * row["emit_sigc0_GPa"] * 1.0e9
+    assert model_cfg.taylor.sigc0_Pa == row["taylor_stress_fraction"] * row["emit_sigc0_GPa"] * 1.0e9
+    assert model_cfg.taylor_renewal_time_s == 1.0e-9
+    assert model_cfg.mobile_density_floor_m2 == row["rho_forest_floor_m2"]
+
+
+def test_exact_bulk_rate_uses_pf_hit_order_and_mobile_law():
+    cfg = SimpleNamespace()
+    full._exact_bulk_parameters(cfg, _row())
+    model = EmissionDerivedPeierlsTaylorModel(config_from_dislocation_config(cfg))
+    stress = np.array([2.0e9, 4.0e9])
+    rho = np.array([5.0e12, 2.0e14])
+    out = model.rates(stress, rho, 1000.0, 2.5e-10)
+    expected_order = 1.0 + _row()["taylor_corr_scale"] * (
+        rho / _row()["taylor_corr_rho_c_m2"]
+    )
+    expected_mobile = np.minimum(0.01 * rho, 1.0e14)
+    assert np.allclose(out["taylor_m_eff"], expected_order, rtol=1.0e-13)
+    assert np.allclose(out["rho_mobile_m2"], expected_mobile, rtol=1.0e-13)
+    assert np.all(out["equivalent_plastic_rate_s"] >= 0.0)
+
+
+def test_full_field_entry_installs_and_restores_overlay(monkeypatch, tmp_path: Path):
+    kernel = tmp_path / "family.json"
+    kernel.write_text("reference kernel\n")
+    digest = hashlib.sha256(kernel.read_bytes()).hexdigest()
+    monkeypatch.setattr(control, "REFERENCE_KERNEL_SHA256", digest)
+    monkeypatch.setenv("CLEAVAGE_HAZARD_SEED", "8666")
+
+    original_model = installed_pt.EmissionDerivedPeierlsTaylorModel
+    original_policy = v14.persistent_site_policy
+    original_fields = base._fields
+    observed = {}
+
+    def fake_base_main(args):
+        observed["model"] = installed_pt.EmissionDerivedPeierlsTaylorModel
+        observed["policy"] = v14.persistent_site_policy(SimpleNamespace())
+        observed["fields"] = base._fields()
+        return "ok"
+
+    monkeypatch.setattr(base, "main", fake_base_main)
+    out = tmp_path / "out"
+    args = [
+        "--parameter-option", control.REFERENCE_OPTION,
+        "--temperatures", "1000",
+        "--bulk-plasticity-mode", "full_field",
+        "--j-decomposition", "cluster",
+        "--nx", "36", "--ny", "72",
+        "--n-stagger", "2", "--max-fronts", "1",
+        "--crystal-theta-deg", "0",
+        "--dU", "2e-7", "--dt", "8.4",
+        "--tip-h-fine", "1e-6", "--tip-ratio", "1.20",
+        "--da-phys", "5e-6", "--adaptive-event-target", "0.15",
+        "--signed-kernel-family", str(kernel),
+        "--out", str(out),
+    ]
+    assert full.main(args) == "ok"
+    assert observed["model"] is EmissionDerivedPeierlsTaylorModel
+    assert observed["policy"]["bulk_plasticity_mode"] == "full_field"
+    assert observed["fields"]["PF_v10_4_1_bulk_parity_active"] is True
+    assert installed_pt.EmissionDerivedPeierlsTaylorModel is original_model
+    assert v14.persistent_site_policy is original_policy
+    assert base._fields is original_fields
