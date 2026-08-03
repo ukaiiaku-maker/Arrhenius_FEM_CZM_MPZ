@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from collections import Counter
 from types import SimpleNamespace
 
 import numpy as np
@@ -56,6 +58,31 @@ def _backend():
     )
 
 
+def _failure_summary() -> str:
+    audit = audit_payload()
+    event = audit["events"][-1] if audit.get("events") else {}
+    attempts = event.get("corridor_attempts", [])
+    histogram = Counter(
+        (str(row.get("stage")), str(row.get("reason"))) for row in attempts
+    )
+    ranked = [
+        {"stage": stage, "reason": reason, "count": count}
+        for (stage, reason), count in histogram.most_common()
+    ]
+    tail = attempts[-12:]
+    return json.dumps(
+        {
+            "failure": event.get("failure"),
+            "attempt_count": len(attempts),
+            "rejection_histogram": ranked,
+            "last_attempts": tail,
+        },
+        indent=2,
+        sort_keys=True,
+        default=str,
+    )
+
+
 def test_atomic_corridor_commits_exact_endpoint_and_length(monkeypatch):
     monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY", "0.035")
     monkeypatch.setenv("ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO", "0.08")
@@ -80,7 +107,7 @@ def test_atomic_corridor_commits_exact_endpoint_and_length(monkeypatch):
         front_id=0,
     )
 
-    assert result.inserted is True, result.reason
+    assert result.inserted is True, _failure_summary()
     assert abs(float(result.moved) - requested) <= 1.0e-10
     assert np.linalg.norm(backend.tip_nodes[0][2] - p1) <= 1.0e-10
     assert result.elem_parent_map is not None
@@ -125,7 +152,7 @@ def test_short_exact_event_does_not_create_residual_ray_fragment(monkeypatch):
         direction=direction,
         front_id=0,
     )
-    assert result.inserted is True, result.reason
+    assert result.inserted is True, _failure_summary()
     event = audit_payload()["events"][0]
     lengths = [row["length_m"] for row in event["topology_subsegments"]]
     assert abs(sum(lengths) - requested) <= 1.0e-10
