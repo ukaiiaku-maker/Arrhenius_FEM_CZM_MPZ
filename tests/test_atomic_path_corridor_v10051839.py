@@ -12,8 +12,11 @@ from arrhenius_fracture.atomic_path_corridor_czm_v10051839 import (
     audit_payload,
     reset_audit,
 )
+from arrhenius_fracture.atomic_path_corridor_adaptive_quality_v10051839 import (
+    AdaptiveQualityAtomicPathCorridorCZMBackendV10051839,
+    ANGLE_SCHEDULE_DEG,
+)
 from arrhenius_fracture.atomic_path_corridor_local_scale_v10051839 import (
-    CertifiedAtomicPathCorridorCZMBackendV10051839,
     install,
     restore,
 )
@@ -39,8 +42,6 @@ def _geom():
 
 
 def _mesh():
-    # A healthy inherited unstructured mesh with the physical tip inserted as
-    # an exact vertex but no pre-existing edge to the requested endpoint.
     x = np.linspace(0.0, 20.0, 9)
     y = np.linspace(-8.0, 8.0, 8)
     xx, yy = np.meshgrid(x, y)
@@ -59,7 +60,7 @@ def _mesh():
 
 
 def _backend():
-    return CertifiedAtomicPathCorridorCZMBackendV10051839(
+    return AdaptiveQualityAtomicPathCorridorCZMBackendV10051839(
         geom=_geom(),
         penalty_normal_Pa_per_m=1.0e18,
         penalty_tangent_Pa_per_m=1.0e18,
@@ -83,18 +84,24 @@ def _failure_summary() -> str:
         {"stage": stage, "reason": reason, "count": count}
         for (stage, reason), count in histogram.most_common()
     ]
-    tail = attempts[-12:]
     return json.dumps(
         {
             "failure": event.get("failure"),
             "attempt_count": len(attempts),
             "rejection_histogram": ranked,
-            "last_attempts": tail,
+            "last_attempts": attempts[-12:],
         },
         indent=2,
         sort_keys=True,
         default=str,
     )
+
+
+def test_adaptive_quality_schedule_reaches_shape_regular_targets():
+    assert ANGLE_SCHEDULE_DEG[:3] == (1.0, 2.0, 5.0)
+    assert ANGLE_SCHEDULE_DEG[-1] == 28.0
+    assert 10.0 in ANGLE_SCHEDULE_DEG
+    assert 20.0 in ANGLE_SCHEDULE_DEG
 
 
 def test_atomic_corridor_commits_exact_endpoint_and_length(monkeypatch):
@@ -107,14 +114,12 @@ def test_atomic_corridor_commits_exact_endpoint_and_length(monkeypatch):
     direction /= np.linalg.norm(direction)
     requested = 5.601322683862894
     p1 = p0 + requested * direction
-    damage = np.zeros(mesh.nn)
-    displacement = np.zeros(mesh.ndof)
 
     result = backend.advance(
         mesh=mesh,
         boundary=make_boundary_data(mesh, _geom()),
-        damage=damage,
-        displacement=displacement,
+        damage=np.zeros(mesh.nn),
+        displacement=np.zeros(mesh.ndof),
         p0=p0,
         p1=p1,
         direction=direction,
@@ -179,8 +184,6 @@ def test_short_exact_event_does_not_create_residual_ray_fragment(monkeypatch):
     event = audit_payload()["events"][0]
     lengths = [row["length_m"] for row in event["topology_subsegments"]]
     assert abs(sum(lengths) - requested) <= 1.0e-10
-    # Numerical support is generated for the complete event at once; there is
-    # no inherited-edge residual such as the archived 0.1666 micrometre tail.
     assert min(lengths) > 1.0e-6
 
 
@@ -211,4 +214,6 @@ def test_failed_corridor_rolls_back_backend_state(monkeypatch):
     assert after["n_log"] == before["n_log"]
     event = audit_payload()["events"][0]
     assert event["success"] is False
-    assert event["failure"] == "no_feasible_atomic_path_corridor"
+    assert event["failure"] == (
+        "no_feasible_atomic_path_corridor_after_adaptive_quality_search"
+    )
