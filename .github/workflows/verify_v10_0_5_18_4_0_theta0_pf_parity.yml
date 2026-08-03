@@ -7,8 +7,11 @@ on:
   pull_request:
     paths:
       - "arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py"
+      - "arrhenius_fracture/refinement_audit_v100516.py"
+      - "arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py"
       - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py"
       - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py"
+      - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py"
       - "run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh"
       - "run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh"
       - "scripts/compare_v10051840_theta0_pf_parity.py"
@@ -33,8 +36,11 @@ jobs:
         run: |
           python -m py_compile \
             arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py \
+            arrhenius_fracture/refinement_audit_v100516.py \
+            arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py \
             scripts/compare_v10051840_theta0_pf_parity.py
           bash -n run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh
           bash -n run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh
@@ -79,7 +85,7 @@ jobs:
           from pathlib import Path
 
           from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as control
-          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity as full
+          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production as production
 
           root = Path.cwd()
           family = root / 'runtime_inputs/v10_0_5_17_frozen_pf_inputs/signed_kernel/v10_2_14_active_only_campaign_family.json'
@@ -123,14 +129,33 @@ jobs:
               '--no-plots',
               '--out', str(out),
           ]
-          full.main(args)
-          audit = json.loads((out / full.AUDIT_FILE).read_text())
+          production.main(args)
+          audit = json.loads((out / production.AUDIT_FILE).read_text())
           assert audit['run_completed_without_exception'] is True, audit.get('runtime_error')
           assert audit['bulk_parity']['FEM_bulk_plasticity_mode'] == 'full_field'
           assert audit['bulk_parity']['detailed_balance_forward_minus_reverse'] is True
-          manifest = json.loads((out / 'persistent_site_production_manifest_v10_0_5_18_3_9.json').read_text())
+
+          manifest_path = out / 'persistent_site_production_manifest_v10_0_5_18_3_9.json'
+          manifest = json.loads(manifest_path.read_text())
           parity = manifest['theta0_pf_full_field_parity']
           assert parity['bulk_parity']['model'] == 'v10.4.1_bulk_peierls_taylor_detailed_balance_exact_port'
+          assert manifest['crystal_theta_deg'] == 0.0
+          assert manifest['bulk_state_evolves_in_fem'] is True
+          assert manifest['bulk_plasticity_semantic_mode'] == 'full_field'
+          lifecycle = manifest['refinement_metadata_lifecycle_audit']
+          assert lifecycle['captured_mesh_has_refinement_metadata'] is True
+          assert lifecycle['production_refinement_radius_m'] >= 330.0e-6
+          assert lifecycle['long_corridor_constructor_capture_active'] is True
+
+          summary = json.loads((out / 'summary.json').read_text())[0]
+          assert summary['crystal_theta_deg'] == 0.0
+          assert summary['material_class'] == 'peak'
+          assert summary['bulk_state_evolves_in_fem'] is True
+          assert summary['taylor_renewal_time_s'] == 1.0e-9
+
+          metadata = json.loads((out / production.METADATA_AUDIT_FILE).read_text())
+          assert metadata['metadata_only'] is True
+          assert metadata['physics_or_mesh_modified'] is False
           print('full-field production-entry smoke passed')
           PY
       - name: Verify package and reference constants
