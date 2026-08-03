@@ -18,7 +18,6 @@ from typing import Any, Mapping
 from . import emission_derived_plasticity as _installed_bulk_pt
 from . import mode_i_first_passage_v10_0_5_13_barrier_only as _core
 from . import mode_i_first_passage_v10_0_5_13_1_barrier_only as _v131
-from . import mode_i_first_passage_v10_0_5_13_2_barrier_only as _v132
 from . import mode_i_first_passage_v10_0_5_13_4_barrier_only as _v134
 from . import mode_i_first_passage_v10_0_5_14_persistent_site as _v14
 from . import mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor as _base
@@ -176,9 +175,35 @@ def _normalize_solver_args(argv: list[str]) -> list[str]:
     return normalized
 
 
-def _bypass_tip_only_policy_wrappers(argv: list[str] | None = None):
-    """Retain v13.2 startup and v13.5 mesh repairs without tip-only vetoes."""
-    return _v132.main(list(sys.argv[1:] if argv is None else argv))
+def _full_field_policy_propagation(argv: list[str] | None = None):
+    """Run v13.2 while preserving v13.4's imported-policy propagation."""
+    user_args = list(sys.argv[1:] if argv is None else argv)
+    mode = _control._option_value(user_args, "--bulk-plasticity-mode")
+    if mode != SOLVER_BULK_MODE:
+        raise SystemExit(
+            f"full-field policy propagation requires {SOLVER_BULK_MODE!r}; "
+            f"received {mode!r}"
+        )
+
+    active_policy = dict(_v134.TIP_ONLY_POLICY)
+    active_policy["bulk_plasticity_mode"] = SOLVER_BULK_MODE
+    active_policy["bulk_plasticity_semantic_mode"] = SEMANTIC_BULK_MODE
+    active_policy["bulk_plasticity_solver_token"] = SOLVER_BULK_MODE
+
+    saved_core_policy = _v134._CORE_ENTRY.TWO_D_STATE_POLICY
+    saved_preserved_policy = _v134._PRESERVED_ENTRY.TWO_D_STATE_POLICY
+    saved_registry_policy = _v134._registry.TWO_D_STATE_POLICY
+    _v134._CORE_ENTRY.TWO_D_STATE_POLICY = active_policy
+    _v134._PRESERVED_ENTRY.TWO_D_STATE_POLICY = active_policy
+    _v134._registry.TWO_D_STATE_POLICY = active_policy
+    try:
+        # Skip only v13.3's literal tip_only guard. v13.2 and all lower
+        # startup/refinement lifecycle wrappers remain active.
+        return _v134._base._base.main(user_args)
+    finally:
+        _v134._CORE_ENTRY.TWO_D_STATE_POLICY = saved_core_policy
+        _v134._PRESERVED_ENTRY.TWO_D_STATE_POLICY = saved_preserved_policy
+        _v134._registry.TWO_D_STATE_POLICY = saved_registry_policy
 
 
 def _full_fields() -> dict[str, Any]:
@@ -330,7 +355,7 @@ def main(argv: list[str] | None = None):
 
     _v14.persistent_site_policy = _full_field_policy
     _v14._replace_option = _replace_option_full_field
-    _v134.main = _bypass_tip_only_policy_wrappers
+    _v134.main = _full_field_policy_propagation
     _core._set_bulk_barrier_defaults = _exact_full_field_defaults
     _v131._apply_barrier_pt_config = _exact_bulk_parameters
     _installed_bulk_pt.EmissionDerivedPeierlsTaylorModel = ExactBulkPTModel
