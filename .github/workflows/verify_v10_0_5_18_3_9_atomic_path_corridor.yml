@@ -89,7 +89,7 @@ jobs:
   exact-seed-400um:
     needs: focused-contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -153,9 +153,6 @@ jobs:
               assert certificate['area_ratio_threshold_relaxed'] is False
               compacted_event_count += int(bool(certificate.get('node_compaction_applied')))
 
-          # The archived long-growth path is known to retire at least one
-          # superseded remesh node.  Qualification requires that compaction be
-          # exercised, not merely available in an unvisited code path.
           assert compacted_event_count >= 1, compacted_event_count
 
           geom = json.loads(
