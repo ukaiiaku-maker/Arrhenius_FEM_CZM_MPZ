@@ -7,10 +7,12 @@ from types import SimpleNamespace
 import numpy as np
 
 from arrhenius_fracture import emission_derived_plasticity as installed_pt
+from arrhenius_fracture import mode_i_first_passage_v10_0_5_13_5_barrier_only as v135
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_14_persistent_site as v14
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor as base
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity as full
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as control
+from arrhenius_fracture import refinement_audit_v100516 as refinement_audit
 from arrhenius_fracture.bulk_pt_detailed_balance_v1041_exact import (
     EmissionDerivedPeierlsTaylorModel,
     ExpFloorSurface,
@@ -109,6 +111,28 @@ def test_exact_bulk_rate_uses_pf_hit_order_and_mobile_law():
     assert np.allclose(out["taylor_m_eff"], expected_order, rtol=1.0e-13)
     assert np.allclose(out["rho_mobile_m2"], expected_mobile, rtol=1.0e-13)
     assert np.all(out["equivalent_plastic_rate_s"] >= 0.0)
+
+
+def test_long_corridor_constructor_is_captured_for_post_run_audit(monkeypatch):
+    mesh = SimpleNamespace(
+        production_refinement_radius_m=330.0e-6,
+        production_refinement_policy="test_long_corridor",
+    )
+    monkeypatch.setattr(
+        v135,
+        "make_physical_refinement_mesh_v1005135",
+        lambda *args, **kwargs: mesh,
+    )
+
+    with refinement_audit.installed_refinement_audit_v100516():
+        observed = v135.make_physical_refinement_mesh_v1005135()
+        payload = refinement_audit.refinement_audit_payload_v100516()
+
+    assert observed is mesh
+    assert payload["captured_mesh_available"] is True
+    assert payload["captured_mesh_has_refinement_metadata"] is True
+    assert payload["production_refinement_radius_m"] == 330.0e-6
+    assert payload["long_corridor_constructor_capture_active"] is True
 
 
 def test_full_field_entry_installs_and_restores_overlay(monkeypatch, tmp_path: Path):
