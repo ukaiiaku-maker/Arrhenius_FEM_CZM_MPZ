@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from arrhenius_fracture.mesh import rebuild_tri_mesh
 from arrhenius_fracture import quality_aware_czm_patch_v10051835 as base
@@ -147,9 +148,7 @@ def test_centroid_fallback_activates_after_single_edge_family_exhaustion(monkeyp
     )
     assert refined is not None, record
     assert record["refinement_kind"] == "atomic_target_parent_centroid_steiner"
-    assert record["min_immediate_child_area_ratio"] == np.testing.assert_allclose(
-        record["min_immediate_child_area_ratio"], 1.0 / 3.0
-    )
+    assert record["min_immediate_child_area_ratio"] == pytest.approx(1.0 / 3.0)
 
 
 def test_v10051838_entry_renames_and_annotates_outputs(monkeypatch, tmp_path):
