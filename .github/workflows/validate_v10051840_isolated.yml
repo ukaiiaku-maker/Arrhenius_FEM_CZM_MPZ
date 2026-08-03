@@ -5,8 +5,12 @@ on:
     branches:
       - v10.0.5.18.4.0-theta0-pf-parity-validation
 
+permissions:
+  contents: write
+
 jobs:
   validate:
+    if: github.event.head_commit.message != 'Record isolated v10.0.5.18.4.0 validation success'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -124,3 +128,32 @@ jobs:
           assert metadata['physics_or_mesh_modified'] is False
           print('isolated full-field production smoke passed')
           PY
+      - name: Record success marker
+        env:
+          VALIDATED_SOURCE_SHA: "6352a4c4471d4ffdfe6848034383829f40197a64"
+        run: |
+          mkdir -p validation
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          payload = {
+              'schema': 'isolated_v10051840_validation_success_v1',
+              'validated_source_sha': os.environ['VALIDATED_SOURCE_SHA'],
+              'workflow_sha': os.environ['GITHUB_SHA'],
+              'completed_utc': datetime.now(timezone.utc).isoformat(),
+              'focused_and_inherited_tests_passed': True,
+              'real_one_step_full_field_production_smoke_passed': True,
+              'physics_or_mesh_relaxed': False,
+          }
+          Path('validation/v10051840_success.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n'
+          )
+          PY
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add validation/v10051840_success.json
+          git commit -m 'Record isolated v10.0.5.18.4.0 validation success'
+          git push
