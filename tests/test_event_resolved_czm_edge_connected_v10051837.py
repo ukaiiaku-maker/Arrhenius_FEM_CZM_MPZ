@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 
@@ -70,11 +69,13 @@ def test_target_in_tip_triangle_is_directly_reachable():
 
 
 def test_entry_installs_and_restores_edge_connected_overlay(monkeypatch, tmp_path):
-    original = retry._local_endpoint_reachable
+    original_reachable = retry._local_endpoint_reachable
+    original_wrapper = entry._base.event_resolved_strict_advance_v10051837
     observed = {}
 
     def fake_base(argv):
-        observed["installed"] = retry._local_endpoint_reachable
+        observed["reachable"] = retry._local_endpoint_reachable
+        observed["wrapper"] = entry._base.event_resolved_strict_advance_v10051837
         for name in (
             entry._base.RETRY_AUDIT,
             entry._base.RESOLUTION_AUDIT,
@@ -88,19 +89,23 @@ def test_entry_installs_and_restores_edge_connected_overlay(monkeypatch, tmp_pat
     result = entry.main(["--out", str(tmp_path)])
 
     assert result == "ok"
-    assert observed["installed"] is entry.edge_connected_local_endpoint_reachable
-    assert retry._local_endpoint_reachable is original
+    assert observed["reachable"] is entry.edge_connected_local_endpoint_reachable
+    assert observed["wrapper"] is entry.edge_connected_audited_advance_v10051837
+    assert retry._local_endpoint_reachable is original_reachable
+    assert entry._base.event_resolved_strict_advance_v10051837 is original_wrapper
 
     audit = json.loads((tmp_path / entry._base.RETRY_AUDIT).read_text())
     assert audit["direct_endpoint_refinement_requires_tip_fan_shared_edge"] is True
     assert audit["minimum_tip_fan_shared_node_count_for_direct_endpoint"] == 2
     assert audit["one_node_target_cavity_routes_to_exact_ray_crossing"] is True
+    assert audit["committed_tip_telemetry_recorded_at_strict_wrapper"] is True
     assert audit["equal_length_partition_retry"] is False
 
     manifest = json.loads((tmp_path / entry._base.PRODUCTION_MANIFEST).read_text())
     physics = manifest["physics_contract"]
     assert physics["direct_endpoint_refinement_requires_tip_fan_shared_edge"] is True
     assert physics["one_node_target_cavity_routes_to_exact_ray_crossing"] is True
+    assert physics["committed_tip_telemetry_recorded_at_strict_wrapper"] is True
     assert physics["hazard_or_event_length_changed"] is False
     assert physics["constitutive_physics_changed"] is False
 
