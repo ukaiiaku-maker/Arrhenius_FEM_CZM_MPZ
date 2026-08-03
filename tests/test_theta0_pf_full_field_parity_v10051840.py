@@ -53,6 +53,7 @@ def _candidate() -> SimpleNamespace:
         n_bins_recommended=80,
         source_sites_per_system_provenance=141.0590567476921,
         source_refresh_length_um_provenance=0.0,
+        source_zone_length_um=2.0,
         peierls_stress_fraction=row["peierls_stress_fraction"],
         taylor_stress_fraction=row["taylor_stress_fraction"],
         taylor_corr_rho_c_m2=row["taylor_corr_rho_c_m2"],
