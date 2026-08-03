@@ -21,8 +21,12 @@ from .atomic_path_corridor_czm_v10051839 import (
     audit_payload,
     reset_audit,
 )
+from .atomic_path_corridor_adaptive_quality_v10051839 import (
+    AdaptiveQualityAtomicPathCorridorCZMBackendV10051839,
+    ANGLE_SCHEDULE_DEG,
+    MODEL_ID as ADAPTIVE_QUALITY_MODEL,
+)
 from .atomic_path_corridor_local_scale_v10051839 import (
-    CertifiedAtomicPathCorridorCZMBackendV10051839,
     MODEL_ID as LOCAL_SCALE_MODEL,
     install as install_local_scale_gate,
     restore as restore_local_scale_gate,
@@ -66,7 +70,9 @@ def _fields() -> dict[str, Any]:
         "atomic_path_corridor_schema": CORRIDOR_SCHEMA,
         "atomic_path_corridor_model": CORRIDOR_MODEL,
         "atomic_path_corridor_local_scale_model": LOCAL_SCALE_MODEL,
+        "atomic_path_corridor_adaptive_quality_model": ADAPTIVE_QUALITY_MODEL,
         "atomic_path_corridor_quality_wrapper": QUALITY_WRAPPER_MODEL,
+        "triangle_minimum_angle_schedule_deg": list(ANGLE_SCHEDULE_DEG),
         "complete_event_remeshed_before_cohesive_commit": True,
         "pslg_constrained_exact_event_path": True,
         "exact_stochastic_event_endpoint_preserved": True,
@@ -158,7 +164,7 @@ def main(argv: list[str] | None = None):
     saved_quality_wrapper = _v91856._strict_quality_advance_v91856
     saved_stitch = install_local_scale_gate()
     _ramp.RetryingAdaptiveCZMBackendV1005183 = (
-        CertifiedAtomicPathCorridorCZMBackendV10051839
+        AdaptiveQualityAtomicPathCorridorCZMBackendV10051839
     )
     _v91856._strict_quality_advance_v91856 = strict_quality_advance_v10051839
 
