@@ -138,7 +138,8 @@ def _full_field_policy(candidate) -> dict[str, Any]:
     policy.update(
         {
             "policy_id": "PF_v10_4_1_full_field_bulk_plus_persistent_tip_MPZ_v10051840",
-            "bulk_plasticity_mode": SEMANTIC_BULK_MODE,
+            "bulk_plasticity_mode": SOLVER_BULK_MODE,
+            "bulk_plasticity_semantic_mode": SEMANTIC_BULK_MODE,
             "bulk_plasticity_solver_token": SOLVER_BULK_MODE,
             "continuum_bulk_role": "exact_selected_row_Peierls_Taylor_detailed_balance",
             "bulk_state_evolves_in_fem": True,
