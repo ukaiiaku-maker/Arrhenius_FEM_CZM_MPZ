@@ -28,6 +28,24 @@ def _backend():
     )
 
 
+def _tip_snapshot(backend):
+    return {
+        int(front_id): (
+            int(plus),
+            int(minus),
+            np.asarray(point, float).copy(),
+        )
+        for front_id, (plus, minus, point) in backend.tip_nodes.items()
+    }
+
+
+def _assert_tip_snapshot_equal(left, right):
+    assert set(left) == set(right)
+    for front_id in left:
+        assert left[front_id][0:2] == right[front_id][0:2]
+        assert np.allclose(left[front_id][2], right[front_id][2])
+
+
 def test_unprotected_orphan_is_compacted_without_changing_elements():
     backend = _backend()
     nodes = np.asarray(
@@ -107,7 +125,13 @@ def test_unresolved_protected_orphan_is_rejected_without_mutation():
     )
     elems = np.asarray([[0, 1, 2]], dtype=int)
     backend.tip_nodes[0] = (3, 3, nodes[3].copy())
-    before = backend._transaction_snapshot()
+    before_tips = _tip_snapshot(backend)
+    before_network = [
+        (tuple(elem.plus_nodes), tuple(elem.minus_nodes), dict(elem.metadata))
+        for elem in backend.cohesive_network.elements
+    ]
+    before_counter = int(backend.event_counter)
+    before_log = list(backend.advance_log)
 
     state, record = compact_candidate_nodes(
         backend,
@@ -119,6 +143,12 @@ def test_unresolved_protected_orphan_is_rejected_without_mutation():
     )
     assert state is None
     assert record["reason"] == "protected_orphan_has_no_supported_coincident_copy"
-    after = backend._transaction_snapshot()
-    assert before["tip_nodes"] == after["tip_nodes"]
-    assert before["n_cohesive"] == after["n_cohesive"]
+
+    _assert_tip_snapshot_equal(before_tips, _tip_snapshot(backend))
+    after_network = [
+        (tuple(elem.plus_nodes), tuple(elem.minus_nodes), dict(elem.metadata))
+        for elem in backend.cohesive_network.elements
+    ]
+    assert after_network == before_network
+    assert int(backend.event_counter) == before_counter
+    assert backend.advance_log == before_log
