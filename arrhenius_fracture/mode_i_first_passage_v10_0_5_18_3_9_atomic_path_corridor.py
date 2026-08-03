@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from . import mode_i_first_passage_v9_18_5_6 as _v91856
 from . import (
     mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission
     as _ramp
@@ -15,11 +16,20 @@ from . import (
     as _base
 )
 from .atomic_path_corridor_czm_v10051839 import (
-    AtomicPathCorridorCZMBackendV10051839,
     MODEL_ID as CORRIDOR_MODEL,
     SCHEMA as CORRIDOR_SCHEMA,
     audit_payload,
     reset_audit,
+)
+from .atomic_path_corridor_local_scale_v10051839 import (
+    CertifiedAtomicPathCorridorCZMBackendV10051839,
+    MODEL_ID as LOCAL_SCALE_MODEL,
+    install as install_local_scale_gate,
+    restore as restore_local_scale_gate,
+)
+from .atomic_path_corridor_quality_v10051839 import (
+    MODEL_ID as QUALITY_WRAPPER_MODEL,
+    strict_quality_advance_v10051839,
 )
 
 
@@ -55,6 +65,8 @@ def _fields() -> dict[str, Any]:
         "atomic_path_corridor_active": True,
         "atomic_path_corridor_schema": CORRIDOR_SCHEMA,
         "atomic_path_corridor_model": CORRIDOR_MODEL,
+        "atomic_path_corridor_local_scale_model": LOCAL_SCALE_MODEL,
+        "atomic_path_corridor_quality_wrapper": QUALITY_WRAPPER_MODEL,
         "complete_event_remeshed_before_cohesive_commit": True,
         "pslg_constrained_exact_event_path": True,
         "exact_stochastic_event_endpoint_preserved": True,
@@ -63,7 +75,9 @@ def _fields() -> dict[str, Any]:
         "numerical_path_subsegments_are_independent_hazard_events": False,
         "equal_length_physical_partition_retry": False,
         "triangle_quality_floor_relaxed": False,
-        "child_area_ratio_floor_relaxed": False,
+        "child_area_ratio_threshold_relaxed": False,
+        "area_gate_metric": "new_triangle_area_over_equilateral_path_support_cell_area",
+        "old_parent_area_ratio_role": "state_transfer_diagnostic_not_immediate_child_gate",
         "tip_h_over_da_role": "audit_warning_only_not_event_veto",
         "hazard_or_event_length_changed": False,
         "constitutive_physics_changed": False,
@@ -141,7 +155,12 @@ def main(argv: list[str] | None = None):
 
     reset_audit()
     saved_backend = _ramp.RetryingAdaptiveCZMBackendV1005183
-    _ramp.RetryingAdaptiveCZMBackendV1005183 = AtomicPathCorridorCZMBackendV10051839
+    saved_quality_wrapper = _v91856._strict_quality_advance_v91856
+    saved_stitch = install_local_scale_gate()
+    _ramp.RetryingAdaptiveCZMBackendV1005183 = (
+        CertifiedAtomicPathCorridorCZMBackendV10051839
+    )
+    _v91856._strict_quality_advance_v91856 = strict_quality_advance_v10051839
 
     error: BaseException | None = None
     try:
@@ -151,6 +170,8 @@ def main(argv: list[str] | None = None):
         raise
     finally:
         _ramp.RetryingAdaptiveCZMBackendV1005183 = saved_backend
+        _v91856._strict_quality_advance_v91856 = saved_quality_wrapper
+        restore_local_scale_gate(saved_stitch)
         _rewrite_outputs(out, error)
 
 
