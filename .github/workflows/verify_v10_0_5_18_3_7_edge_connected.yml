@@ -66,21 +66,31 @@ jobs:
           retry = json.loads(
               (case / 'event_resolved_czm_retry_v10_0_5_18_3_7.json').read_text()
           )
+          resolution = json.loads(
+              (case / 'committed_tip_resolution_audit_v10_0_5_18_3_7.json').read_text()
+          )
           assert manifest['physics_contract'][
               'direct_endpoint_refinement_requires_tip_fan_shared_edge'
           ] is True
           assert manifest['physics_contract'][
               'one_node_target_cavity_routes_to_exact_ray_crossing'
           ] is True
+          assert manifest['physics_contract'][
+              'committed_tip_telemetry_recorded_at_strict_wrapper'
+          ] is True
           assert retry['minimum_tip_fan_shared_node_count_for_direct_endpoint'] == 2
           assert retry['equal_length_partition_retry'] is False
+          assert resolution['committed_tip_telemetry_recorded_at_strict_wrapper'] is True
           PY
       - name: Preserve inherited physics
         run: |
           python -m pytest -q --tb=short \
-            tests/test_joint_linear_K_ramp_v10051831.py \
+            tests/test_joint_K_ramp_emission_v10051832.py \
             tests/test_joint_K_single_trial_v10051832.py \
-            tests/test_moving_tip_state_v100515.py \
-            tests/test_pf_update_map_parity_v100515.py \
-            tests/test_signed_source_accounting_v1005144.py \
-            tests/test_persistent_site_family_v1005141.py
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
