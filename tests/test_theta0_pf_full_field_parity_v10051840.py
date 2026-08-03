@@ -124,6 +124,7 @@ def test_full_field_entry_installs_and_restores_overlay(monkeypatch, tmp_path: P
     observed = {}
 
     def fake_base_main(args):
+        observed["args"] = list(args)
         observed["model"] = installed_pt.EmissionDerivedPeierlsTaylorModel
         observed["policy"] = v14.persistent_site_policy(_candidate())
         observed["fields"] = base._fields()
@@ -147,7 +148,10 @@ def test_full_field_entry_installs_and_restores_overlay(monkeypatch, tmp_path: P
     ]
     assert full.main(args) == "ok"
     assert observed["model"] is EmissionDerivedPeierlsTaylorModel
-    assert observed["policy"]["bulk_plasticity_mode"] == "full_field"
+    assert observed["policy"]["bulk_plasticity_mode"] == full.SOLVER_BULK_MODE
+    assert observed["policy"]["bulk_plasticity_semantic_mode"] == full.SEMANTIC_BULK_MODE
+    mode_index = observed["args"].index("--bulk-plasticity-mode")
+    assert observed["args"][mode_index + 1] == full.SOLVER_BULK_MODE
     assert observed["fields"]["PF_v10_4_1_bulk_parity_active"] is True
     assert installed_pt.EmissionDerivedPeierlsTaylorModel is original_model
     assert v14.persistent_site_policy is original_policy
