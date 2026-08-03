@@ -11,6 +11,7 @@ FAMILY_SHA_REQUIRED=a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d1494
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_18_4_0_peak1000_theta0_seed8666_pf_full_field_parity_v1}
 OUT=$CAMPAIGN_ROOT/$OPTION/T1000K
 LOG=$OUT/console.log
+ANALYSIS_OUT=$CAMPAIGN_ROOT/parity_analysis
 TARGET_EXT_UM=${TARGET_EXT_UM:-1000}
 STEPS=${STEPS:-2000000}
 PRINT_EVERY=${PRINT_EVERY:-200}
@@ -41,11 +42,26 @@ PY
   exit 1
 }
 
-rm -rf "$OUT"
+GIT_HEAD=$(git -C "$ROOT" rev-parse HEAD)
+GIT_BRANCH=$(git -C "$ROOT" branch --show-current)
+PACKAGE_VERSION=$(python - <<'PY'
+from importlib.metadata import version
+print(version('arrhenius-fem-czm'))
+PY
+)
+[[ "$PACKAGE_VERSION" == "10.0.5.18.4.0" ]] || {
+  echo "ERROR: expected arrhenius-fem-czm 10.0.5.18.4.0; observed $PACKAGE_VERSION" >&2
+  exit 1
+}
+
+rm -rf "$OUT" "$ANALYSIS_OUT"
 mkdir -p "$OUT"
 cat > "$CAMPAIGN_ROOT/campaign_configuration.txt" <<EOF
 release=10.0.5.18.4.0
-entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity
+entry=arrhenius_fracture.mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production
+git_branch=$GIT_BRANCH
+git_head=$GIT_HEAD
+package_version=$PACKAGE_VERSION
 reference_case=$PF_CASE
 parameter_option=$OPTION
 temperature_K=1000
@@ -65,6 +81,7 @@ signed_kernel_family=$FAMILY_JSON
 signed_kernel_family_sha256=$FAMILY_SHA
 PF_bulk_plasticity_mode=full_field
 FEM_bulk_plasticity_mode=full_field
+inherited_solver_bulk_mode_token=bulk_same_pt_km
 bulk_model=v10.4.1_bulk_peierls_taylor_detailed_balance_exact_port
 PF_crack_backend=sharp_wake
 FEM_crack_backend=adaptive_czm_atomic_path_corridor
@@ -79,6 +96,7 @@ export ARRHENIUS_CORRIDOR_MAX_PATH_SUBSEGMENTS=${ARRHENIUS_CORRIDOR_MAX_PATH_SUB
 export MIN_GLOBAL_FORWARD=${MIN_GLOBAL_FORWARD:-0.05}
 
 echo "[START] option=$OPTION T=1000K theta=0 seed=8666 bulk=full_field"
+echo "Git head:     $GIT_HEAD"
 echo "PF reference: $PF_CASE"
 echo "PF kernel:    $FAMILY_JSON"
 echo "Output:       $OUT"
@@ -102,7 +120,7 @@ env \
   EMISSION_EVENT_HORIZON_FACTOR=1.25 \
   EMISSION_INNER_MAX_REFINEMENTS=24 \
   TWO_CHANNEL_PROBE_FALLBACK_MAX_CALLS=8 \
-  python -u -m arrhenius_fracture.mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity \
+  python -u -m arrhenius_fracture.mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production \
     --parameter-source-root "$PARAMETER_SOURCE_ROOT" \
     --parameter-option "$OPTION" \
     --signed-kernel-family "$FAMILY_JSON" \
@@ -143,5 +161,10 @@ env \
     --out "$OUT" \
     2>&1 | tee "$LOG"
 
+python "$ROOT/scripts/compare_v10051840_theta0_pf_parity.py" \
+  --pf-case "$PF_CASE" \
+  --fem-case "$OUT" \
+  --out "$ANALYSIS_OUT"
+
 echo "[DONE] option=$OPTION T=1000K theta=0 seed=8666 bulk=full_field"
-echo "python scripts/compare_v10051840_theta0_pf_parity.py --pf-case '$PF_CASE' --fem-case '$OUT' --out '$CAMPAIGN_ROOT/parity_analysis'"
+echo "Parity analysis: $ANALYSIS_OUT"
