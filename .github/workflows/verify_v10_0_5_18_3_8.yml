@@ -1,0 +1,96 @@
+name: Verify v10.0.5.18.3.8 centroid cavity refinement
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.3.8-centroid-cavity-refinement
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e '.[dev]'
+      - name: Compile point release
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/quality_aware_czm_centroid_cavity_v10051838.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_8_centroid_cavity.py \
+            tests/test_centroid_cavity_refinement_v10051838.py
+          bash -n run_v10_0_5_18_3_8_four_class_centroid_cavity.sh
+          python - <<'PY'
+          from importlib.metadata import version
+          assert version("arrhenius-fem-czm") == "10.0.5.18.3.8"
+          PY
+      - name: Centroid cavity and inherited geometry contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_centroid_cavity_refinement_v10051838.py \
+            tests/test_event_resolved_czm_edge_connected_v10051837.py \
+            tests/test_event_resolved_czm_retry_v10051837.py \
+            tests/test_committed_tip_resolution_audit_v10051836.py \
+            tests/test_numerical_resilience_v1005183.py \
+            tests/test_stochastic_hazard_event_length_v100516.py
+      - name: Preserve path-aware envelope contracts
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_path_aware_growth_envelope_v10051834.py \
+            -k 'not test_runner_and_package_contracts'
+      - name: Actual centroid-cavity production-entry startup smoke
+        run: |
+          rm -rf /tmp/v10051838_centroid_smoke
+          OPTIONS="v913_paper_weakT01_0129902_persistent_sites" \
+          TEMPERATURES="300" \
+          TARGET_EXT_UM=20 \
+          STEPS=1 \
+          MAX_JOBS=1 \
+          PRINT_EVERY=1 \
+          GENERATE_SOLVER_PLOTS=0 \
+          SAVE_SNAPSHOTS=1 \
+          SNAPSHOT_BY_EXT_UM=20 \
+          CAMPAIGN_ROOT=/tmp/v10051838_centroid_smoke \
+            bash run_v10_0_5_18_3_8_four_class_centroid_cavity.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          case = (
+              Path('/tmp/v10051838_centroid_smoke')
+              / 'v913_paper_weakT01_0129902_persistent_sites'
+              / 'T0300K'
+          )
+          manifest = json.loads(
+              (case / 'persistent_site_production_manifest_v10_0_5_18_3_8.json').read_text()
+          )
+          retry = json.loads(
+              (case / 'event_resolved_czm_retry_v10_0_5_18_3_8.json').read_text()
+          )
+          resolution = json.loads(
+              (case / 'committed_tip_resolution_audit_v10_0_5_18_3_8.json').read_text()
+          )
+          physics = manifest['physics_contract']
+          assert manifest['point_release'] == '10.0.5.18.3.8'
+          assert physics['centroid_steiner_cavity_refinement_active'] is True
+          assert physics['centroid_split_nominal_child_parent_area_ratio'] == 1.0 / 3.0
+          assert physics['equal_length_partition_retry'] is False
+          assert physics['triangle_quality_floor_relaxed'] is False
+          assert retry['centroid_cavity_fallback_after_single_edge_exhaustion'] is True
+          assert resolution['centroid_steiner_cavity_refinement_active'] is True
+          PY
+      - name: Preserve inherited physics
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_joint_K_ramp_emission_v10051832.py \
+            tests/test_joint_K_single_trial_v10051832.py \
+            tests/test_stochastic_emission_v100518.py \
+            tests/test_moving_tip_coupling_v100515.py \
+            tests/test_pf_update_map_v100515.py \
+            tests/test_signed_kernel_family_v1005141.py \
+            tests/test_persistent_site_v100514.py \
+            tests/test_adaptive_czm_tip_support_v1005144.py \
+            tests/test_persistent_site_diagnostics_v1005144.py
