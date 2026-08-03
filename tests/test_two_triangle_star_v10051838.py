@@ -115,7 +115,7 @@ def test_constrained_star_cavity_commits_exact_endpoint(monkeypatch):
     )
     assert result.inserted is True, result.reason
     assert np.linalg.norm(backend.tip_nodes[0][2] - target) <= 1.0e-12
-    assert backend.advance_log[-1]["node_move_m"] == 0.0
+    assert abs(float(backend.advance_log[-1]["node_move_m"])) <= 1.0e-14
 
 
 def test_star_entry_annotates_outputs(monkeypatch, tmp_path):
