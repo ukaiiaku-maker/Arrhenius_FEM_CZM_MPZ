@@ -1,17 +1,4 @@
-"""Adaptive regularity search for v10.0.5.18.3.9 atomic corridors.
-
-The first full archived-seed qualification established that the corridor
-architecture committed seven exact physical renewals, including an 18.38 um
-event, before reaching a cavity for which all candidates were generated with
-only 1, 2, or 5 degree Triangle minimum-angle requests.  The best final mesh
-passed the production q floor but reached a local support-area ratio of 0.0657,
-just below the unchanged 0.08 gate.
-
-This module completes the bounded search over standard shape-regular Triangle
-angle targets.  It does not relax either acceptance floor.  Earlier low-angle
-candidates remain first, so already-feasible events retain their prior mesh.
-Only a rejected cavity proceeds to 10, 15, 20, 25, and 28 degree requests.
-"""
+"""Adaptive regularity and accepted-node remap for v10.0.5.18.3.9."""
 from __future__ import annotations
 
 import copy
@@ -23,6 +10,7 @@ import numpy as np
 from . import atomic_path_corridor_czm_v10051839 as _base
 from .atomic_path_corridor_local_scale_v10051839 import (
     CertifiedAtomicPathCorridorCZMBackendV10051839,
+    apply_backend_node_remap,
 )
 
 
@@ -35,7 +23,7 @@ RING_SCHEDULE = (0, 1, 2)
 class AdaptiveQualityAtomicPathCorridorCZMBackendV10051839(
     CertifiedAtomicPathCorridorCZMBackendV10051839
 ):
-    """Certified corridor backend with a complete bounded regularity search."""
+    """Certified corridor backend with bounded regularity and state remap."""
 
     name = "adaptive_czm_v10051839_atomic_path_corridor_adaptive_quality"
 
@@ -107,7 +95,18 @@ class AdaptiveQualityAtomicPathCorridorCZMBackendV10051839(
                         )
                         attempts.append(copy.deepcopy(record))
                         if state is not None:
-                            record["accepted_quality_angle_deg"] = float(angle)
+                            # The base advance created a root transaction snapshot
+                            # before entering this search.  Apply the node map only
+                            # after path recovery and every geometric gate pass;
+                            # any later cohesive failure restores the old IDs.
+                            apply_backend_node_remap(
+                                self, state.get("node_old_to_new")
+                            )
+                            record.update(
+                                accepted_quality_angle_deg=float(angle),
+                                backend_node_remap_applied=True,
+                                backend_node_remap_is_inside_root_transaction=True,
+                            )
                             return state, record, attempts
 
         return None, {
