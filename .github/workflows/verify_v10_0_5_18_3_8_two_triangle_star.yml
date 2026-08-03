@@ -19,13 +19,17 @@ jobs:
       - name: Compile constrained endpoint-star release
         run: |
           python -m py_compile \
+            arrhenius_fracture/quality_aware_czm_retry_v10051835.py \
+            arrhenius_fracture/event_resolved_czm_retry_v10051837.py \
             arrhenius_fracture/quality_aware_czm_two_triangle_star_v10051838.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_3_8_two_triangle_star.py \
+            tests/test_event_resolved_mesh_handoff_v10051838.py \
             tests/test_two_triangle_star_v10051838.py
           bash -n run_v10_0_5_18_3_8_four_class_two_triangle_star.sh
-      - name: Constrained endpoint-star contracts
+      - name: Constrained endpoint-star and mesh-handoff contracts
         run: |
           python -m pytest -q --tb=short \
+            tests/test_event_resolved_mesh_handoff_v10051838.py \
             tests/test_two_triangle_star_v10051838.py \
             tests/test_two_triangle_cavity_v10051838.py
       - name: Inherited event-resolved geometry contracts
@@ -70,6 +74,8 @@ jobs:
           assert manifest['triangle_quality_floor_relaxed'] is False
           assert manifest['constitutive_physics_changed'] is False
           assert retry['two_triangle_constrained_endpoint_star_active'] is True
+          assert retry['mesh_only_refinement_handoff_restart'] is True
+          assert retry['mesh_only_handoff_consumes_physical_length'] is False
           PY
       - name: Preserve inherited physics
         run: |
