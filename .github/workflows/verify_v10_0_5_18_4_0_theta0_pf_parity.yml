@@ -36,9 +36,8 @@ jobs:
       - name: Re-run inherited atomic corridor contracts
         run: |
           pytest -q \
-            tests/test_atomic_path_corridor_czm_v10051839.py \
-            tests/test_atomic_path_corridor_adaptive_quality_v10051839.py \
-            tests/test_atomic_path_corridor_compaction_v10051839.py
+            tests/test_atomic_path_corridor_v10051839.py \
+            tests/test_atomic_path_corridor_node_compaction_v10051839.py
       - name: Verify package and reference constants
         run: |
           python - <<'PY'
