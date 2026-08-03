@@ -17,6 +17,7 @@ on:
       - "scripts/compare_v10051840_theta0_pf_parity.py"
       - "tests/test_theta0_pf_parity_v10051840.py"
       - "tests/test_theta0_pf_full_field_parity_v10051840.py"
+      - "tests/test_theta0_pf_full_field_metadata_v10051840.py"
       - "pyproject.toml"
       - ".github/workflows/verify_v10_0_5_18_4_0_theta0_pf_parity.yml"
   workflow_dispatch:
@@ -48,7 +49,8 @@ jobs:
         run: |
           pytest -q \
             tests/test_theta0_pf_parity_v10051840.py \
-            tests/test_theta0_pf_full_field_parity_v10051840.py
+            tests/test_theta0_pf_full_field_parity_v10051840.py \
+            tests/test_theta0_pf_full_field_metadata_v10051840.py
       - name: Re-run inherited atomic corridor contracts
         run: |
           pytest -q \
