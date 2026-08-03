@@ -1,0 +1,52 @@
+name: verify-v10.0.5.18.4.0-theta0-pf-parity
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.4.0-theta0-pf-parity
+  pull_request:
+    paths:
+      - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py"
+      - "run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh"
+      - "scripts/compare_v10051840_theta0_pf_parity.py"
+      - "tests/test_theta0_pf_parity_v10051840.py"
+      - "pyproject.toml"
+      - ".github/workflows/verify_v10_0_5_18_4_0_theta0_pf_parity.yml"
+  workflow_dispatch:
+
+jobs:
+  focused-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .[dev]
+      - name: Compile parity entry and analysis
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py \
+            scripts/compare_v10051840_theta0_pf_parity.py
+          bash -n run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh
+      - name: Run theta-zero parity tests
+        run: pytest -q tests/test_theta0_pf_parity_v10051840.py
+      - name: Re-run inherited atomic corridor contracts
+        run: |
+          pytest -q \
+            tests/test_atomic_path_corridor_czm_v10051839.py \
+            tests/test_atomic_path_corridor_adaptive_quality_v10051839.py \
+            tests/test_atomic_path_corridor_compaction_v10051839.py
+      - name: Verify package and reference constants
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as p
+          assert version("arrhenius-fem-czm") == "10.0.5.18.4.0"
+          assert p.REFERENCE_OPTION == "v913_paper_peak01_0242980_persistent_sites"
+          assert p.REFERENCE_HAZARD_SEED == 8666
+          assert p.REFERENCE_KERNEL_SHA256 == "a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a"
+          print("theta-zero PF parity constants verified")
+          PY
