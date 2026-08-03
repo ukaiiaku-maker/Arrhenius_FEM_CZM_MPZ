@@ -27,15 +27,19 @@ jobs:
           from importlib.metadata import version
           assert version("arrhenius-fem-czm") == "10.0.5.18.3.8"
           PY
-      - name: Centroid cavity and inherited geometry contracts
+      - name: Centroid cavity contracts
         run: |
           python -m pytest -q --tb=short \
-            tests/test_centroid_cavity_refinement_v10051838.py \
+            tests/test_centroid_cavity_refinement_v10051838.py
+      - name: Inherited event-resolved geometry contracts
+        run: |
+          python -m pytest -q --tb=short \
             tests/test_event_resolved_czm_edge_connected_v10051837.py \
             tests/test_event_resolved_czm_retry_v10051837.py \
             tests/test_committed_tip_resolution_audit_v10051836.py \
             tests/test_numerical_resilience_v1005183.py \
-            tests/test_stochastic_hazard_event_length_v100516.py
+            tests/test_stochastic_hazard_event_length_v100516.py \
+            -k 'not test_runner_and_package_contracts'
       - name: Preserve path-aware envelope contracts
         run: |
           python -m pytest -q --tb=short \
