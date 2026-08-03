@@ -1,7 +1,7 @@
 """v10.0.5.18.4.0 theta=0 control with PF v10.4.1 bulk parity.
 
 The moving-tip persistent-site MPZ, stochastic cleavage renewal, event length,
-and v3.9 atomic CZM geometry are unchanged.  This overlay replaces only the
+and v3.9 atomic CZM geometry are unchanged. This overlay replaces only the
 surrounding continuum-bulk policy and Peierls--Taylor kinetic module with the
 exact v10.4.1 detailed-balance formulation used by the PF reference case.
 """
@@ -20,7 +20,6 @@ from . import mode_i_first_passage_v10_0_5_13_barrier_only as _core
 from . import mode_i_first_passage_v10_0_5_13_1_barrier_only as _v131
 from . import mode_i_first_passage_v10_0_5_13_2_barrier_only as _v132
 from . import mode_i_first_passage_v10_0_5_13_4_barrier_only as _v134
-from . import mode_i_first_passage_v10_0_5_13_5_barrier_only as _v135
 from . import mode_i_first_passage_v10_0_5_14_persistent_site as _v14
 from . import mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor as _base
 from . import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as _control
@@ -34,6 +33,8 @@ from .bulk_pt_detailed_balance_v1041_exact import (
 POINT_RELEASE = "10.0.5.18.4.0"
 MODEL_ID = "FEM_CZM_theta0_PF_v10_4_1_full_field_bulk_parity_v10_0_5_18_4_0"
 AUDIT_FILE = "theta0_pf_full_field_parity_contract_v10_0_5_18_4_0.json"
+SEMANTIC_BULK_MODE = "full_field"
+SOLVER_BULK_MODE = "bulk_same_pt_km"
 
 
 def _utc_now() -> str:
@@ -108,9 +109,15 @@ def _exact_bulk_parameters(cfg: Any, row: Mapping[str, Any]) -> None:
         setattr(cfg, name, value)
 
 
-def _exact_full_field_defaults(args: Any, row: Mapping[str, Any], bulk_mode: str) -> None:
-    if str(bulk_mode) != "full_field":
-        raise RuntimeError("PF full-field parity requires bulk_mode=full_field")
+def _exact_full_field_defaults(
+    args: Any,
+    row: Mapping[str, Any],
+    bulk_mode: str,
+) -> None:
+    if str(bulk_mode) not in {SEMANTIC_BULK_MODE, SOLVER_BULK_MODE}:
+        raise RuntimeError(
+            "PF full-field parity requires the inherited full-bulk solver mode"
+        )
     _exact_bulk_parameters(args, row)
     values = {
         "front_state_model": "moving_pz",
@@ -118,7 +125,8 @@ def _exact_full_field_defaults(args: Any, row: Mapping[str, Any], bulk_mode: str
         "tip_source_rho_per_emit": 0.0,
         "bulk_mult_frac": 1.0,
         "exhaustion": False,
-        "bulk_plasticity_mode_v911": "full_field",
+        "bulk_plasticity_mode_v911": SEMANTIC_BULK_MODE,
+        "bulk_plasticity_solver_token": SOLVER_BULK_MODE,
         "rho0": float(row["rho_forest_floor_m2"]),
     }
     for name, value in values.items():
@@ -130,7 +138,8 @@ def _full_field_policy(candidate) -> dict[str, Any]:
     policy.update(
         {
             "policy_id": "PF_v10_4_1_full_field_bulk_plus_persistent_tip_MPZ_v10051840",
-            "bulk_plasticity_mode": "full_field",
+            "bulk_plasticity_mode": SEMANTIC_BULK_MODE,
+            "bulk_plasticity_solver_token": SOLVER_BULK_MODE,
             "continuum_bulk_role": "exact_selected_row_Peierls_Taylor_detailed_balance",
             "bulk_state_evolves_in_fem": True,
             "uniform_bulk_mobile_retained_state_active": True,
@@ -147,8 +156,23 @@ def _full_field_policy(candidate) -> dict[str, Any]:
 
 
 def _replace_option_full_field(argv: list[str], name: str, value: str) -> None:
-    forced = "full_field" if name == "--bulk-plasticity-mode" else value
+    forced = SOLVER_BULK_MODE if name == "--bulk-plasticity-mode" else value
     _replace_option_full_field._original(argv, name, forced)
+
+
+def _normalize_solver_args(argv: list[str]) -> list[str]:
+    normalized = list(argv)
+    name = "--bulk-plasticity-mode"
+    prefix = name + "="
+    for index, token in enumerate(normalized):
+        if token == name and index + 1 < len(normalized):
+            normalized[index + 1] = SOLVER_BULK_MODE
+            return normalized
+        if token.startswith(prefix):
+            normalized[index] = prefix + SOLVER_BULK_MODE
+            return normalized
+    normalized.extend([name, SOLVER_BULK_MODE])
+    return normalized
 
 
 def _bypass_tip_only_policy_wrappers(argv: list[str] | None = None):
@@ -160,8 +184,9 @@ def _full_fields() -> dict[str, Any]:
     fields = dict(_full_fields._original())
     fields.update(
         {
-            "bulk_plasticity_mode_required": "full_field",
-            "bulk_plasticity_mode": "full_field",
+            "bulk_plasticity_mode_required": SEMANTIC_BULK_MODE,
+            "bulk_plasticity_mode": SEMANTIC_BULK_MODE,
+            "bulk_plasticity_solver_token": SOLVER_BULK_MODE,
             "bulk_state_evolves_in_fem": True,
             "bulk_model": EXACT_BULK_MODEL,
             "bulk_net_slip": "Gamma_forward_minus_Gamma_reverse",
@@ -205,8 +230,9 @@ def _contract(
             "adaptive_event_target": 0.15,
         },
         "bulk_parity": {
-            "PF_bulk_plasticity_mode": "full_field",
-            "FEM_bulk_plasticity_mode": "full_field",
+            "PF_bulk_plasticity_mode": SEMANTIC_BULK_MODE,
+            "FEM_bulk_plasticity_mode": SEMANTIC_BULK_MODE,
+            "inherited_solver_bulk_mode_token": SOLVER_BULK_MODE,
             "model": EXACT_BULK_MODEL,
             "exact_selected_registry_row": True,
             "initial_bulk_density_from_rho_forest_floor": True,
@@ -253,7 +279,7 @@ def main(argv: list[str] | None = None):
 
     _control._require_text(args, "--parameter-option", _control.REFERENCE_OPTION)
     _control._require_text(args, "--temperatures", "1000")
-    _control._require_text(args, "--bulk-plasticity-mode", "full_field")
+    _control._require_text(args, "--bulk-plasticity-mode", SEMANTIC_BULK_MODE)
     _control._require_text(args, "--j-decomposition", "cluster")
     _control._require_int(args, "--nx", 36)
     _control._require_int(args, "--ny", 72)
@@ -286,6 +312,7 @@ def main(argv: list[str] | None = None):
             f"expected {_control.REFERENCE_KERNEL_SHA256}, observed {observed_sha}"
         )
 
+    solver_args = _normalize_solver_args(args)
     saved = {
         "v14_policy": _v14.persistent_site_policy,
         "v14_replace": _v14._replace_option,
@@ -316,7 +343,7 @@ def main(argv: list[str] | None = None):
         json.dumps(contract, indent=2, sort_keys=True, default=str) + "\n"
     )
     try:
-        result = _base.main(args)
+        result = _base.main(solver_args)
         completed = True
         return result
     except BaseException as exc:
@@ -346,5 +373,7 @@ __all__ = [
     "AUDIT_FILE",
     "MODEL_ID",
     "POINT_RELEASE",
+    "SEMANTIC_BULK_MODE",
+    "SOLVER_BULK_MODE",
     "main",
 ]
