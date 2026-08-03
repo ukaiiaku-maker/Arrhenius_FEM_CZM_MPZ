@@ -13,11 +13,15 @@ from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_3_9_atomic_path_c
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity as full
 from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as control
 from arrhenius_fracture import refinement_audit_v100516 as refinement_audit
+from arrhenius_fracture.active_only_kernel_family_compat_v10051840 import (
+    _normalized_payload,
+)
 from arrhenius_fracture.bulk_pt_detailed_balance_v1041_exact import (
     EmissionDerivedPeierlsTaylorModel,
     ExpFloorSurface,
     config_from_dislocation_config,
 )
+from arrhenius_fracture.signed_kernel_family_v1005141 import FAMILY_SCHEMA
 
 
 def _row() -> dict[str, float]:
@@ -111,6 +115,49 @@ def test_exact_bulk_rate_uses_pf_hit_order_and_mobile_law():
     assert np.allclose(out["taylor_m_eff"], expected_order, rtol=1.0e-13)
     assert np.allclose(out["rho_mobile_m2"], expected_mobile, rtol=1.0e-13)
     assert np.all(out["equivalent_plastic_rate_s"] >= 0.0)
+
+
+def test_active_only_empty_wake_schema_is_zero_only_and_does_not_touch_active_data():
+    active_i = [[1.0, 2.0], [3.0, 4.0]]
+    active_ii = [[0.1, 0.2], [0.3, 0.4]]
+    payload = {
+        "schema": FAMILY_SCHEMA,
+        "wake_kernel_forced_zero": True,
+        "wake_shielding_supported": False,
+        "constitutive_K_shield_cap": False,
+        "wake_x_m": [],
+        "activation_to_line_content_by_system": [2.0, 3.0],
+        "states": [
+            {
+                "active_kernel_I_Pa_sqrt_m_per_signed_line": active_i,
+                "active_kernel_II_Pa_sqrt_m_per_signed_line": active_ii,
+                "wake_kernel_I_Pa_sqrt_m_per_signed_line": [[], []],
+                "wake_kernel_II_Pa_sqrt_m_per_signed_line": [[], []],
+            },
+            {
+                "active_kernel_I_Pa_sqrt_m_per_signed_line": active_i,
+                "active_kernel_II_Pa_sqrt_m_per_signed_line": active_ii,
+            },
+        ],
+    }
+
+    normalized, applied = _normalized_payload(payload)
+
+    assert applied is True
+    assert normalized["wake_x_m"] == [0.0]
+    assert normalized["states"][0][
+        "active_kernel_I_Pa_sqrt_m_per_signed_line"
+    ] == active_i
+    assert normalized["states"][1][
+        "active_kernel_II_Pa_sqrt_m_per_signed_line"
+    ] == active_ii
+    for state in normalized["states"]:
+        assert state["wake_kernel_I_Pa_sqrt_m_per_signed_line"] == [[0.0], [0.0]]
+        assert state["wake_kernel_II_Pa_sqrt_m_per_signed_line"] == [[0.0], [0.0]]
+    contract = normalized["fem_empty_wake_schema_compatibility"]
+    assert contract["runtime_wake_shielding_enabled"] is False
+    assert contract["active_kernel_modified"] is False
+    assert contract["physics_modified"] is False
 
 
 def test_long_corridor_constructor_is_captured_for_post_run_audit(monkeypatch):
