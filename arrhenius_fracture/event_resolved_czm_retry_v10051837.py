@@ -149,6 +149,7 @@ def _event_record_base(p0: np.ndarray, p1: np.ndarray, direction: np.ndarray, fr
         "exact_physical_endpoint_preserved": True,
         "exact_selected_direction_preserved": True,
         "atomic_transaction": True,
+        "mesh_only_handoffs": [],
         "ray_segments": [],
     }
 
@@ -186,14 +187,22 @@ def _exact_ray_transaction(
     event = _event_record_base(p0, p1, direction, front_id)
     event_index = int(event["physical_event_index"])
     failure = None
+    force_ray_crossing = False
 
-    for segment_index in range(_max_crossings(self)):
+    # Mesh-only handoffs do not consume physical ray segments.  Permit bounded
+    # additional controller iterations while retaining the independent hard
+    # limit on actual exact-ray crossing segments.
+    max_iterations = 2 * _max_crossings(self) + _local._patch_levels()
+    for transaction_iteration in range(max_iterations):
         remaining = float(np.linalg.norm(final - point))
         tol = _point_tolerance(current.mesh, requested)
         if remaining <= tol:
             break
+        if len(event["ray_segments"]) >= _max_crossings(self):
+            failure = f"exact_ray_segment_limit:{_max_crossings(self)}"
+            break
 
-        local_final = _local_endpoint_reachable(
+        local_final = False if force_ray_crossing else _local_endpoint_reachable(
             self, current.mesh, point, final, front_id
         )
         if local_final:
@@ -208,7 +217,11 @@ def _exact_ray_transaction(
                 remaining,
             )
             if hit is None:
-                failure = "no_exact_ray_exit_to_distant_endpoint"
+                failure = (
+                    "no_exact_ray_exit_after_mesh_only_handoff"
+                    if force_ray_crossing
+                    else "no_exact_ray_exit_to_distant_endpoint"
+                )
                 break
             t_hit, edge_i, edge_j, q_hit, elem_id, xi_hit = hit
             if float(t_hit) >= remaining - tol:
@@ -218,6 +231,7 @@ def _exact_ray_transaction(
                 segment_target = np.asarray(q_hit, dtype=float)
                 segment_kind = "exact_mesh_ray_crossing"
 
+        segment_index = int(len(event["ray_segments"]))
         result, patch_levels, segment_failure = _local._segment_retry(
             original,
             self,
@@ -230,6 +244,25 @@ def _exact_ray_transaction(
             segment_count=-1,
             segment_kind=segment_kind,
         )
+
+        if isinstance(result, _local.MeshOnlyRayHandoff):
+            total_patch_levels += int(patch_levels)
+            current = result.state
+            event["mesh_only_handoffs"].append(
+                {
+                    "handoff_index": int(len(event["mesh_only_handoffs"])),
+                    "transaction_iteration": int(transaction_iteration),
+                    "physical_tip_point_m": point.tolist(),
+                    "physical_endpoint_m": final.tolist(),
+                    "patch_levels": int(patch_levels),
+                    "physical_motion_m": 0.0,
+                    "force_exact_ray_crossing_restart": True,
+                    "refinement_record": copy.deepcopy(result.record),
+                }
+            )
+            force_ray_crossing = True
+            continue
+
         event["ray_segments"].append(
             {
                 "segment_index": int(segment_index),
@@ -249,6 +282,7 @@ def _exact_ray_transaction(
             failure = "zero_or_subtolerance_exact_ray_segment"
             break
 
+        force_ray_crossing = False
         total_patch_levels += int(patch_levels)
         moved_total += float(result.moved)
         max_angle = max(max_angle, abs(float(result.angle_error_deg)))
@@ -258,7 +292,7 @@ def _exact_ray_transaction(
         if segment_kind == "exact_physical_endpoint":
             break
     else:
-        failure = f"exact_ray_segment_limit:{_max_crossings(self)}"
+        failure = f"exact_ray_transaction_iteration_limit:{max_iterations}"
 
     length_error = abs(moved_total - requested)
     length_tol = max(1.0e-12, 1.0e-6 * requested)
@@ -270,6 +304,7 @@ def _exact_ray_transaction(
             "success": bool(success),
             "failure": failure,
             "segment_count": int(len(event["ray_segments"])),
+            "mesh_only_handoff_count": int(len(event["mesh_only_handoffs"])),
             "moved_length_m": float(moved_total),
             "length_error_m": float(length_error),
             "endpoint_error_m": float(endpoint_error),
@@ -341,6 +376,7 @@ def event_resolved_strict_advance_v10051837(self: Any, *args, **kwargs):
                 "retry_kind": "event_resolved_exact_ray_local_cavity",
                 "patch_levels": int(event["patch_refinement_levels_total"]),
                 "ray_segment_count": int(event["segment_count"]),
+                "mesh_only_handoff_count": int(event.get("mesh_only_handoff_count", 0)),
                 "partitions": 1,
                 "equal_length_partition_retry": False,
                 "requested_length_m": requested,
@@ -352,6 +388,7 @@ def event_resolved_strict_advance_v10051837(self: Any, *args, **kwargs):
         "front_id": int(kwargs.get("front_id", -1)),
         "requested_length_m": requested,
         "ray_segment_count": int(event.get("segment_count", 0)),
+        "mesh_only_handoff_count": int(event.get("mesh_only_handoff_count", 0)),
         "patch_levels_attempted": _local._patch_levels(),
         "equal_length_partition_retry": False,
         "last_reason": str(failure),
@@ -423,6 +460,8 @@ def audit_payload() -> dict[str, Any]:
         "model_id": MODEL_ID,
         "quality_gate_inside_atomic_transaction": True,
         "exact_ray_crossing_decomposition": True,
+        "mesh_only_refinement_handoff_restart": True,
+        "mesh_only_handoff_consumes_physical_length": False,
         "equal_length_partition_retry": False,
         "exact_physical_event_endpoint_preserved": True,
         "exact_selected_crack_direction_preserved": True,
@@ -455,6 +494,7 @@ __all__ = [
     "EventResolvedAuditedAdaptiveCZMBackendV10051837",
     "MODEL_ID",
     "SCHEMA",
+    "_exact_ray_transaction",
     "audit_payload",
     "configure_legacy_quality_wrapper",
     "event_resolved_strict_advance_v10051837",
