@@ -8,6 +8,7 @@ on:
     paths:
       - "arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py"
       - "arrhenius_fracture/refinement_audit_v100516.py"
+      - "arrhenius_fracture/mode_i_first_passage_v9_18_5_3.py"
       - "arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py"
       - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py"
       - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py"
@@ -18,6 +19,7 @@ on:
       - "tests/test_theta0_pf_parity_v10051840.py"
       - "tests/test_theta0_pf_full_field_parity_v10051840.py"
       - "tests/test_theta0_pf_full_field_metadata_v10051840.py"
+      - "tests/test_corridor_refinement_metadata_v10051840.py"
       - "pyproject.toml"
       - ".github/workflows/verify_v10_0_5_18_4_0_theta0_pf_parity.yml"
   workflow_dispatch:
@@ -38,6 +40,7 @@ jobs:
           python -m py_compile \
             arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py \
             arrhenius_fracture/refinement_audit_v100516.py \
+            arrhenius_fracture/mode_i_first_passage_v9_18_5_3.py \
             arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py \
             arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py \
@@ -50,7 +53,8 @@ jobs:
           pytest -q \
             tests/test_theta0_pf_parity_v10051840.py \
             tests/test_theta0_pf_full_field_parity_v10051840.py \
-            tests/test_theta0_pf_full_field_metadata_v10051840.py
+            tests/test_theta0_pf_full_field_metadata_v10051840.py \
+            tests/test_corridor_refinement_metadata_v10051840.py
       - name: Re-run inherited atomic corridor contracts
         run: |
           pytest -q \
