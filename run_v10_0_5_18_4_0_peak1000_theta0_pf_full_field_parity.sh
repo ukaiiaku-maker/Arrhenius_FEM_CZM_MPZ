@@ -87,8 +87,14 @@ PF_crack_backend=sharp_wake
 FEM_crack_backend=adaptive_czm_atomic_path_corridor
 EOF
 
-PLOT_ARGS=()
-[[ "$GENERATE_SOLVER_PLOTS" == 0 ]] && PLOT_ARGS+=(--no-plots)
+# macOS ships Bash 3.2. Under `set -u`, expanding an empty array with
+# "${array[@]}" raises an unbound-variable error. Use an initialized scalar
+# whose parameter expansion contributes either one flag or no word.
+PLOT_FLAG=""
+if [[ "$GENERATE_SOLVER_PLOTS" == 0 ]]; then
+  PLOT_FLAG="--no-plots"
+fi
+
 export ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM="$TARGET_EXT_UM"
 export ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY=${ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY:-0.035}
 export ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO=${ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO:-0.08}
@@ -157,7 +163,7 @@ env \
     --save-snapshots "$SAVE_SNAPSHOTS" \
     --snapshot-cols "$SNAPSHOT_COLS" \
     --snapshot-by-crack-extension-um "$SNAPSHOT_BY_EXT_UM" \
-    "${PLOT_ARGS[@]}" \
+    ${PLOT_FLAG:+"$PLOT_FLAG"} \
     --out "$OUT" \
     2>&1 | tee "$LOG"
 
