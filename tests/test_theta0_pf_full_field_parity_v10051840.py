@@ -46,6 +46,22 @@ def _row() -> dict[str, float]:
     }
 
 
+def _candidate() -> SimpleNamespace:
+    row = _row()
+    return SimpleNamespace(
+        L_pz_um_recommended=50.0,
+        n_bins_recommended=80,
+        source_sites_per_system_provenance=141.0590567476921,
+        source_refresh_length_um_provenance=0.0,
+        peierls_stress_fraction=row["peierls_stress_fraction"],
+        taylor_stress_fraction=row["taylor_stress_fraction"],
+        taylor_corr_rho_c_m2=row["taylor_corr_rho_c_m2"],
+        taylor_corr_scale=row["taylor_corr_scale"],
+        encounter_efficiency=9.160246308716648,
+        rho_forest_floor_m2=row["rho_forest_floor_m2"],
+    )
+
+
 def test_detailed_balance_is_exactly_zero_at_zero_stress():
     surface = ExpFloorSurface(
         G00_eV=2.0,
@@ -108,7 +124,7 @@ def test_full_field_entry_installs_and_restores_overlay(monkeypatch, tmp_path: P
 
     def fake_base_main(args):
         observed["model"] = installed_pt.EmissionDerivedPeierlsTaylorModel
-        observed["policy"] = v14.persistent_site_policy(SimpleNamespace())
+        observed["policy"] = v14.persistent_site_policy(_candidate())
         observed["fields"] = base._fields()
         return "ok"
 
