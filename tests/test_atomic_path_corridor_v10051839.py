@@ -5,14 +5,28 @@ from collections import Counter
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 from scipy.spatial import Delaunay
 
 from arrhenius_fracture.atomic_path_corridor_czm_v10051839 import (
-    AtomicPathCorridorCZMBackendV10051839,
     audit_payload,
     reset_audit,
 )
+from arrhenius_fracture.atomic_path_corridor_local_scale_v10051839 import (
+    CertifiedAtomicPathCorridorCZMBackendV10051839,
+    install,
+    restore,
+)
 from arrhenius_fracture.mesh import make_boundary_data, rebuild_tri_mesh
+
+
+@pytest.fixture(autouse=True)
+def _certified_local_scale_stack():
+    saved = install()
+    try:
+        yield
+    finally:
+        restore(saved)
 
 
 def _geom():
@@ -45,7 +59,7 @@ def _mesh():
 
 
 def _backend():
-    return AtomicPathCorridorCZMBackendV10051839(
+    return CertifiedAtomicPathCorridorCZMBackendV10051839(
         geom=_geom(),
         penalty_normal_Pa_per_m=1.0e18,
         penalty_tangent_Pa_per_m=1.0e18,
@@ -119,6 +133,15 @@ def test_atomic_corridor_commits_exact_endpoint_and_length(monkeypatch):
     assert float(np.min(q)) >= 0.035
     incidence = np.bincount(result.mesh.elems.ravel(), minlength=result.mesh.nn)
     assert np.all(incidence > 0)
+
+    certificate = result.v10051839_quality_certificate
+    assert certificate["min_local_support_area_ratio"] >= 0.08
+    assert certificate["min_triangle_quality"] >= 0.035
+    assert certificate["area_ratio_threshold_relaxed"] is False
+    assert (
+        certificate["old_parent_ratio_is_state_transfer_diagnostic_not_immediate_child_gate"]
+        is True
+    )
 
     audit = audit_payload()
     assert audit["event_count"] == 1
