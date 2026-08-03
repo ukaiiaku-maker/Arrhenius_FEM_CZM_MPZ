@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arrhenius-fem-czm"
-version = "10.0.5.18.3.7"
-description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K single-trial local kinetics, path-aware long-growth support, committed-tip telemetry, and atomic exact-ray event-resolved local cavity refinement without equal physical partition retries"
+version = "10.0.5.18.3.9"
+description = "Full 2-D Arrhenius FEM/CZM with exact four-class transfer, stochastic cleavage and signed emission, joint linear-K local kinetics, path-aware long-growth support, and atomic target-aware constrained path-corridor CZM remeshing"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
   "scipy>=1.10",
   "matplotlib>=3.7",
   "pandas>=2.0",
+  "triangle==20250106",
 ]
 
 [project.optional-dependencies]
