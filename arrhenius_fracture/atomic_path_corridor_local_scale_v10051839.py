@@ -1,14 +1,15 @@
-"""Local-scale quality certification for the v10.0.5.18.3.9 corridor.
+"""Certified local-scale quality and node-state transfer for v10.0.5.18.3.9.
 
-The historical 0.08 area test was an *immediate-child* safeguard for a single
-edge split.  Comparing every triangle from a whole-cavity PSLG remesh directly
-to one arbitrarily assigned old element changes that meaning and rejects small,
-well-shaped support cells even when the remesh is locally regular.
+Whole-cavity constrained remeshing may legitimately retire interior bulk nodes
+created by earlier remeshes.  Retaining those rows forever produces unused-node
+vetoes even when the new cavity is geometrically valid.  This module therefore
+builds an explicit old-node -> compacted-node map for every accepted candidate.
+The map is applied to cohesive and crack-tip bookkeeping only after the complete
+candidate has passed all geometric gates.  The enclosing backend snapshot keeps
+that remap atomic with the subsequent cohesive-path commit.
 
-This module keeps the numerical threshold unchanged but applies it to the area
-of an equilateral cell at the constrained path-support spacing.  The old-parent
-area ratios remain recorded for transfer diagnostics.  The bulk is elastic in
-the production configuration; the parent map is still emitted unchanged.
+The historical 0.08 area threshold is retained and applied to the local path
+support-cell area.  Direct old-parent ratios remain state-transfer diagnostics.
 """
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ from . import atomic_path_corridor_czm_v10051839 as _base
 from .mesh import make_boundary_data, rebuild_tri_mesh
 
 
-MODEL_ID = "atomic_path_corridor_local_support_area_gate_v10_0_5_18_3_9"
+MODEL_ID = "atomic_path_corridor_local_support_area_and_node_compaction_v10_0_5_18_3_9"
 
 
 def _path_support_spacing(
@@ -41,6 +42,166 @@ def _path_support_spacing(
     delta = np.diff(coordinates)
     delta = delta[delta > tol]
     return float(np.median(delta)) if len(delta) else length
+
+
+def _protected_backend_nodes(self: Any) -> set[int]:
+    protected: set[int] = set()
+    network = getattr(self, "cohesive_network", None)
+    if network is not None:
+        for elem in network.elements:
+            protected.update(map(int, elem.nodes4))
+    for plus, minus, _ in getattr(self, "tip_nodes", {}).values():
+        protected.add(int(plus))
+        protected.add(int(minus))
+    return protected
+
+
+def _coincident_replacement(
+    node_id: int,
+    nodes: np.ndarray,
+    displacement: np.ndarray,
+    damage: np.ndarray,
+    used: np.ndarray,
+    tol: float,
+) -> int | None:
+    if not len(used):
+        return None
+    point = np.asarray(nodes[int(node_id)], float)
+    dist = np.linalg.norm(nodes[used] - point[None, :], axis=1)
+    candidates = used[dist <= tol]
+    candidates = candidates[candidates != int(node_id)]
+    if not len(candidates):
+        return None
+    u = np.asarray(displacement, float).reshape(-1, 2)
+    d = np.asarray(damage, float)
+    score = np.linalg.norm(u[candidates] - u[int(node_id)][None, :], axis=1)
+    score += tol * np.abs(d[candidates] - d[int(node_id)])
+    order = np.lexsort((candidates, score))
+    return int(candidates[int(order[0])])
+
+
+def compact_candidate_nodes(
+    self: Any,
+    nodes: np.ndarray,
+    elems: np.ndarray,
+    displacement: np.ndarray,
+    damage: np.ndarray,
+    tol: float,
+):
+    """Compact unused nodes without mutating backend references.
+
+    Protected orphan IDs may map to a coincident supported copy selected by
+    displacement-side consistency.  The returned map is applied to backend
+    references only after the entire corridor candidate is accepted.
+    """
+    nodes = np.asarray(nodes, float)
+    elems = np.asarray(elems, int)
+    u = np.asarray(displacement, float).reshape(-1, 2)
+    d = np.asarray(damage, float)
+    incidence = np.bincount(elems.ravel(), minlength=len(nodes))
+    used = np.where(incidence > 0)[0].astype(int)
+    orphan = np.where(incidence <= 0)[0].astype(int)
+    protected = _protected_backend_nodes(self)
+
+    replacements: dict[int, int] = {}
+    unresolved: list[int] = []
+    for nid in orphan:
+        if int(nid) not in protected:
+            continue
+        replacement = _coincident_replacement(
+            int(nid), nodes, u, d, used, tol
+        )
+        if replacement is None:
+            unresolved.append(int(nid))
+        else:
+            replacements[int(nid)] = int(replacement)
+    if unresolved:
+        return None, {
+            "reason": "protected_orphan_has_no_supported_coincident_copy",
+            "protected_orphan_node_ids": unresolved[:20],
+            "orphan_node_ids": orphan[:20].tolist(),
+        }
+
+    old_to_new = np.full(len(nodes), -1, dtype=int)
+    old_to_new[used] = np.arange(len(used), dtype=int)
+    for orphan_id, supported_id in replacements.items():
+        old_to_new[int(orphan_id)] = int(old_to_new[int(supported_id)])
+
+    compact_elems = old_to_new[elems]
+    if np.any(compact_elems < 0):
+        return None, {"reason": "node_compaction_left_unmapped_element_node"}
+
+    compact_nodes = nodes[used].copy()
+    compact_u = u[used].copy()
+    compact_d = d[used].copy()
+    incidence_after = np.bincount(
+        compact_elems.ravel(), minlength=len(compact_nodes)
+    )
+    if np.any(incidence_after <= 0):
+        return None, {
+            "reason": "node_compaction_retained_unused_node",
+            "unused_compacted_node_ids": np.where(incidence_after <= 0)[0][
+                :20
+            ].astype(int).tolist(),
+        }
+
+    protected_after = {
+        int(old_to_new[nid])
+        for nid in protected
+        if 0 <= int(nid) < len(old_to_new) and int(old_to_new[nid]) >= 0
+    }
+    return {
+        "nodes": compact_nodes,
+        "elems": compact_elems,
+        "displacement": compact_u.reshape(-1),
+        "damage": compact_d,
+        "old_to_new": old_to_new,
+        "used_old_node_ids": used,
+    }, {
+        "node_compaction_applied": bool(len(orphan)),
+        "node_count_before_compaction": int(len(nodes)),
+        "node_count_after_compaction": int(len(compact_nodes)),
+        "retired_orphan_node_count": int(len(orphan)),
+        "retired_orphan_node_ids_first20": orphan[:20].tolist(),
+        "protected_orphan_replacement_count": int(len(replacements)),
+        "protected_orphan_replacements": {
+            str(key): int(value) for key, value in sorted(replacements.items())
+        },
+        "protected_node_count_before": int(len(protected)),
+        "protected_node_count_after": int(len(protected_after)),
+        "backend_node_remap_deferred_until_candidate_acceptance": True,
+    }
+
+
+def apply_backend_node_remap(self: Any, old_to_new: np.ndarray | None) -> None:
+    """Apply an accepted candidate's node map to cohesive/tip bookkeeping."""
+    if old_to_new is None:
+        return
+    mapping = np.asarray(old_to_new, dtype=int)
+
+    def mapped(node_id: int) -> int:
+        nid = int(node_id)
+        if nid < 0 or nid >= len(mapping) or int(mapping[nid]) < 0:
+            raise RuntimeError(f"accepted node compaction cannot map protected node {nid}")
+        return int(mapping[nid])
+
+    network = getattr(self, "cohesive_network", None)
+    if network is not None:
+        for elem in network.elements:
+            elem.plus_nodes = tuple(mapped(nid) for nid in elem.plus_nodes)
+            elem.minus_nodes = tuple(mapped(nid) for nid in elem.minus_nodes)
+            metadata = dict(getattr(elem, "metadata", {}) or {})
+            metadata["v10051839_node_compaction_remapped"] = True
+            elem.metadata = metadata
+
+    remapped_tips = {}
+    for front_id, (plus, minus, point) in getattr(self, "tip_nodes", {}).items():
+        remapped_tips[int(front_id)] = (
+            mapped(int(plus)),
+            mapped(int(minus)),
+            np.asarray(point, float).copy(),
+        )
+    self.tip_nodes = remapped_tips
 
 
 def stitch_triangulation_local_support_area(
@@ -171,7 +332,6 @@ def stitch_triangulation_local_support_area(
     )
     elems1 = np.vstack([np.asarray(mesh.elems[keep], int), new_local_global])
     parent_map = np.concatenate([keep, assigned]).astype(int)
-    mesh1 = rebuild_tri_mesh(global_nodes_array, elems1, tip_centers=[p0, p1])
 
     u0 = np.asarray(displacement, float).reshape(-1, 2)
     d0 = np.asarray(damage, float)
@@ -184,13 +344,35 @@ def stitch_triangulation_local_support_area(
         u1[int(gid)] = self._interp_nodal_vector(mesh, u0, point)
         d1[int(gid)] = _base._interpolate_scalar(mesh, d0, point)
 
-    incidence = np.bincount(elems1.ravel(), minlength=len(global_nodes_array))
-    orphan = np.where(incidence <= 0)[0]
-    if len(orphan):
-        return None, {
-            "reason": "corridor_remesh_created_orphan_nodes",
-            "orphan_node_ids": orphan[:20].astype(int).tolist(),
-        }
+    compacted, compaction_record = compact_candidate_nodes(
+        self,
+        global_nodes_array,
+        elems1,
+        u1.reshape(-1),
+        d1,
+        tol,
+    )
+    if compacted is None:
+        return None, compaction_record
+
+    compact_nodes = compacted["nodes"]
+    compact_elems = compacted["elems"]
+    compact_u = compacted["displacement"]
+    compact_d = compacted["damage"]
+    old_to_new = compacted["old_to_new"]
+    mesh1 = rebuild_tri_mesh(compact_nodes, compact_elems, tip_centers=[p0, p1])
+
+    remapped_local_default = {
+        int(lid): int(old_to_new[int(gid)])
+        for lid, gid in local_default.items()
+        if int(old_to_new[int(gid)]) >= 0
+    }
+    remapped_new_vertex_ids = [
+        int(old_to_new[int(gid)])
+        for gid in new_vertex_ids
+        if int(old_to_new[int(gid)]) >= 0
+    ]
+    remapped_local_elements = old_to_new[new_local_global]
 
     certificate = {
         "certificate_schema": "v10.0.5.18.3.9_local_support_area_quality_certificate",
@@ -205,19 +387,22 @@ def stitch_triangulation_local_support_area(
         "old_parent_ratio_is_state_transfer_diagnostic_not_immediate_child_gate": True,
         "quality_floor_relaxed": False,
         "area_ratio_threshold_relaxed": False,
+        **compaction_record,
     }
 
     return {
         "mesh": mesh1,
         "boundary": make_boundary_data(mesh1, self.geom),
-        "damage": d1,
-        "displacement": u1.reshape(-1),
+        "damage": compact_d,
+        "displacement": compact_u,
         "parent_map": parent_map,
-        "local_to_global": local_default,
-        "new_vertex_ids": new_vertex_ids,
-        "local_elements": new_local_global,
+        "local_to_global": remapped_local_default,
+        "new_vertex_ids": remapped_new_vertex_ids,
+        "local_elements": remapped_local_elements,
         "assigned_parents": assigned,
         "quality_certificate": certificate,
+        "node_old_to_new": old_to_new,
+        "node_compaction_record": compaction_record,
     }, {
         "min_triangle_quality": qmin,
         "triangle_quality_floor": qfloor,
@@ -230,17 +415,16 @@ def stitch_triangulation_local_support_area(
         "removed_element_count": int(len(selected)),
         "new_cavity_element_count": int(len(new_local_global)),
         "net_element_change": int(len(new_local_global) - len(selected)),
-        "new_bulk_node_count": int(len(new_vertex_ids)),
+        "new_bulk_node_count": int(len(remapped_new_vertex_ids)),
         "parent_transfer_policy": "new_triangle_centroid_to_containing_old_elastic_parent",
         "quality_certificate": certificate,
+        **compaction_record,
     }
 
 
 class CertifiedAtomicPathCorridorCZMBackendV10051839(
     _base.AtomicPathCorridorCZMBackendV10051839
 ):
-    """Attach the accepted local-scale certificate to the backend result."""
-
     name = "adaptive_czm_v10051839_atomic_path_corridor_certified"
 
     def advance(self, **kwargs):
@@ -268,6 +452,8 @@ def restore(saved: Any) -> None:
 __all__ = [
     "CertifiedAtomicPathCorridorCZMBackendV10051839",
     "MODEL_ID",
+    "apply_backend_node_remap",
+    "compact_candidate_nodes",
     "install",
     "restore",
     "stitch_triangulation_local_support_area",
