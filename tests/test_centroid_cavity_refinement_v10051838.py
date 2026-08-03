@@ -103,7 +103,7 @@ def test_repeated_centroid_split_recovers_near_edge_exact_endpoint(monkeypatch):
     assert initial["predicted_min_child_area_ratio"] < 0.08
 
     records = []
-    for level in (1, 2, 3):
+    for level in (1, 2, 3, 4):
         state, record = centroid._centroid_split_candidate(
             backend, state, p0, target, 0, level
         )
@@ -116,7 +116,7 @@ def test_repeated_centroid_split_recovers_near_edge_exact_endpoint(monkeypatch):
         if record["predicted_exact_target_pass"]:
             break
 
-    assert len(records) == 2
+    assert len(records) == 3
     assert all(
         row["refinement_kind"] == "atomic_target_parent_centroid_steiner"
         for row in records
