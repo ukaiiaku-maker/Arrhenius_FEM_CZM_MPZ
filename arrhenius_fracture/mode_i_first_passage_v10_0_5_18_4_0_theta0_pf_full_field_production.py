@@ -3,6 +3,12 @@
 The underlying parity solver executes first. Its physical state and files are
 then left unchanged while inherited compatibility labels are normalized to the
 audited theta-zero PF v10.4.1 full-field contract.
+
+The direct prescribed-geometry PF kernel family may encode its explicitly
+disabled wake channel with an empty source grid.  During this production entry
+only, an audited schema adapter supplies the legacy loader with a one-point,
+exactly-zero source wake representation.  The original PF artifact SHA, active
+kernel, interpolation states, and runtime zero-wake physics remain unchanged.
 """
 from __future__ import annotations
 
@@ -11,6 +17,10 @@ import sys
 
 from . import (
     mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity as _base,
+)
+from .active_only_kernel_family_compat_v10051840 import (
+    AUDIT_FILE as KERNEL_COMPAT_AUDIT_FILE,
+    installed_active_only_kernel_family_compat,
 )
 from .theta0_pf_full_field_metadata_v10051840 import (
     AUDIT_FILE as METADATA_AUDIT_FILE,
@@ -36,10 +46,14 @@ def _out_path(argv: list[str]) -> Path | None:
 def main(argv: list[str] | None = None):
     args = list(sys.argv[1:] if argv is None else argv)
     out = _out_path(args)
-    try:
+    if out is None:
         return _base.main(args)
+    out.mkdir(parents=True, exist_ok=True)
+    try:
+        with installed_active_only_kernel_family_compat(out):
+            return _base.main(args)
     finally:
-        if out is not None and out.exists():
+        if out.exists():
             normalize_theta0_full_field_outputs(out)
 
 
@@ -49,6 +63,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "AUDIT_FILE",
+    "KERNEL_COMPAT_AUDIT_FILE",
     "METADATA_AUDIT_FILE",
     "MODEL_ID",
     "POINT_RELEASE",
