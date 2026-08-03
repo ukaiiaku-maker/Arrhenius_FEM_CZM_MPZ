@@ -1,0 +1,179 @@
+name: verify-v10.0.5.18.4.0-theta0-pf-parity
+
+on:
+  push:
+    branches:
+      - v10.0.5.18.4.0-theta0-pf-parity
+  pull_request:
+    paths:
+      - "arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py"
+      - "arrhenius_fracture/refinement_audit_v100516.py"
+      - "arrhenius_fracture/mode_i_first_passage_v9_18_5_3.py"
+      - "arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py"
+      - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py"
+      - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py"
+      - "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py"
+      - "run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh"
+      - "run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh"
+      - "scripts/compare_v10051840_theta0_pf_parity.py"
+      - "tests/test_theta0_pf_parity_v10051840.py"
+      - "tests/test_theta0_pf_full_field_parity_v10051840.py"
+      - "tests/test_theta0_pf_full_field_metadata_v10051840.py"
+      - "tests/test_corridor_refinement_metadata_v10051840.py"
+      - "pyproject.toml"
+      - ".github/workflows/verify_v10_0_5_18_4_0_theta0_pf_parity.yml"
+  workflow_dispatch:
+
+jobs:
+  focused-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .[dev]
+      - name: Compile parity entries and analysis
+        run: |
+          python -m py_compile \
+            arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py \
+            arrhenius_fracture/refinement_audit_v100516.py \
+            arrhenius_fracture/mode_i_first_passage_v9_18_5_3.py \
+            arrhenius_fracture/theta0_pf_full_field_metadata_v10051840.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py \
+            arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py \
+            scripts/compare_v10051840_theta0_pf_parity.py
+          bash -n run_v10_0_5_18_4_0_peak1000_theta0_pf_parity.sh
+          bash -n run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh
+      - name: Run theta-zero parity tests
+        run: |
+          pytest -q \
+            tests/test_theta0_pf_parity_v10051840.py \
+            tests/test_theta0_pf_full_field_parity_v10051840.py \
+            tests/test_theta0_pf_full_field_metadata_v10051840.py \
+            tests/test_corridor_refinement_metadata_v10051840.py
+      - name: Re-run inherited atomic corridor contracts
+        run: |
+          pytest -q \
+            tests/test_atomic_path_corridor_v10051839.py \
+            tests/test_atomic_path_corridor_node_compaction_v10051839.py
+      - name: Full-field production-entry startup smoke
+        env:
+          CLEAVAGE_HAZARD_MODE: exponential
+          CLEAVAGE_HAZARD_SEED: "8666"
+          CLEAVAGE_HAZARD_MIN_THRESHOLD: "1e-12"
+          CLEAVAGE_EVENT_LENGTH_MODE: threshold_scaled
+          CLEAVAGE_EVENT_MIN_FACTOR: "0.5"
+          CLEAVAGE_EVENT_MAX_FACTOR: "4.0"
+          EMISSION_HAZARD_SEED: "8666"
+          EMISSION_HAZARD_MIN_THRESHOLD: "1e-12"
+          EMISSION_MAX_ACTION_SUBSTEP: "0.05"
+          EMISSION_MAX_EVENTS_PER_HALF_STEP: "10000"
+          EMISSION_RAMP_MAX_LOG_RATE_CHANGE: "0.25"
+          EMISSION_RAMP_ACTION_FLOOR: "1e-6"
+          EMISSION_INNER_MAX_LOG_HAZARD_CHANGE: "0.25"
+          EMISSION_INNER_ACTION_FLOOR: "1e-6"
+          EMISSION_EVENT_HORIZON_FACTOR: "1.25"
+          EMISSION_INNER_MAX_REFINEMENTS: "24"
+          TWO_CHANNEL_PROBE_FALLBACK_MAX_CALLS: "8"
+          ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM: "20"
+          ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY: "0.035"
+          ARRHENIUS_MIN_ACCEPTED_CHILD_AREA_RATIO: "0.08"
+          ARRHENIUS_CORRIDOR_MAX_PATH_SUBSEGMENTS: "16"
+        run: |
+          rm -rf /tmp/v10051840_full_field_smoke
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as control
+          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production as production
+
+          root = Path.cwd()
+          family = root / 'runtime_inputs/v10_0_5_17_frozen_pf_inputs/signed_kernel/v10_2_14_active_only_campaign_family.json'
+          control.REFERENCE_KERNEL_SHA256 = hashlib.sha256(family.read_bytes()).hexdigest()
+          out = Path('/tmp/v10051840_full_field_smoke')
+          args = [
+              '--parameter-source-root', str(root / 'runtime_inputs/v10_0_5_18_four_class'),
+              '--parameter-option', control.REFERENCE_OPTION,
+              '--signed-kernel-family', str(family),
+              '--tip-refinement-radius-um', '330',
+              '--selected-cluster-J-outer-um', '240',
+              '--local-J-outer-um', '100',
+              '--mode', '2d',
+              '--bulk-plasticity-mode', 'full_field',
+              '--temperatures', '1000',
+              '--steps', '1',
+              '--nx', '36', '--ny', '72',
+              '--tip-h-fine', '1e-6', '--tip-ratio', '1.20',
+              '--dU', '2e-7', '--dt', '8.4',
+              '--n-stagger', '2',
+              '--print-every', '1',
+              '--adaptive-events',
+              '--adaptive-event-target', '0.15',
+              '--adaptive-min-frac', '1e-8',
+              '--adaptive-grow', '4',
+              '--da-phys', '5e-6',
+              '--target-crack-extension-um', '20',
+              '--crystal-aniso', '--crystal-compete',
+              '--crystal-theta-deg', '0',
+              '--min-global-forward', '0.05',
+              '--crystal-C11', '523e9', '--crystal-C12', '203e9', '--crystal-C44', '160e9',
+              '--cleave-gamma-aniso', '0.3',
+              '--crystal-material', 'w',
+              '--max-fronts', '1',
+              '--crack-backend', 'adaptive_czm',
+              '--czm-max-angle-error-deg', '35',
+              '--j-decomposition', 'cluster',
+              '--mpz-length-um', '50', '--mpz-n-bins', '80',
+              '--save-snapshots', '1', '--snapshot-cols', '1',
+              '--snapshot-by-crack-extension-um', '20',
+              '--no-plots',
+              '--out', str(out),
+          ]
+          production.main(args)
+          audit = json.loads((out / production.AUDIT_FILE).read_text())
+          assert audit['run_completed_without_exception'] is True, audit.get('runtime_error')
+          assert audit['bulk_parity']['FEM_bulk_plasticity_mode'] == 'full_field'
+          assert audit['bulk_parity']['detailed_balance_forward_minus_reverse'] is True
+
+          manifest_path = out / 'persistent_site_production_manifest_v10_0_5_18_3_9.json'
+          manifest = json.loads(manifest_path.read_text())
+          parity = manifest['theta0_pf_full_field_parity']
+          assert parity['bulk_parity']['model'] == 'v10.4.1_bulk_peierls_taylor_detailed_balance_exact_port'
+          assert manifest['crystal_theta_deg'] == 0.0
+          assert manifest['bulk_state_evolves_in_fem'] is True
+          assert manifest['bulk_plasticity_semantic_mode'] == 'full_field'
+          lifecycle = manifest['refinement_metadata_lifecycle_audit']
+          assert lifecycle['captured_mesh_has_refinement_metadata'] is True
+          assert lifecycle['production_refinement_radius_m'] >= 330.0e-6
+          assert lifecycle['long_corridor_constructor_capture_active'] is True
+
+          summary = json.loads((out / 'summary.json').read_text())[0]
+          assert summary['crystal_theta_deg'] == 0.0
+          assert summary['material_class'] == 'peak'
+          assert summary['bulk_state_evolves_in_fem'] is True
+          assert summary['taylor_renewal_time_s'] == 1.0e-9
+
+          metadata = json.loads((out / production.METADATA_AUDIT_FILE).read_text())
+          assert metadata['metadata_only'] is True
+          assert metadata['physics_or_mesh_modified'] is False
+          print('full-field production-entry smoke passed')
+          PY
+      - name: Verify package and reference constants
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from arrhenius_fracture import mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity as p
+          from arrhenius_fracture.bulk_pt_detailed_balance_v1041_exact import MODEL_ID
+          assert version("arrhenius-fem-czm") == "10.0.5.18.4.0"
+          assert p.REFERENCE_OPTION == "v913_paper_peak01_0242980_persistent_sites"
+          assert p.REFERENCE_HAZARD_SEED == 8666
+          assert p.REFERENCE_KERNEL_SHA256 == "a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a"
+          assert MODEL_ID == "v10.4.1_bulk_peierls_taylor_detailed_balance_exact_port"
+          print("theta-zero PF numerical and full-field parity constants verified")
+          PY

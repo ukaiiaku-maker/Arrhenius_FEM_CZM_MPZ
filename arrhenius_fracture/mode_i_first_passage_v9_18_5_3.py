@@ -1,7 +1,7 @@
 """v9.18.5.3 quality-selected Mode-I corridor mesh.
 
 v9.18.5.2 correctly rejected a fixed-spacing multi-cloud corridor whose worst
-triangle quality was 0.030357, below the production floor 0.035.  This revision
+triangle quality was 0.030357, below the production floor 0.035. This revision
 constructs several deterministic candidate corridors, compacts each mesh, and
 selects the best candidate that simultaneously satisfies the initial triangle
 quality floor and the configured tip-resolution ratio h_tip / da.
@@ -45,12 +45,38 @@ def _centers_for_count(geom: Any, length_m: float, count: int) -> np.ndarray:
     return np.column_stack([xs, np.zeros_like(xs)])
 
 
+def _copy_production_refinement_metadata(source: Any, target: Any) -> list[str]:
+    """Copy audit-only physical-refinement annotations between mesh objects."""
+    copied: list[str] = []
+    for name in dir(source):
+        if not name.startswith("production_refinement_"):
+            continue
+        try:
+            value = getattr(source, name)
+        except Exception:
+            continue
+        if callable(value):
+            continue
+        try:
+            setattr(target, name, value)
+        except Exception:
+            continue
+        copied.append(name)
+    return sorted(set(copied))
+
+
 def _compact_without_quality_abort(raw: Any, centers: np.ndarray):
     key = "ARRHENIUS_MIN_INITIAL_TRIANGLE_QUALITY"
     old = os.environ.get(key)
     os.environ[key] = "0"
     try:
-        return _v91852._compact_mesh(raw, centers)
+        compact, audit = _v91852._compact_mesh(raw, centers)
+        copied = _copy_production_refinement_metadata(raw, compact)
+        audit = dict(audit)
+        audit["physical_refinement_metadata_preserved"] = bool(copied)
+        audit["physical_refinement_metadata_fields"] = copied
+        audit["physical_refinement_metadata_preservation_is_diagnostic_only"] = True
+        return compact, audit
     finally:
         if old is None:
             os.environ.pop(key, None)
@@ -119,6 +145,9 @@ def _quality_selected_corridor_mesh(geom, mesh_cfg, seed=None, tip_center=None):
                 "triangle_count": int(compact.ne),
                 "minimum_initial_triangle_quality": qmin,
                 "maximum_sampled_hbar_tip_over_da": hratio,
+                "physical_refinement_metadata_preserved": bool(
+                    audit.get("physical_refinement_metadata_preserved", False)
+                ),
                 "accepted": ok,
                 "error": None,
             }

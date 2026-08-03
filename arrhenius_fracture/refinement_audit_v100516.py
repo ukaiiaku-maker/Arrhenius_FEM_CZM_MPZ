@@ -1,11 +1,16 @@
 """Diagnostics-only physical-refinement metadata lifecycle repair.
 
 The inherited v10.0.5.13 wrapper verifies the final refinement radius after the
-2-D solver returns.  The protected solver can expose either no runtime mesh or a
+2-D solver returns. The protected solver can expose either no runtime mesh or a
 later runtime mesh whose refinement annotations were not propagated, even though
-an earlier construction/rebuild mesh was correctly annotated.  This context
+an earlier construction/rebuild mesh was correctly annotated. This context
 captures the latest verified annotated mesh and uses it only for the post-run
 metadata query when the runtime object cannot verify the requested radius.
+
+The v10.0.5.13.5 long-corridor wrapper substitutes its robust physical mesh
+constructor after this lifecycle context is entered. That constructor is also
+captured here so the post-run audit cannot lose valid refinement metadata merely
+because of wrapper-installation order.
 
 Mesh construction, refinement, mechanics, constitutive state, and quality gates
 are unchanged.
@@ -16,6 +21,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 from . import mode_i_first_passage_v10_0_5_13_barrier_only as _entry
+from . import mode_i_first_passage_v10_0_5_13_5_barrier_only as _long_corridor
 
 AUDIT_MODEL = "physical_refinement_metadata_lifecycle_v10_0_5_16_1"
 _LAST_REFINED_MESH: Any = None
@@ -31,6 +37,14 @@ def _mesh_has_refinement_metadata(mesh: Any) -> bool:
         return False
     radius = getattr(mesh, "production_refinement_radius_m", None)
     return radius is not None
+
+
+def _capture_if_verified(mesh: Any) -> Any:
+    """Retain an annotated mesh for diagnostics and return it unchanged."""
+    global _LAST_REFINED_MESH
+    if _mesh_has_refinement_metadata(mesh):
+        _LAST_REFINED_MESH = mesh
+    return mesh
 
 
 def refinement_audit_payload_v100516() -> dict[str, Any]:
@@ -51,30 +65,30 @@ def refinement_audit_payload_v100516() -> dict[str, Any]:
         ),
         "physics_or_mesh_modified": False,
         "post_run_metadata_lifecycle_only": True,
+        "long_corridor_constructor_capture_active": True,
     }
 
 
 @contextmanager
 def installed_refinement_audit_v100516() -> Iterator[None]:
-    global _LAST_REFINED_MESH
     clear_refinement_audit_v100516()
     old_make = _entry.make_physical_refinement_mesh_v100510
+    old_make_long_corridor = (
+        _long_corridor.make_physical_refinement_mesh_v1005135
+    )
     old_annotate = _entry._annotate_mesh
     old_payload = _entry._mesh_payload
 
     def make_and_capture(*args, **kwargs):
-        global _LAST_REFINED_MESH
-        mesh = old_make(*args, **kwargs)
-        if _mesh_has_refinement_metadata(mesh):
-            _LAST_REFINED_MESH = mesh
-        return mesh
+        return _capture_if_verified(old_make(*args, **kwargs))
+
+    def make_long_corridor_and_capture(*args, **kwargs):
+        return _capture_if_verified(
+            old_make_long_corridor(*args, **kwargs)
+        )
 
     def annotate_and_capture(*args, **kwargs):
-        global _LAST_REFINED_MESH
-        mesh = old_annotate(*args, **kwargs)
-        if _mesh_has_refinement_metadata(mesh):
-            _LAST_REFINED_MESH = mesh
-        return mesh
+        return _capture_if_verified(old_annotate(*args, **kwargs))
 
     def payload_with_capture(mesh, requested_radius_m):
         global _LAST_REFINED_MESH
@@ -117,15 +131,22 @@ def installed_refinement_audit_v100516() -> Iterator[None]:
         selected["captured_mesh_metadata_verified"] = captured_verified
         selected["captured_mesh_used"] = captured_used
         selected["metadata_fallback_reason"] = fallback_reason
+        selected["long_corridor_constructor_capture_active"] = True
         return selected
 
     _entry.make_physical_refinement_mesh_v100510 = make_and_capture
+    _long_corridor.make_physical_refinement_mesh_v1005135 = (
+        make_long_corridor_and_capture
+    )
     _entry._annotate_mesh = annotate_and_capture
     _entry._mesh_payload = payload_with_capture
     try:
         yield
     finally:
         _entry.make_physical_refinement_mesh_v100510 = old_make
+        _long_corridor.make_physical_refinement_mesh_v1005135 = (
+            old_make_long_corridor
+        )
         _entry._annotate_mesh = old_annotate
         _entry._mesh_payload = old_payload
 
