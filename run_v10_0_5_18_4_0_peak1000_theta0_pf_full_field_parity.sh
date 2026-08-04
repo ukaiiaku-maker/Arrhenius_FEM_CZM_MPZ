@@ -8,6 +8,19 @@ OPTION=v913_paper_peak01_0242980_persistent_sites
 PF_CASE=${PF_CASE:-$PF_REFERENCE_ROOT/runs/v10_4_1_theta0_rate1x_bulk_PT_four_class_1000um_selective_reuse_base3621_v1/$OPTION/T1000K_th0_seed8666}
 FAMILY_JSON=${FAMILY_JSON:-$PF_REFERENCE_ROOT/runs/v10_2_28_kernel_cache/1447653d199f0b43cb475951092d69444c9b785f6fdf518c723792abb3b1f5e5/family.json}
 FAMILY_SHA_REQUIRED=a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a
+
+# When set, PF_FROZEN_REFERENCE_DIR completely replaces the live,
+# externally-mutable PF repository paths above with a local, immutable
+# copy this workspace controls (see PF_REFERENCE_REGENERATION_CONTRACT.md
+# and arrhenius_fracture/pf_theta0_frozen_reference_v10051840.py). There
+# is no partial/fallback mode: once set, PF_CASE and FAMILY_JSON are
+# entirely redirected here, and the existing FAMILY_SHA_REQUIRED check
+# below still applies unchanged -- it still fails closed on any mismatch.
+PF_FROZEN_REFERENCE_DIR=${PF_FROZEN_REFERENCE_DIR:-}
+if [[ -n "$PF_FROZEN_REFERENCE_DIR" ]]; then
+  PF_CASE="$PF_FROZEN_REFERENCE_DIR"
+  FAMILY_JSON="$PF_FROZEN_REFERENCE_DIR/family.json"
+fi
 CAMPAIGN_ROOT=${CAMPAIGN_ROOT:-$ROOT/runs/v10_0_5_18_4_0_peak1000_theta0_seed8666_pf_full_field_parity_v1}
 OUT=$CAMPAIGN_ROOT/$OPTION/T1000K
 LOG=$OUT/console.log
@@ -20,6 +33,9 @@ SNAPSHOT_COLS=${SNAPSHOT_COLS:-5}
 SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-50}
 GENERATE_SOLVER_PLOTS=${GENERATE_SOLVER_PLOTS:-1}
 PF_KJ_TARGET_CSV=${PF_KJ_TARGET_CSV:-}
+if [[ -n "$PF_FROZEN_REFERENCE_DIR" && -z "$PF_KJ_TARGET_CSV" ]]; then
+  PF_KJ_TARGET_CSV="$PF_FROZEN_REFERENCE_DIR/steps_1000K.csv"
+fi
 
 for path in \
   "$PARAMETER_SOURCE_ROOT/v10_2_27_v913_four_class_paper_registry.csv" \

@@ -1,12 +1,106 @@
 # PF Reference Artifact Regeneration Contract
 
-This document is for the **Codex PF workspace** (the session responsible
-for `PF-fracture-fatigue_v10_2_21_persistent_sites_top1` or its successor).
-It specifies exactly what this FEM/CZM parity workspace needs regenerated,
-with every parameter captured from this workspace's own audit trail before
-the live artifacts became unavailable. It does not ask the PF workspace to
-change its own conventions — only to reproduce (or knowingly re-issue) two
-specific artifacts and hand back verifiable checksums.
+This document is for the **Codex PF workspace**. It specifies exactly what
+this FEM/CZM parity workspace needs regenerated, with every parameter
+captured from this workspace's own audit trail before the live artifacts
+became unavailable. It does not ask the PF workspace to change its own
+conventions — only to reproduce (or knowingly re-issue) two specific
+artifacts and hand back verifiable checksums.
+
+## Executable request (concise — read this section first)
+
+```text
+PF repository:            https://github.com/ukaiiaku-maker/PF-fracture-fatigue.git
+Branch (best candidate):  v10.4.1-bulk-detailed-balance
+Exact commit (best candidate):
+                           59da598c7b19b70068cf8f308b09d1362db05f6f
+                           ("Keep selective reuse flag at campaign level
+                           only", 2026-07-31 21:36:56 -0700)
+Already checked out at:   /Volumes/Data/Data/Nanopillar_calculation/
+                           PF-fracture-fatigue_v10_4_1_bulk_detailed_balance
+                           (a git worktree of the same repository, already
+                           at this exact commit — confirmed identical to
+                           origin/v10.4.1-bulk-detailed-balance's tip, no
+                           further commits on that branch)
+
+Confidence caveat:        NOT independently verified as the literal
+                           generating commit -- PF run outputs do not
+                           record git provenance (checked several sibling
+                           campaign manifest/lock JSON files in this
+                           repository; none contain a commit hash). This
+                           is the best available candidate, identified by
+                           searching commit messages for "v10.4.1",
+                           "selective_reuse"/"selective reuse", "base3621",
+                           and "rate1x" and cross-checking commit dates
+                           against the missing run family's naming
+                           convention. If output columns or first-passage
+                           values do not match the reference values below
+                           once regenerated, try nearby commits on the
+                           same branch (see "Development note" below).
+
+Option ID:                v913_paper_peak01_0242980_persistent_sites
+                           (candidate_id: v913_zeroD_sobol_0242980)
+Temperature:               1000 K
+Theta:                     0 deg
+Hazard seed:                8666
+Base site seed:             3621
+Loading/timestep:           dU=2.0e-7 m, dt=8.4 s, n_stagger=2,
+                             tip_h_fine=1.0e-6 m, tip_ratio=1.20,
+                             da_phys=5.0e-6 m, adaptive_event_target=0.15,
+                             maximum_fronts=1, loading rate multiplier
+                             rate1x, target_projected_extension_um=1000,
+                             bulk_plasticity_mode=full_field
+Kernel construction:        see "Artifact 2" configuration block below
+                             (configuration_fingerprint
+                             1447653d199f0b43cb475951092d69444c9b785f6fdf518c723792abb3b1f5e5)
+Expected output columns:    step, dt_cur_s, J_effective_direct_J_per_m2,
+                             J_signed_direct_J_per_m2, KJ_Pa_sqrtm, B,
+                             N_em, crack_extension_m (plus any other
+                             columns the PF steps table normally emits --
+                             these 8 are the ones this workspace's reader
+                             requires and validates)
+First-passage reference:    row index 176 (0-based; PF step=177),
+                             physical time 1486.8 s (=177*8.4),
+                             KJ=53.9019 MPa√m, J≈6531 J/m² -- this is
+                             the first row with crack_extension_m>0 in
+                             the original (now unavailable) artifact;
+                             use it to sanity-check a regenerated file
+                             before handing it back
+Destination for artifacts:  hand back the two files (or their new paths)
+                             for this workspace to copy into
+                             Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude/
+                             reference_inputs/pf_v10_4_1_theta0_peak1000K_seed8666/
+                             (this workspace performs the copy + checksum
+                             step itself -- do not write into this FEM/CZM
+                             workspace directly)
+Checksums to verify:        steps_1000K.csv sha256 =
+                             666d839ae8ef4267ae4ac7ab52a4220de676525bfb70917744e25a119c291b0c
+                             family.json sha256 =
+                             a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a
+                             (bit-exact match is the goal but not
+                             guaranteed -- see the kernel section's
+                             caveat about the same configuration_fingerprint
+                             already having produced two different
+                             family_sha256 values in this repository)
+```
+
+### Development note: nearby commits if `59da598` does not reproduce
+
+```text
+706ea8f Bump package metadata to v10.4.1 detailed balance   (2026-07-31 14:38:54, earlier same day)
+2bc95e0 Restore frozen v10.4.1 launcher builder
+4f2a846 Validate native and previously reused v10.4.1 cases correctly
+22710b6 Add v10.4.1 completed-case materializer for v10.4.2
+bbfbcb1 Add audited reuse of completed v10.4.1 fracture cases
+9a5e8d3 Include selective reuse tests in v10.4.1 validation
+6ab901c Permit only audited selective reuse in v10.4.1 scheduler
+5f5fb09 Add selective reuse materialization CLI
+345fe70 Add selective reuse audit CLI
+018bb4a Add audited v10.4.0 to v10.4.1 case reuse machinery
+```
+All found via `git log --all --oneline --grep="v10.4.1\|bulk_PT\|selective_reuse" -i`
+in this repository; none independently confirmed as more or less likely
+than `59da598` without actually running them.
 
 ## Why this is needed
 
@@ -239,7 +333,13 @@ human-approved decision, not a silent substitution.
 4. Do not modify the live PF `runs/` tree's ongoing "v10.4.x bulk
    plasticity campaign" activity to accommodate this request — treat this
    as a side, read-adjacent regeneration task, not a reason to interrupt
-   or reorganize whatever else is running there.
+   or reorganize whatever else is running there. That activity lives in
+   the `PF-fracture-fatigue_v10_2_21_persistent_sites_top1` worktree
+   (currently on branch `v10.2.30-hazard-energy-gated-fatigue-events`).
+   Regenerate from the **separate**
+   `PF-fracture-fatigue_v10_4_1_bulk_detailed_balance` worktree instead —
+   it is already checked out at the candidate commit `59da598` and does
+   not need to touch the other worktree at all.
 
 ## What happens on this side once artifacts are available
 
