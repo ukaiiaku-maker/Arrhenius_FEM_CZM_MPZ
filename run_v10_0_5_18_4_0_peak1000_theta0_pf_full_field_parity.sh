@@ -19,6 +19,7 @@ SAVE_SNAPSHOTS=${SAVE_SNAPSHOTS:-20}
 SNAPSHOT_COLS=${SNAPSHOT_COLS:-5}
 SNAPSHOT_BY_EXT_UM=${SNAPSHOT_BY_EXT_UM:-50}
 GENERATE_SOLVER_PLOTS=${GENERATE_SOLVER_PLOTS:-1}
+PF_KJ_TARGET_CSV=${PF_KJ_TARGET_CSV:-}
 
 for path in \
   "$PARAMETER_SOURCE_ROOT/v10_2_27_v913_four_class_paper_registry.csv" \
@@ -94,6 +95,10 @@ PLOT_FLAG=""
 if [[ "$GENERATE_SOLVER_PLOTS" == 0 ]]; then
   PLOT_FLAG="--no-plots"
 fi
+PF_KJ_TARGET_FLAG=""
+if [[ -n "$PF_KJ_TARGET_CSV" ]]; then
+  PF_KJ_TARGET_FLAG="--pf-kj-target-csv"
+fi
 
 export ARRHENIUS_COMMITTED_TARGET_EXTENSION_UM="$TARGET_EXT_UM"
 export ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY=${ARRHENIUS_MIN_ACCEPTED_TRIANGLE_QUALITY:-0.035}
@@ -164,6 +169,7 @@ env \
     --snapshot-cols "$SNAPSHOT_COLS" \
     --snapshot-by-crack-extension-um "$SNAPSHOT_BY_EXT_UM" \
     ${PLOT_FLAG:+"$PLOT_FLAG"} \
+    ${PF_KJ_TARGET_FLAG:+"$PF_KJ_TARGET_FLAG" "$PF_KJ_TARGET_CSV"} \
     --out "$OUT" \
     2>&1 | tee "$LOG"
 
