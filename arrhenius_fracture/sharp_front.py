@@ -2446,11 +2446,18 @@ def run_2d(args):
         snapshot_by_ext_m = max(float(getattr(args, 'snapshot_by_crack_extension_um', 0.0) or 0.0) * 1e-6, 0.0)
         next_snapshot_ext_m = snapshot_by_ext_m if snapshot_by_ext_m > 0.0 else float('inf')
         max_da_per_block_m = float(getattr(args, 'max_da_per_block_um', float('inf')) or float('inf')) * 1e-6
-        prev_a_tip_for_block = float(a_tip)
 
         # Transactional PF-reference KJ(t)-target loading controller
         # (FEM_CZM_HANDOFF.md section 6). Disabled unless --pf-kj-target-csv
         # is set, so the fixed --dU ramp remains the exact default behavior.
+        # NOTE: this setup block is deliberately placed BEFORE
+        # `prev_a_tip_for_block = float(a_tip)` (rather than after, which
+        # would be the more natural reading order) so that the exact
+        # original adjacency between that line and `while step <
+        # args.steps:` is preserved byte-for-byte -- several other modules
+        # (see mode_i_first_passage_v10_0_5_5_stochastic_vhcf.py's
+        # _CACHE_INIT_ANCHOR) locate an AST/text-patch insertion point by
+        # searching for that exact literal text.
         pf_target_trajectory = None
         pf_controller_config = None
         physical_time_accepted = 0.0
@@ -2483,6 +2490,8 @@ def run_2d(args):
                 f"{pf_target_trajectory.source_path} "
                 f"(sha256={pf_target_trajectory.source_sha256[:12]}...)"
             )
+
+        prev_a_tip_for_block = float(a_tip)
 
         while step < args.steps:
             if fatigue_mode and np.isfinite(fatigue_cycles_max) and fatigue_cycles_total_accepted >= fatigue_cycles_max - 1e-12 * max(fatigue_cycles_max, 1.0):
@@ -2518,47 +2527,59 @@ def run_2d(args):
                 )
                 if pf_target_active:
                     # Transactional PF-reference KJ(t)-target controller
-                    # (FEM_CZM_HANDOFF.md section 6): replaces the fixed dU
-                    # ramp with a safeguarded predictor+secant search for the
-                    # Uapp reproducing the PF reference KJ at this trial's
-                    # physical time. Every internal candidate re-solves from
-                    # the same u_saved/ep_saved/rho_saved baseline captured
-                    # above, so a rejected internal candidate leaves no
-                    # residue -- only the winning candidate's arrays survive.
-                    # The hazard-clock accept/reject check below (unchanged)
-                    # still governs event-localization safety independently.
+                    # (FEM_CZM_HANDOFF.md section 6): determines the Uapp
+                    # that reproduces the PF reference KJ at this trial's
+                    # physical time via a safeguarded predictor+secant
+                    # search. `_pf_solve_trial` below is PURELY LOCAL -- it
+                    # never touches the shared u/ep_gp/rho_gp/sigma_gp/
+                    # psi_gp/Ftop arrays, only its own local copies -- so
+                    # the only effect of this whole block is choosing
+                    # `dU_step` a few lines down. The unconditional
+                    # mechanics block that actually updates the shared
+                    # state afterward is therefore never itself made
+                    # conditional or re-indented: several other modules
+                    # AST/text-patch that exact block by literal match
+                    # (see the "sharp_front.py architecture" notes in
+                    # CLAUDE_PROGRESS.md).
                     _pf_target_time = physical_time_accepted + dt_cur
                     _pf_target_kj = interpolate_target(
                         pf_target_trajectory, _pf_target_time, channel="KJ")
                     _pf_fp_candidates = []
 
                     def _pf_solve_trial(_pf_Uapp_trial):
-                        nonlocal u, ep_gp, rho_gp, sigma_gp, psi_gp, Ftop, seq_gp, s1_gp, dot_ep
-                        # Captured BEFORE this candidate's u/ep_gp/rho_gp
-                        # reset: this is simultaneously "before this
-                        # candidate's solve" and "after restoring the
-                        # previous candidate" (the two are the same instant
-                        # -- the reset immediately below IS the restore).
+                        # Captured BEFORE this candidate's local arrays are
+                        # (re)initialized from u_saved/ep_saved/rho_saved:
+                        # this is simultaneously "before this candidate's
+                        # solve" and "after restoring the previous
+                        # candidate" (the two are the same instant -- nothing
+                        # shared was ever mutated by the previous candidate
+                        # to begin with).
                         _pf_fp_candidates.append(_pf_capture_fingerprint(eng))
-                        u = u_saved.copy()
-                        ep_gp = ep_saved.copy()
-                        rho_gp = rho_saved.copy()
+                        _pf_u_local = u_saved.copy()
+                        _pf_ep_local = ep_saved.copy()
+                        _pf_rho_local = rho_saved.copy()
                         _pf_Uy_top = 0.5 * _pf_Uapp_trial
                         _pf_Uy_bot = -0.5 * _pf_Uapp_trial
-                        sigma_gp = np.zeros((3, mesh.ne)); psi_gp = np.zeros(mesh.ne); Ftop = 0.0
+                        _pf_sigma_local = np.zeros((3, mesh.ne))
+                        _pf_psi_local = np.zeros(mesh.ne)
                         for _pf_it in range(args.n_stagger):
-                            Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
-                                mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
-                            u, Ftop = solve_dirichlet(Kmat, Rint, u, bnd, _pf_Uy_top, _pf_Uy_bot)
-                            Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
-                                mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
-                            ep_gp, rho_gp, dot_ep = update_plasticity(
-                                ep_gp, rho_gp, sigma_gp, mat, T, dt_cur,
+                            (_pf_Kmat, _pf_Rint, _pf_sigma_local, _pf_seq_local,
+                             _pf_s1_local, _pf_psi_local) = assemble_mechanics(
+                                mesh, _pf_u_local, _pf_ep_local, _pf_rho_local, d, D, mat,
+                                cohesive_network=cohesive_network)
+                            _pf_u_local, _pf_Ftop_local = solve_dirichlet(
+                                _pf_Kmat, _pf_Rint, _pf_u_local, bnd, _pf_Uy_top, _pf_Uy_bot)
+                            (_pf_Kmat, _pf_Rint, _pf_sigma_local, _pf_seq_local,
+                             _pf_s1_local, _pf_psi_local) = assemble_mechanics(
+                                mesh, _pf_u_local, _pf_ep_local, _pf_rho_local, d, D, mat,
+                                cohesive_network=cohesive_network)
+                            _pf_ep_local, _pf_rho_local, _pf_dot_ep_local = update_plasticity(
+                                _pf_ep_local, _pf_rho_local, _pf_sigma_local, mat, T, dt_cur,
                                 plast_model, cfg.dislocations)
                         _pf_h_local = mesh.hbar_tip if mesh.hbar_tip > 0 else mesh.hbar
                         _, _pf_KJ_trial, _ = compute_J_integral(
-                            mesh, u, sigma_gp, psi_gp, d, np.array([a_tip, 0.0]),
-                            np.array([1.0, 0.0]), mat,
+                            mesh, _pf_u_local, _pf_sigma_local, _pf_psi_local, d,
+                            np.array([a_tip, 0.0]), np.array([1.0, 0.0]), mat,
                             ell=max(r_J_cluster_ell, 3.0 * _pf_h_local),
                             crack_segments=_backend_crack_segments())
                         return max(float(_pf_KJ_trial), 0.0)
@@ -2576,10 +2597,6 @@ def run_2d(args):
                         solve_trial=_pf_solve_trial,
                         config=pf_controller_config,
                     )
-                    Uapp = _pf_result.accepted_Uapp
-                    KJ = _pf_result.achieved
-                    dU_step = Uapp - Uapp_saved
-                    h_local = mesh.hbar_tip if mesh.hbar_tip > 0 else mesh.hbar
 
                     # Fail-closed stochastic-identity check: the interval-
                     # start fingerprint and every candidate-entry
@@ -2587,9 +2604,9 @@ def run_2d(args):
                     # winning trial) must be IDENTICAL. Any difference
                     # means a trial evaluation touched RNG/threshold/B/
                     # N_em/MPZ state that must only ever change via the
-                    # accepted-step hazard commit below -- a genuine
-                    # transactionality violation, not something to log and
-                    # continue past.
+                    # accepted-step hazard commit further below -- a
+                    # genuine transactionality violation, not something to
+                    # log and continue past.
                     _pf_fp_before_commit = _pf_capture_fingerprint(eng)
                     _pf_all_fingerprints = [_pf_fp_interval_start] + _pf_fp_candidates + [_pf_fp_before_commit]
                     _pf_stochastic_identity_preserved = all(
@@ -2605,120 +2622,118 @@ def run_2d(args):
                             f"fingerprints={[f.as_dict() for f in _pf_all_fingerprints]}"
                         )
 
-                    predicted_clock = eng.predict_clock_increment(KJ, T, dt_cur)
-                    pred_primary = predicted_clock
+                    dU_step = _pf_result.accepted_Uapp - Uapp_saved
+                elif fatigue_mode and bool(getattr(args, 'fatigue_hold_load', False)) and step > 0:
+                    dU_step = 0.0
                 else:
-                    if fatigue_mode and bool(getattr(args, 'fatigue_hold_load', False)) and step > 0:
-                        dU_step = 0.0
+                    dU_step = cfg.loading.dU_top * trial_frac
+                Uapp = Uapp_saved + dU_step
+                Uy_top, Uy_bot = 0.5 * Uapp, -0.5 * Uapp
+
+                sigma_gp = np.zeros((3, mesh.ne)); psi_gp = np.zeros(mesh.ne); Ftop = 0.0
+                for it in range(args.n_stagger):
+                    Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
+                        mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
+                    u, Ftop = solve_dirichlet(Kmat, Rint, u, bnd, Uy_top, Uy_bot)
+                    Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
+                        mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
+                    if fatigue_mode and cyclic_mechanics_enabled:
+                        # In fatigue mode the plastic strain/dislocation state is
+                        # advanced by the explicit cyclic mechanics block after the
+                        # Kmax/J predictor chooses an accepted cycle count.  Do not
+                        # also apply a monotonic max-load plastic increment here.
+                        dot_ep = np.zeros(mesh.ne)
                     else:
-                        dU_step = cfg.loading.dU_top * trial_frac
-                    Uapp = Uapp_saved + dU_step
-                    Uy_top, Uy_bot = 0.5 * Uapp, -0.5 * Uapp
+                        ep_gp, rho_gp, dot_ep = update_plasticity(
+                            ep_gp, rho_gp, sigma_gp, mat, T, dt_cur,
+                            plast_model, cfg.dislocations)
 
-                    sigma_gp = np.zeros((3, mesh.ne)); psi_gp = np.zeros(mesh.ne); Ftop = 0.0
-                    for it in range(args.n_stagger):
-                        Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
-                            mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
-                        u, Ftop = solve_dirichlet(Kmat, Rint, u, bnd, Uy_top, Uy_bot)
-                        Kmat, Rint, sigma_gp, seq_gp, s1_gp, psi_gp = assemble_mechanics(
-                            mesh, u, ep_gp, rho_gp, d, D, mat, cohesive_network=cohesive_network)
-                        if fatigue_mode and cyclic_mechanics_enabled:
-                            # In fatigue mode the plastic strain/dislocation state is
-                            # advanced by the explicit cyclic mechanics block after the
-                            # Kmax/J predictor chooses an accepted cycle count.  Do not
-                            # also apply a monotonic max-load plastic increment here.
-                            dot_ep = np.zeros(mesh.ne)
+                h_local = mesh.hbar_tip if mesh.hbar_tip > 0 else mesh.hbar
+                pred_primary = 0.0
+                if deflect:
+                    predicted_clock = 0.0
+                    for fi, f in enumerate(_active()):
+                        if not f.get('resolved', True):
+                            # Unresolved daughters remain inside the parent J/process-zone
+                            # domain and are advanced only when their parent fires.
+                            continue
+                        sig2 = near_tip_stress_tensor(sigma_gp, mesh, f['xy'], 3.0 * h_local)
+                        gate_fwd = fwd0 if gate_global else f['fwd']
+                        if compete:
+                            sel, _all = cleave_direction_competition(
+                                sig2, _theta, gate_fwd, min_forward=0.2,
+                                gamma_aniso=gamma_aniso, branch_ratio=r_branch_O)
+                            cands = sel if sel else [f['last_plane']]
                         else:
-                            ep_gp, rho_gp, dot_ep = update_plasticity(
-                                ep_gp, rho_gp, sigma_gp, mat, T, dt_cur,
-                                plast_model, cfg.dislocations)
-
-                    h_local = mesh.hbar_tip if mesh.hbar_tip > 0 else mesh.hbar
-                    pred_primary = 0.0
-                    if deflect:
-                        predicted_clock = 0.0
-                        for fi, f in enumerate(_active()):
-                            if not f.get('resolved', True):
-                                # Unresolved daughters remain inside the parent J/process-zone
-                                # domain and are advanced only when their parent fires.
-                                continue
-                            sig2 = near_tip_stress_tensor(sigma_gp, mesh, f['xy'], 3.0 * h_local)
-                            gate_fwd = fwd0 if gate_global else f['fwd']
-                            if compete:
-                                sel, _all = cleave_direction_competition(
-                                    sig2, _theta, gate_fwd, min_forward=0.2,
-                                    gamma_aniso=gamma_aniso, branch_ratio=r_branch_O)
-                                cands = sel if sel else [f['last_plane']]
-                            else:
-                                cands = cleavage_branch_candidates(
-                                    sig2, cleave_planes, forward=gate_fwd, min_forward=0.2,
-                                    branch_ratio=branch_ratio)
-                                if not cands:
-                                    cands = [f['last_plane']]
-                            cands = _filter_global_forward(cands)
+                            cands = cleavage_branch_candidates(
+                                sig2, cleave_planes, forward=gate_fwd, min_forward=0.2,
+                                branch_ratio=branch_ratio)
                             if not cands:
-                                cands = [dict(f.get('last_plane', {}), t=fwd0.copy(),
-                                              n=np.array([0.0, 1.0]), sigma_nn=0.0,
-                                              overdrive=0.0, gamma_rel=1.0,
-                                              name='global_forward_fallback')]
-                            f['cands_trial'] = cands
-                            f['win_trial'] = cands[0]
-                            f['t_trial'] = cands[0]['t']
-                            srcJ, ellJ, segsJ = _J_params_for_front(f)
-                            _, _Kraw, Jinfo = compute_J_integral(
-                                mesh, u, sigma_gp, psi_gp, d, f['xy'], f['t_trial'],
-                                mat, ell=ellJ,
-                                crack_segments=segsJ, exclude_radius=2.0 * kill_r)
-                            _Jeff, KJf, _Jsigned = _effective_JK_from_info(Jinfo)
-                            f['J_signed_trial'] = float(_Jsigned)
-                            f['J_effective_trial'] = float(_Jeff)
-                            f['J_sign_ref'] = float(Jinfo.get('J_sign_ref', 0.0))
-                            f['KJ_trial'] = max(KJf, 0.0)
-                            f['J_source_trial'] = srcJ
-                            f['J_source_code_trial'] = 0 if srcJ == 'cluster' else 1
-                            f['J_active_elems_trial'] = int(Jinfo.get('n_active_elements', 0))
-                            if fatigue_mode:
-                                pc = 0.0
-                            else:
-                                pc = f['eng'].predict_clock_increment(f['KJ_trial'], T, dt_cur)
-                            predicted_clock += pc
-                            if f['id'] == 0:
-                                pred_primary = pc
-                        fatigue_cycles_trial = _fatigue_global_cycles(_active(), T) if fatigue_mode else 0.0
+                                cands = [f['last_plane']]
+                        cands = _filter_global_forward(cands)
+                        if not cands:
+                            cands = [dict(f.get('last_plane', {}), t=fwd0.copy(),
+                                          n=np.array([0.0, 1.0]), sigma_nn=0.0,
+                                          overdrive=0.0, gamma_rel=1.0,
+                                          name='global_forward_fallback')]
+                        f['cands_trial'] = cands
+                        f['win_trial'] = cands[0]
+                        f['t_trial'] = cands[0]['t']
+                        srcJ, ellJ, segsJ = _J_params_for_front(f)
+                        _, _Kraw, Jinfo = compute_J_integral(
+                            mesh, u, sigma_gp, psi_gp, d, f['xy'], f['t_trial'],
+                            mat, ell=ellJ,
+                            crack_segments=segsJ, exclude_radius=2.0 * kill_r)
+                        _Jeff, KJf, _Jsigned = _effective_JK_from_info(Jinfo)
+                        f['J_signed_trial'] = float(_Jsigned)
+                        f['J_effective_trial'] = float(_Jeff)
+                        f['J_sign_ref'] = float(Jinfo.get('J_sign_ref', 0.0))
+                        f['KJ_trial'] = max(KJf, 0.0)
+                        f['J_source_trial'] = srcJ
+                        f['J_source_code_trial'] = 0 if srcJ == 'cluster' else 1
+                        f['J_active_elems_trial'] = int(Jinfo.get('n_active_elements', 0))
                         if fatigue_mode:
-                            predicted_clock = 0.0
-                            for ff in _active():
-                                pred = ff.get('fatigue_pred_trial')
-                                if pred is not None:
-                                    dBff = float(pred.mu_cleave) * fatigue_cycles_trial
-                                    predicted_clock += dBff
-                                    if ff.get('id') == 0:
-                                        pred_primary = dBff
-                        KJ = fronts[0]['KJ_trial'] if fronts[0]['active'] else \
-                            (fronts[0].get('KJ', 0.0))
-                    else:
-                        J, KJ, _ = compute_J_integral(
-                            mesh, u, sigma_gp, psi_gp, d, np.array([a_tip, 0.0]),
-                            np.array([1.0, 0.0]), mat, ell=max(r_J_cluster_ell, 3.0 * h_local),
-                            crack_segments=_backend_crack_segments())
-                        KJ = max(KJ, 0.0)
-                        if fatigue_mode:
-                            wave_trial = FatigueWaveform(
-                                Kmax=max(float(KJ), 0.0),
-                                R=float(getattr(args, 'R', 0.1) or 0.0),
-                                frequency_Hz=float(getattr(args, 'frequency_Hz', 1.0e3) or 1.0e3),
-                                closure_clip=not bool(getattr(args, 'no_closure_clip', False)),
-                            )
-                            pred_single_trial = fatigue_controller.integrate_one_cycle(eng, wave_trial, T)
-                            diag_single_trial = _diag_with_remaining(
-                                pred_single_trial, float(getattr(args, 'block_cycles', 1.0e4) or 1.0))
-                            fatigue_cycles_trial = float(diag_single_trial.get('cycles', 0.0))
-                            fatigue_cycle_limiter_trial = str(diag_single_trial.get('limiter', 'unknown'))
-                            fatigue_cycle_unlimited_trial = float(diag_single_trial.get('unlimited_cycles', fatigue_cycles_trial))
-                            predicted_clock = pred_single_trial.mu_cleave * fatigue_cycles_trial
+                            pc = 0.0
                         else:
-                            predicted_clock = eng.predict_clock_increment(KJ, T, dt_cur)
-                        pred_primary = predicted_clock
+                            pc = f['eng'].predict_clock_increment(f['KJ_trial'], T, dt_cur)
+                        predicted_clock += pc
+                        if f['id'] == 0:
+                            pred_primary = pc
+                    fatigue_cycles_trial = _fatigue_global_cycles(_active(), T) if fatigue_mode else 0.0
+                    if fatigue_mode:
+                        predicted_clock = 0.0
+                        for ff in _active():
+                            pred = ff.get('fatigue_pred_trial')
+                            if pred is not None:
+                                dBff = float(pred.mu_cleave) * fatigue_cycles_trial
+                                predicted_clock += dBff
+                                if ff.get('id') == 0:
+                                    pred_primary = dBff
+                    KJ = fronts[0]['KJ_trial'] if fronts[0]['active'] else \
+                        (fronts[0].get('KJ', 0.0))
+                else:
+                    J, KJ, _ = compute_J_integral(
+                        mesh, u, sigma_gp, psi_gp, d, np.array([a_tip, 0.0]),
+                        np.array([1.0, 0.0]), mat, ell=max(r_J_cluster_ell, 3.0 * h_local),
+                        crack_segments=_backend_crack_segments())
+                    KJ = max(KJ, 0.0)
+                    if fatigue_mode:
+                        wave_trial = FatigueWaveform(
+                            Kmax=max(float(KJ), 0.0),
+                            R=float(getattr(args, 'R', 0.1) or 0.0),
+                            frequency_Hz=float(getattr(args, 'frequency_Hz', 1.0e3) or 1.0e3),
+                            closure_clip=not bool(getattr(args, 'no_closure_clip', False)),
+                        )
+                        pred_single_trial = fatigue_controller.integrate_one_cycle(eng, wave_trial, T)
+                        diag_single_trial = _diag_with_remaining(
+                            pred_single_trial, float(getattr(args, 'block_cycles', 1.0e4) or 1.0))
+                        fatigue_cycles_trial = float(diag_single_trial.get('cycles', 0.0))
+                        fatigue_cycle_limiter_trial = str(diag_single_trial.get('limiter', 'unknown'))
+                        fatigue_cycle_unlimited_trial = float(diag_single_trial.get('unlimited_cycles', fatigue_cycles_trial))
+                        predicted_clock = pred_single_trial.mu_cleave * fatigue_cycles_trial
+                    else:
+                        predicted_clock = eng.predict_clock_increment(KJ, T, dt_cur)
+                    pred_primary = predicted_clock
 
                 if adaptive_events and predicted_clock > adaptive_target and trial_frac > adaptive_min_frac:
                     u = u_saved; ep_gp = ep_saved; rho_gp = rho_saved; Uapp = Uapp_saved
