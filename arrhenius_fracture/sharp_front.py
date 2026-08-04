@@ -2467,6 +2467,9 @@ def run_2d(args):
                 JControllerConfig as _PFJControllerConfig,
                 solve_to_target,
             )
+            from .pf_theta0_stochastic_fingerprint_v10051840 import (
+                capture_stochastic_fingerprint as _pf_capture_fingerprint,
+            )
             _pf_full_trajectory = _pf_load_trajectory(pf_kj_target_csv)
             pf_target_trajectory = _pf_prefracture_slice(_pf_full_trajectory)
             pf_controller_config = _PFJControllerConfig(
@@ -2485,6 +2488,15 @@ def run_2d(args):
             if fatigue_mode and np.isfinite(fatigue_cycles_max) and fatigue_cycles_total_accepted >= fatigue_cycles_max - 1e-12 * max(fatigue_cycles_max, 1.0):
                 print(f"  [T={T:.0f}K] reached fatigue cycle horizon {fatigue_cycles_total_accepted:.6g} cycles")
                 break
+            # Stochastic-identity fingerprint at the start of this physical
+            # interval (FEM_CZM_HANDOFF.md section 6/8): this is also,
+            # implicitly, the "after commit" fingerprint of the PREVIOUS
+            # accepted step, since eng.step()'s hazard commit is the only
+            # thing that can change it between here and the previous
+            # iteration's own capture below.
+            _pf_fp_interval_start = (
+                _pf_capture_fingerprint(eng) if pf_target_trajectory is not None else None
+            )
             trial_frac = min(1.0, carry_frac * adaptive_grow) if adaptive_events else 1.0
             while True:
                 u_saved = u.copy()
@@ -2518,9 +2530,16 @@ def run_2d(args):
                     _pf_target_time = physical_time_accepted + dt_cur
                     _pf_target_kj = interpolate_target(
                         pf_target_trajectory, _pf_target_time, channel="KJ")
+                    _pf_fp_candidates = []
 
                     def _pf_solve_trial(_pf_Uapp_trial):
                         nonlocal u, ep_gp, rho_gp, sigma_gp, psi_gp, Ftop, seq_gp, s1_gp, dot_ep
+                        # Captured BEFORE this candidate's u/ep_gp/rho_gp
+                        # reset: this is simultaneously "before this
+                        # candidate's solve" and "after restoring the
+                        # previous candidate" (the two are the same instant
+                        # -- the reset immediately below IS the restore).
+                        _pf_fp_candidates.append(_pf_capture_fingerprint(eng))
                         u = u_saved.copy()
                         ep_gp = ep_saved.copy()
                         rho_gp = rho_saved.copy()
@@ -2561,6 +2580,31 @@ def run_2d(args):
                     KJ = _pf_result.achieved
                     dU_step = Uapp - Uapp_saved
                     h_local = mesh.hbar_tip if mesh.hbar_tip > 0 else mesh.hbar
+
+                    # Fail-closed stochastic-identity check: the interval-
+                    # start fingerprint and every candidate-entry
+                    # fingerprint (including the one taken just before the
+                    # winning trial) must be IDENTICAL. Any difference
+                    # means a trial evaluation touched RNG/threshold/B/
+                    # N_em/MPZ state that must only ever change via the
+                    # accepted-step hazard commit below -- a genuine
+                    # transactionality violation, not something to log and
+                    # continue past.
+                    _pf_fp_before_commit = _pf_capture_fingerprint(eng)
+                    _pf_all_fingerprints = [_pf_fp_interval_start] + _pf_fp_candidates + [_pf_fp_before_commit]
+                    _pf_stochastic_identity_preserved = all(
+                        _pf_all_fingerprints[0].matches(_fp) for _fp in _pf_all_fingerprints[1:]
+                    )
+                    if not _pf_stochastic_identity_preserved:
+                        raise RuntimeError(
+                            "PF KJ-target controller: stochastic identity "
+                            "(RNG/threshold/event-length/B/N_em/MPZ) changed "
+                            "during trial evaluation at step "
+                            f"{step_trial} -- a rejected or in-progress "
+                            "controller trial must never touch this state. "
+                            f"fingerprints={[f.as_dict() for f in _pf_all_fingerprints]}"
+                        )
+
                     predicted_clock = eng.predict_clock_increment(KJ, T, dt_cur)
                     pred_primary = predicted_clock
                 else:
@@ -2706,6 +2750,12 @@ def run_2d(args):
                             {'Uapp_m': float(t.Uapp), 'KJ_achieved_Pa_sqrtm': float(t.achieved)}
                             for t in _pf_result.rejected_trials
                         ],
+                        'stochastic_identity': {
+                            'interval_start': _pf_fp_interval_start.as_dict(),
+                            'per_candidate': [f.as_dict() for f in _pf_fp_candidates],
+                            'before_hazard_commit': _pf_fp_before_commit.as_dict(),
+                            'all_pretrial_fingerprints_equal': bool(_pf_stochastic_identity_preserved),
+                        },
                     })
 
             # If requested, resolve the full 2-D body through the accepted cycle

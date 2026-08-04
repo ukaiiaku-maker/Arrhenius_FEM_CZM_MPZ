@@ -179,3 +179,101 @@ def test_controller_driven_accepted_state_matches_direct_single_step_at_same_Uap
         controller_value = float(controller_steps.iloc[0][column])
         direct_value = float(direct_steps.iloc[0][column])
         assert controller_value == pytest.approx(direct_value, rel=1.0e-9), column
+
+
+def test_stochastic_identity_is_preserved_across_rejected_trials(tmp_path: Path):
+    """The mechanical/plastic proof above says nothing about the
+    stochastic Arrhenius first-passage state (RNG streams, cleavage
+    threshold, event-length factor, B, N_em, MPZ populations), which lives
+    on the front-engine object, not in the mesh arrays. This test forces
+    multiple rejected controller trials per step (already established:
+    >=2 iterations for a cold start, see the rejected-trials test above)
+    and inspects the stochastic_identity block sharp_front.run_2d now
+    writes into the controller audit JSON.
+
+    The `legacy_scalar` front engine used here has no RNG, threshold, or
+    event-length-factor state at all (that only exists on the persistent-
+    site production engine chain, unreachable without the real PF kernel
+    -- see EXTERNAL BLOCKER), so those specific fields are expected to
+    report "not_materialized" consistently. B and N_em DO exist on this
+    engine and are the real, exercised part of this proof: they must be
+    bit-identical across every candidate trial within a step.
+    """
+    out_dir = _run(tmp_path, steps=3)
+    audit = _load_audit(out_dir)
+
+    for record in audit["records"]:
+        identity = record["stochastic_identity"]
+        assert identity["all_pretrial_fingerprints_equal"] is True
+
+        interval_start = identity["interval_start"]
+        before_commit = identity["before_hazard_commit"]
+        per_candidate = identity["per_candidate"]
+        # Normally one fingerprint per solve_to_target-internal trial
+        # (== iterations), plus one extra for the cold-start seed solve
+        # at step 1 (Uapp_saved<=0), which happens outside solve_to_target
+        # and so isn't counted in its own `iterations`.
+        assert len(per_candidate) in (record["iterations"], record["iterations"] + 1)
+
+        all_fingerprints = [interval_start] + per_candidate + [before_commit]
+        for fingerprint in all_fingerprints:
+            # This engine has none of the persistent-site stochastic
+            # attributes -- confirm the helper honestly reports absence
+            # rather than fabricating a value.
+            assert fingerprint["hazard_rng_digest"] == "not_materialized"
+            assert fingerprint["cleave_threshold_action"] == "not_materialized"
+            assert fingerprint["stochastic_event_length_factor"] == "not_materialized"
+            assert fingerprint["mpz"]["digest"] == "not_materialized"
+
+        # B and N_em DO exist on this engine and must be identical across
+        # every trial within the step -- the real, exercised assertion.
+        b_values = {fp["B"] for fp in all_fingerprints}
+        n_em_values = {fp["N_em"] for fp in all_fingerprints}
+        assert len(b_values) == 1, f"B changed during trial search: {b_values}"
+        assert len(n_em_values) == 1, f"N_em changed during trial search: {n_em_values}"
+
+
+def test_stochastic_identity_violation_raises_immediately(monkeypatch, tmp_path: Path):
+    """Fail-closed check: if a candidate trial's fingerprint were to
+    differ from the interval-start fingerprint, run_2d must raise rather
+    than silently continue. Simulated by monkeypatching the fingerprint
+    capture to return a mutated B on the second call, mimicking a trial
+    that illegitimately advanced hazard state.
+    """
+    from arrhenius_fracture import sharp_front as sf
+    from arrhenius_fracture.pf_theta0_stochastic_fingerprint_v10051840 import (
+        StochasticFingerprint,
+        MPZFingerprint,
+        capture_stochastic_fingerprint,
+        NOT_MATERIALIZED,
+    )
+
+    calls = {"count": 0}
+    real_capture = capture_stochastic_fingerprint
+
+    def _tampering_capture(eng):
+        calls["count"] += 1
+        fingerprint = real_capture(eng)
+        if calls["count"] == 2:
+            return StochasticFingerprint(
+                hazard_rng_digest=fingerprint.hazard_rng_digest,
+                emission_rng_digest=fingerprint.emission_rng_digest,
+                cleave_threshold_action=fingerprint.cleave_threshold_action,
+                stochastic_event_length_factor=fingerprint.stochastic_event_length_factor,
+                B=999.0,  # illegitimately different
+                N_em=fingerprint.N_em,
+                mpz=fingerprint.mpz,
+            )
+        return fingerprint
+
+    monkeypatch.setattr(
+        "arrhenius_fracture.pf_theta0_stochastic_fingerprint_v10051840.capture_stochastic_fingerprint",
+        _tampering_capture,
+    )
+    # sharp_front imports the function by name into its own local scope
+    # inside run_2d (a fresh `from ... import ...` each call), so patching
+    # the source module's attribute above is sufficient -- no separate
+    # sharp_front-level patch target exists to monkeypatch.
+
+    with pytest.raises(RuntimeError, match="stochastic identity"):
+        _run(tmp_path, steps=1)
