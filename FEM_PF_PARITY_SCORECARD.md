@@ -1,4 +1,4 @@
-# FEM/CZM ↔ PF Parity Scorecard
+# FEM/CZM ↔ PF Physical-Correspondence Scorecard
 
 This file, not the current coding task, organizes the work. Every session
 should update it before ending. See CLAUDE.md and FEM_CZM_HANDOFF.md for
@@ -6,88 +6,298 @@ the governing contract, and CLAUDE_PROGRESS.md for narrative session-level
 detail (commits, exact commands, architecture notes). This file is the
 scientific status ledger.
 
+**Naming note (2026-08-04, corrected):** earlier entries in this file used
+the word "parity" in the strict sense of near-exact numerical agreement.
+That standard has been corrected — see "Acceptance philosophy" immediately
+below. The FEM/CZM model is not required to numerically match the PF model
+step by step or reproduce identical stochastic histories; it must exhibit
+**physical correspondence** / **cross-model consistency** with PF. Read
+older log entries below with that correction in mind rather than at face
+value — they are kept as an honest historical record, not rewritten.
+
 Reference case for all rows below unless stated otherwise: Peak
 parameterization (`v913_paper_peak01_0242980_persistent_sites`), 1000 K,
 theta=0, hazard seed 8666, PF run
 `v10_4_1_theta0_rate1x_bulk_PT_four_class_1000um_selective_reuse_base3621_v1`.
 
+## Acceptance philosophy (governs everything below)
+
+The PF and FEM/CZM formulations have different discretizations, stress
+fields, crack representations, process-zone mappings, cohesive mechanics,
+and numerical regularizations. Differences of order 10-20%, and
+potentially somewhat larger for individual quantities, may be
+scientifically acceptable when both models exhibit the same physical
+mechanisms and broad response trends. **A result should not fail merely
+because FEM differs from PF by 20%.**
+
+The primary questions, in priority order:
+
+1. Do both models predict the same fracture regime?
+2. Do both exhibit or fail to exhibit R-curve toughening consistently?
+3. Are first-passage or effective K_IC values comparable in scale?
+4. Are the temperature trends and DBTT-like behavior consistent?
+5. Is the ordering of Peak, DBTT, weak-T, and ceramic parameterizations
+   preserved?
+6. Do both models show comparable competition among plasticity, emission,
+   shielding, and cleavage?
+7. Are crack-extension events and developed-growth statistics physically
+   comparable, even when individual events differ?
+8. Can discrepancies be explained by the known differences between PF and
+   FEM/CZM representations?
+
+### Quantitative comparison bands (working diagnostic bands, not universal
+### fixed tolerances — apply tighter or looser per quantity)
+
+```text
+Excellent correspondence:  <10% difference
+Good correspondence:       10-20%
+Acceptable model-scale:    20-30%, with consistent mechanism/trend
+Significant discrepancy:   >30%, requiring explanation
+Qualitative failure:       wrong trend, wrong regime, reversed ordering,
+                           absent/present R-curve incorrectly, or a
+                           physically inconsistent mechanism
+```
+
+Individual events are stochastic, so agreement may need to be assessed
+over a regime of moderate crack extension rather than point-by-point.
+
+Guidance by quantity:
+- K_IC, first-passage K_J, and developed R-curve level: ~20% initial
+  target (Good-to-Acceptable band).
+- R-curve shape, temperature dependence, material-class ordering: judged
+  primarily by trend and mechanism, not a percentage.
+- Individual stochastic event times/lengths: not required to match.
+- Ensemble means, distributions, correlations: compare these when
+  stochastic variability matters, not single realizations.
+- Internal quantities (B, N_em, MPZ populations, plastic work): diagnostic
+  indicators. They need not agree numerically if the different
+  representations nevertheless produce consistent macroscopic behavior.
+
+### Role of controlled-K_J comparisons
+
+The controlled-K_J(t) run (the transactional PF-reference loading
+controller wired this session) is a **diagnostic experiment, not the
+final definition of success**. Matching a prescribed PF K_J(t) does not
+itself prove physical correspondence — it removes loading-rate/boundary-
+condition differences so that comparing internal responses under the same
+driving-force history becomes a fair, isolating test. It should determine
+whether major differences arise from:
+
+- external loading and boundary conditions;
+- J-integral extraction;
+- bulk plasticity;
+- MPZ representation;
+- emission kinetics;
+- cleavage hazard;
+- cohesive dissipation;
+- crack-geometry evolution.
+
+If FEM and PF internal trajectories differ under the same K_J(t),
+determine whether the difference:
+
+1. represents a genuine implementation error;
+2. follows naturally from the different model formulations;
+3. changes the macroscopic fracture response materially;
+4. can be resolved only through ensemble/statistical comparison.
+
+**Do not modify the FEM/CZM model merely to force internal variables to
+overlay the PF curves**, and do not retune parameters merely to reduce a
+numerical percentage difference when the mechanisms and macroscopic
+conclusions already agree.
+
+## Four categories of comparison
+
+```text
+Numerical correctness:
+  Does each implementation satisfy its own equations and transactional
+  contract? (Tight tolerances are appropriate here — this is not a
+  cross-model comparison at all.)
+
+Controlled-driving-force comparison:
+  How do the internal responses differ under the same J/K_J history?
+  (Diagnostic; see "Role of controlled-K_J comparisons" above.)
+
+Physical correspondence:
+  Do the models predict comparable toughness, R-curve behavior,
+  temperature trends, material-class ordering, and mechanisms?
+  (Judged against the comparison bands above.)
+
+Statistical correspondence:
+  Are event distributions and developed-growth statistics comparable
+  within stochastic variability? (Ensemble/distributional, not
+  event-by-event.)
+```
+
+For every comparison recorded in this file, report:
+- absolute and relative differences;
+- qualitative agreement (trend/regime/ordering);
+- whether the same mechanism is active in both models;
+- whether the discrepancy affects the macroscopic conclusion;
+- whether ensemble sampling is needed to judge it fairly;
+- whether the difference is acceptable, unexplained, or clearly erroneous.
+
 ## Status summary (2026-08-04, updated)
 
-**Controller infrastructure complete and now validated end-to-end against
-the real FEM engine with a synthetic target; physical FEM/PF parity still
-untested.**
+**Controller infrastructure complete and validated end-to-end against the
+real FEM engine with a synthetic target (Numerical correctness category).
+No Controlled-driving-force, Physical-correspondence, or Statistical-
+correspondence comparison against real PF data has been performed yet —
+all of that remains blocked on the frozen PF reference artifacts.**
 
-- The PF driving-force trajectory reader and the safeguarded J/KJ-target
-  controller exist, are unit-tested in isolation (18 synthetic tests
-  total across both modules), and are wired into `sharp_front.run_2d`
-  behind a default-off flag. The default (fixed-ramp) path is proven
-  bit-identical to its pre-existing behavior.
-- **New this update**: a real-engine integration test (`sharp_front.main`
-  called directly, real mesh/assembly/solve/plasticity, no PF kernel
-  needed) drove the controller against a small synthetic target KJ(t)
-  trajectory and confirmed, against the real solver: achieved KJ tracks
-  target within tolerance at every step (2-5 iterations, well under the
-  25-iteration cap); physical time is inherited from the target CSV's
-  `dt` column, not solver-step count; rejected trials are recorded and
-  precede the accepted value; repeated identical runs are bit-identical
-  (no cross-trial or cross-run state leakage). This is genuine Gate 1
-  evidence — **but against a synthetic target and the minimal
-  `legacy_scalar` front engine, not the real PF-audited configuration**,
-  so Gate 1 remains "partial," not "pass," until the same is demonstrated
-  against the real PF reference trajectory and the production front-engine
-  configuration (persistent-site MPZ, signed kernel, full-field bulk PT).
-- **No real flag-ON run against the audited PF reference data has
-  completed.** Those artifacts (`steps_1000K.csv`, kernel `family.json`)
-  are currently unavailable at their documented path — see
-  CLAUDE_PROGRESS.md's "EXTERNAL BLOCKER" section and
-  `PF_REFERENCE_REGENERATION_CONTRACT.md`.
-- **Therefore every row below Gate 1 is still "not tested" or "blocked."**
-  No claim of FEM/PF physical parity has been demonstrated at Gate 2 or
-  above.
-- Important reminder from the governing instructions: matching a
-  prescribed PF `KJ(t)` does **not** by itself prove parity. It only
-  removes loading-rate/boundary-condition differences so that Gate 2
-  (internal-state comparison at matched driving force) becomes a fair
-  test. Do not stop at "the controller runs."
+- The PF driving-force trajectory reader and the safeguarded J/K_J-target
+  controller exist, are unit-tested in isolation, wired into
+  `sharp_front.run_2d` behind a default-off flag, and validated against
+  the real FEM engine (real mesh/assembly/solve/plasticity, a fail-closed
+  stochastic-identity check across RNG/threshold/event-length/B/N_em/MPZ
+  state, and a direct-step mechanical-state-equality proof). The default
+  (fixed-ramp) path is proven bit-identical to its pre-existing behavior.
+  This is **Numerical correctness** evidence (Gate 1), appropriately held
+  to a tight tolerance (the controller's own `rel_tol`) — it is not a
+  cross-model comparison and should not be read as one.
+- **No Controlled-driving-force, Physical-correspondence, or Statistical-
+  correspondence evidence exists yet.** The PF reference artifacts
+  (`steps_1000K.csv`, kernel `family.json`) are currently unavailable at
+  their documented path — see CLAUDE_PROGRESS.md's "EXTERNAL BLOCKER"
+  section and `PF_REFERENCE_REGENERATION_CONTRACT.md` (now a complete,
+  executable regeneration request).
+- A confirmed-and-fixed AST-patcher anchor regression (see
+  CLAUDE_PROGRESS.md) is Numerical-correctness/engineering-practice
+  evidence, not a physics finding — recorded in the session log below for
+  completeness but not part of the physical-correspondence assessment.
 
 ## Gate ladder status
 
-| Gate | Description | Status | Notes |
-|---|---|---|---|
-| 1 | Controlled prefracture mechanics (controller numerics) | **partial** | Predictor/secant logic validated by 11 synthetic-callback unit tests. Now ALSO validated by 4 real-engine integration tests (`99f6e5c`): real mesh/solve/plasticity, synthetic target, achieved KJ tracks target within tolerance, practical iteration counts (2-5 of 25), physical time correctly inherited from target `dt`, bit-identical across repeats. Remaining gap to "pass": same demonstration against the real PF reference trajectory and the production front-engine configuration (persistent-site MPZ + signed kernel + full-field bulk PT), not yet possible — see EXTERNAL BLOCKER. |
-| 2 | Prefracture internal-state parity (B, N_em, plastic work, MPZ) | **blocked** | Requires a completed Gate-1 real run against real PF reference data. |
-| 3 | Stochastic first-passage parity | **blocked** | Same. |
-| 4 | First-event FEM/CZM transaction audit | **blocked** | Same; also requires the controller audit-output fields (FEM_CZM_HANDOFF.md §8) to be implemented — not yet done. |
-| 5 | Short-growth parity (20-50 µm) | **not tested** | Not reached. |
-| 6 | Intermediate/long growth (400 µm, 1000 µm) | **not tested** | Not reached. |
-| 7 | Four immutable material classes | **not tested** | Not reached. |
-| 8 | Temperature dependence | **not tested** | Not reached. |
+| Gate | Description | Category | Status | Notes |
+|---|---|---|---|---|
+| 1 | Controlled prefracture mechanics (controller numerics) | Numerical correctness | **partial** | Predictor/secant logic validated by 11 synthetic-callback unit tests, plus real-engine tests (audit output, rejected-trial recording, determinism, direct-step state equality, stochastic-identity preservation) — all against a synthetic target and the minimal front engine, not yet the real PF trajectory/production configuration. This gate legitimately keeps a tight tolerance (the controller's own `rel_tol`) since it is not a cross-model comparison. |
+| 2 | Prefracture internal-state comparison (B, N_em, plastic work, MPZ) | Controlled-driving-force comparison | **blocked** | Requires Gate 1 against real PF data. Acceptance is mechanism/trend-based, not numerical equality — see "Revised Gate 2 interpretation" below. |
+| 3 | First-passage comparison (time, J, K_J, mechanism) | Physical correspondence (+ statistical, since stochastic) | **blocked** | Judge K_J,FP scale against the ~20% band; do not require exact time/value match. |
+| 4 | First-event FEM/CZM transaction audit | Numerical correctness (of the FEM implementation's own contract) | **blocked** | Not a PF comparison — does the FEM transaction (hazard crossing → event proposal → energy gate → cohesive commit → renewal) satisfy its own stated contract. Requires the Gate 3/4 event-audit schema (defined, unpopulated — see `pf_theta0_first_passage_event_audit_v10051840.py`) to be wired to a real event. |
+| 5 | Short-growth statistics (20-50 µm) | Statistical correspondence | **not tested** | Event-by-event identity not required; compare distributions/statistics over the interval. |
+| 6 | Intermediate/long growth (400 µm, 1000 µm) | Statistical correspondence | **not tested** | Same, over a longer interval — developed R-curve level, not per-event match. |
+| 7 | Four immutable material classes | Physical correspondence | **not tested** | Ordering and characteristic shape, not per-value fit. |
+| 8 | Temperature dependence | Physical correspondence | **not tested** | Transition location/shape and ordering, judged by trend. |
 
-## Parity quantity table
+### Revised Gate 1 interpretation
 
-| Quantity | PF reference | FEM/CZM result | Metric | Tolerance | Status | Dominant discrepancy | Likely subsystem | Supporting run / commit | Next experiment |
-|---|---|---|---|---|---|---|---|---|---|
-| Driving force J(t), KJ(t) | `steps_1000K.csv` (176 prefracture rows before first passage; captured this session, live copy currently unavailable — see blocker) | Fixed-ramp baseline reaches only KJ=11.37 MPa√m by step 9400 (extrapolated ~145,000 steps to first passage). Against a **synthetic** target with the real engine: achieved KJ matches target within ~2e-3 relative at every step (`99f6e5c`). Against the **real PF target**: none yet. | RMSE / relative error of achieved vs. target KJ(t) | ≤ controller `rel_tol`=1e-3 by construction, confirmed achievable against synthetic target | **partial** (synthetic target only) / **blocked** (real PF target) | Real PF target not yet run | loading/controller | Phase 0 archived baseline; `ad2c446` (wiring); `99f6e5c` (real-engine synthetic-target evidence) | Recover frozen reference (see regeneration contract), then repeat this exact test against the real PF row-176 prefracture trajectory |
-| Bulk plasticity Wp(t), ep, rho, active volume | Not yet extracted from PF steps table (columns exist: `W_bulk_plastic_cumulative_J_per_m` etc.) | Not tested | Time series comparison at matched physical time | not yet defined | not tested | — | bulk plasticity / Peierls-Taylor kinetics | none | After Gate 1: extract PF `W_bulk_plastic_cumulative_J_per_m` and FEM equivalent at matched t |
-| Moving-tip MPZ populations/translation | Not yet extracted | Not tested | Population time series | not yet defined | not tested | — | moving process zone | none | Same |
-| Emission N_em(t), hazard/action | PF `N_em` column exists in steps table | Not tested | Time series | not yet defined | not tested | — | emission hazard | none | Same |
-| Cleavage B(t), threshold, accumulated action | PF `B` column exists in steps table | Not tested | Time series | not yet defined | not tested | — | cleavage hazard | none | Same |
-| First passage: time, J, KJ, threshold identity | J≈6531 J/m², KJ≈53.9019 MPa√m at PF row 176 (step 177, t=1486.8s) — captured exactly this session | Not tested (fixed ramp never reaches it in a practical step count; controller not yet run) | Relative error in J_FP, KJ_FP; first-passage time comparison | ε_J,FP tolerance not yet defined (handoff suggests "comparable", no numeric bound given yet) | **blocked** | n/a | loading/controller, then cleavage hazard | Phase 0 (fixed-ramp extrapolation); Phase 1 (`7562911`, exact PF row located) | Gate 3 once Gate 1/2 pass |
-| Event proposal: length factor, physical length, endpoint | PF event-length draw mechanism (threshold_scaled, factor range 0.5-4.0 per production env vars) | Not tested | Exact identity where seeded identically; distribution otherwise | not yet defined | not tested | — | event-length law | none | Gate 4 first-event audit |
-| Energy gate: available vs. required | Not yet extracted | Not tested | — | not yet defined | not tested | — | energy gate | none | Gate 4 |
-| Cohesive transaction: trial/commit/veto/rollback identity | n/a (PF has no cohesive geometry; sharp-wake backend) | FEM atomic path-corridor CZM backend exists and is exercised by existing focused tests (unrelated to the new controller) | Existing gate-quality regression only | existing v3.9 tolerances (triangle quality ≥0.035, area ratio ≥0.08) | not tested (for controller-driven steps specifically) | — | cohesive representation / geometry-remeshing | `test_atomic_path_corridor_v10051839.py` (pre-existing, still passing) | Gate 4 audit under controller-driven loading specifically |
-| Geometry: tip position, path, mesh quality | n/a | Existing mesh-quality gates pass in isolation (pre-existing tests) | — | existing | not tested (under controller) | — | geometry/remeshing | pre-existing tests | Gate 4/5 |
-| Renewal: new threshold, B reset, MPZ update | Not yet extracted | Not tested | — | not yet defined | not tested | — | cleavage hazard / MPZ | none | Gate 4 |
-| Post-event continuation | n/a | Not tested | Does the next accepted step succeed after a commit? | pass/fail | not tested | — | state transfer / restart | none | Gate 4 |
-| Short growth (20-50 µm) event history | PF event statistics not yet extracted | Not tested | Event count, length distribution, spacing, J/KJ at events | not yet defined | not tested | — | multiple (see gate 5 checklist) | none | After Gate 4 passes |
-| Intermediate growth (400 µm) | Not yet extracted | Not tested | Developed statistics (distributions, not per-event identity) | not yet defined | not tested | — | multiple | none | After Gate 5 |
-| Long growth (1000 µm) | Not yet extracted | Not tested | Same | not yet defined | not tested | — | multiple | none | After Gate 6a |
-| Four-class response (Peak/DBTT/weakT/ceramic) | PF ordering/characteristic behavior not yet extracted for classes other than Peak | Not tested | Ordering + characteristic shape, not per-value fit | not yet defined | not tested | — | material-row transfer / common numerics | none | After Gate 6 |
-| Temperature response (transition shape/ordering) | PF temperature sweep not yet extracted | Not tested | Transition location/shape, ordering | not yet defined | not tested | — | multiple | none | After Gate 7 |
+Gate 1 still requires the controller itself to track the requested K_J(t)
+accurately. This is a **numerical-controller** requirement (does the
+controller solve its own well-posed root-finding problem correctly) and
+legitimately retains a tight tolerance — it says nothing about FEM/PF
+physical correspondence by itself.
+
+### Revised Gate 2 interpretation
+
+Gate 2 does **not** require B(t), N_em(t), plastic work, or MPZ state to
+match PF exactly. Compare them to identify mechanistic similarities and
+differences. A Gate 2 result may **pass** when:
+
+- the same mechanisms activate in the same general loading regime;
+- the evolution is qualitatively consistent;
+- differences have a defensible physical or representational explanation;
+- the resulting first-passage toughness and subsequent growth behavior
+  remain comparable.
+
+## Physical-correspondence quantity table
+
+Columns: PF reference value/trajectory; FEM/CZM value/trajectory;
+comparison metric; comparison band applied (from the bands above, not a
+fixed tolerance); status (not tested / excellent / good / acceptable /
+significant-discrepancy / qualitative-failure / blocked); whether the
+same mechanism is active in both; dominant discrepancy if any; likely
+subsystem; supporting run/commit; exact next experiment.
+
+| Quantity | PF reference | FEM/CZM result | Metric | Comparison band | Status | Same mechanism? | Dominant discrepancy | Likely subsystem | Supporting run / commit | Next experiment |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Driving force J(t), K_J(t) (controller tracking, Numerical correctness only — not a PF comparison) | n/a for this row — see "Driving force under real PF target" below for the actual cross-model row | Synthetic-target real-engine test: achieved K_J matches target within ~2e-3 relative at every step | Relative error of achieved vs. target K_J(t) | N/A (numerical-controller tolerance, not a comparison band) | excellent (controller numerics only) | n/a | Real PF target not yet run | loading/controller | `ad2c446` (wiring); `99f6e5c`, `12b02e6` (real-engine evidence) | Recover frozen reference, then populate the row below |
+| Driving force under real PF target (actual Controlled-driving-force-comparison row) | `steps_1000K.csv` (176 prefracture rows before first passage; captured this session, live copy currently unavailable) | Fixed-ramp baseline (pre-existing defect): reaches only K_J=11.37 MPa√m by step 9400 (extrapolated ~145,000 steps to first passage) | Achieved vs. target K_J(t) once the controller runs against real PF data | ~20% initial target once populated | **blocked** | n/a yet | n/a yet | loading/controller | Phase 0 archived baseline | Recover frozen reference (see regeneration contract), run the controller against the real PF row-176 prefracture trajectory |
+| Bulk plasticity Wp(t), ep, rho, active volume | PF `W_bulk_plastic_cumulative_J_per_m` etc. exist in steps table | Not tested | Trend/mechanism comparison at matched physical time under Controlled-driving-force run; NOT required to overlay numerically | Diagnostic only — no fixed band; judge by mechanism | not tested | n/a | — | bulk plasticity / Peierls-Taylor kinetics | none | After Gate 1: extract PF `W_bulk_plastic_cumulative_J_per_m` and FEM equivalent, compare trend not value |
+| Moving-tip MPZ populations/translation | Not yet extracted | Not tested | Population trend comparison | Diagnostic only | not tested | n/a | — | moving process zone | none | Same |
+| Emission N_em(t), hazard/action | PF `N_em` column exists | Not tested | Trend/regime comparison | Diagnostic only | not tested | n/a | — | emission hazard | none | Same |
+| Cleavage B(t), threshold, accumulated action | PF `B` column exists | Not tested | Trend/regime comparison | Diagnostic only | not tested | n/a | — | cleavage hazard | none | Same |
+| First-passage: time, J, K_J | J≈6531 J/m², K_J≈53.9019 MPa√m at PF row 176 (step 177, t=1486.8s) — captured this session | Not tested (fixed ramp never reaches it in a practical step count; controller not yet run against real data) | Relative difference in K_J,FP scale (not exact time/value match) | ~20% initial target (Good-to-Acceptable) | **blocked** | n/a | n/a | loading/controller, then cleavage hazard | Phase 0 (fixed-ramp extrapolation); Phase 1 (`7562911`, exact PF row located) | Gate 3 once Gate 1/2 pass |
+| Event proposal: length factor, physical length, endpoint | PF event-length draw (threshold_scaled, factor range 0.5-4.0) | Not tested | Distributional comparison over moderate extension, not per-event identity | Statistical correspondence — no fixed band, assess distribution overlap | not tested | n/a | — | event-length law | none | Gate 5/6, ensemble-level |
+| Energy gate: available vs. required | Not yet extracted | Not tested | Trend/mechanism (does the gate activate in the same regime) | Diagnostic only | not tested | n/a | — | energy gate | none | Gate 4 |
+| Cohesive transaction: trial/commit/veto/rollback identity | n/a (PF uses sharp-wake, no cohesive geometry) | FEM atomic path-corridor CZM backend exercised by pre-existing focused tests | Numerical correctness of the FEM implementation's own contract — not a PF comparison | N/A (own-contract check) | not tested (for controller-driven steps specifically) | n/a | — | cohesive representation / geometry-remeshing | `test_atomic_path_corridor_v10051839.py` (pre-existing, passing) | Gate 4 audit under controller-driven loading |
+| Geometry: tip position, path, mesh quality | n/a | Existing mesh-quality gates pass in isolation | Numerical correctness (own-contract) | N/A | not tested (under controller) | n/a | — | geometry/remeshing | pre-existing tests | Gate 4/5 |
+| Renewal: new threshold, B reset, MPZ update | Not yet extracted | Not tested | Mechanism comparison | Diagnostic only | not tested | n/a | — | cleavage hazard / MPZ | none | Gate 4 |
+| Post-event continuation | n/a | Not tested | Does the next accepted step succeed after a commit (own-contract, pass/fail) | N/A | not tested | n/a | — | state transfer / restart | none | Gate 4 |
+| Short growth (20-50 µm) event history | PF event statistics not yet extracted | Not tested | Ensemble statistics: event count, length distribution, spacing, J/K_J at events | Statistical correspondence — distributional overlap | not tested | n/a | — | multiple | none | After Gate 4 passes |
+| Intermediate growth (400 µm) | Not yet extracted | Not tested | Developed R-curve level and shape, not per-event identity | ~20-30% band on level; trend on shape | not tested | n/a | — | multiple | none | After Gate 5 |
+| Long growth (1000 µm) | Not yet extracted | Not tested | Same | Same | not tested | n/a | — | multiple | none | After Gate 6a |
+| Four-class response (Peak/DBTT/weakT/ceramic) | PF ordering/characteristic behavior not yet extracted beyond Peak | Not tested | Ordering + characteristic shape, NOT per-value fit | Qualitative (ordering preserved = pass; reversed ordering = qualitative failure) | not tested | n/a | — | material-row transfer / common numerics | none | After Gate 6 |
+| Temperature response (transition shape/ordering) | PF temperature sweep not yet extracted | Not tested | Transition location/shape and ordering, judged by trend | Qualitative | not tested | n/a | — | multiple | none | After Gate 7 |
+
+## Revised long-term acceptance
+
+The main FEM/CZM objective should be considered successful when it
+independently produces:
+
+- physically stable first-passage fracture;
+- energy-consistent cohesive crack growth;
+- moving-tip plasticity and shielding;
+- R-curve development comparable to PF where PF predicts it;
+- comparable K_IC or effective toughness scale, initially targeting
+  roughly 20%;
+- consistent temperature-dependent trends;
+- consistent material-class ordering;
+- stable 20-50 µm, 400 µm, and eventually 1000 µm growth;
+- robust restart and transactional behavior.
+
+**Exact event-by-event or seed-by-seed identity is neither expected nor
+required.** Do not retune parameters merely to reduce a numerical
+percentage difference when the mechanisms and macroscopic conclusions
+already agree.
 
 ## Session reporting log
 
 Newest entry first. Use the required form from the governing instructions.
+Entries before 2026-08-04's correction use the older, stricter "parity"
+framing in places — read them through the "Acceptance philosophy" above,
+not at face value.
+
+### 2026-08-04 (continued — acceptance standard corrected to physical correspondence)
+
+```text
+Highest completed gate:      None (Gate 1 still partial; nothing above
+                              Gate 1 has been attempted, so the stricter-
+                              vs-looser standard hasn't yet been exercised
+                              against real data).
+Current gate:                Gate 1 (Numerical correctness).
+Real PF reference available?: No -- still blocked.
+Production configuration exercised?: No.
+Largest discrepancy:         None assessed this entry -- this was a
+                              documentation/framework correction, not a
+                              new experiment. Corrected FEM_PF_PARITY_SCORECARD.md
+                              to replace strict numerical-parity language
+                              with a physical-correspondence standard
+                              (comparison bands: <10% excellent, 10-20%
+                              good, 20-30% acceptable with consistent
+                              mechanism, >30% significant discrepancy
+                              requiring explanation, qualitative failure
+                              for wrong trend/regime/ordering). Added the
+                              four-category taxonomy (Numerical
+                              correctness / Controlled-driving-force
+                              comparison / Physical correspondence /
+                              Statistical correspondence) and revised
+                              Gate 1/2 interpretation text.
+Subsystem implicated:        Documentation/acceptance-criteria framework,
+                              not a physics or code subsystem.
+Evidence:                    N/A (no new experiment this entry).
+Commit(s):                   (see CLAUDE_PROGRESS.md for the exact hash
+                              of this documentation update)
+Exact next scientific experiment: Unchanged from the prior entry --
+                              recover/regenerate the frozen PF bundle,
+                              then run Gate 1 for real against the
+                              production front-engine configuration.
+                              Once real PF data is available, apply THIS
+                              corrected standard (bands + mechanism
+                              trends, not exact equality) when judging
+                              Gate 2 and above -- do not hold internal
+                              state variables to numerical-equality
+                              standards the governing instructions
+                              explicitly reject.
+```
 
 ### 2026-08-04 (continued — stochastic-identity fingerprint + anchor regression found and fixed)
 

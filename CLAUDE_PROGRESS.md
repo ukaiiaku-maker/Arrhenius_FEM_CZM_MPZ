@@ -1,11 +1,22 @@
 # Claude progress
 
 - Updated: 2026-08-04 (session continuation — real-engine controller
-  audit output, stochastic-identity fingerprint, and a confirmed-and-fixed
-  AST-patcher anchor regression added this continuation; see
-  `FEM_PF_PARITY_SCORECARD.md` for the scientific status ledger, which now
-  organizes ongoing work per explicit user instruction. This file remains
-  the narrative/commit/environment record.)
+  audit output, stochastic-identity fingerprint, a confirmed-and-fixed
+  AST-patcher anchor regression, and a corrected acceptance standard
+  added this continuation; see `FEM_PF_PARITY_SCORECARD.md` for the
+  scientific status ledger, which now organizes ongoing work per explicit
+  user instruction. This file remains the narrative/commit/environment
+  record.)
+- **IMPORTANT — acceptance standard corrected**: the FEM/CZM model is
+  NOT required to numerically match PF step-by-step or reproduce
+  identical stochastic histories. The standard is now **physical
+  correspondence / cross-model consistency**: comparable fracture regime,
+  toughness scale (~20% initial target), R-curve trend, temperature
+  trends, and material-class ordering — not exact numerical agreement.
+  See `FEM_PF_PARITY_SCORECARD.md`'s "Acceptance philosophy" section for
+  the full comparison-band framework before judging any future Gate 2+
+  result. Do not retune parameters merely to reduce a percentage
+  difference when mechanisms and macroscopic conclusions already agree.
 - Repository: /Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude
 - Branch: claude/v10.0.5.18.4.0-j-controlled-loading
 - Development workflow: all source-code development is version-controlled
