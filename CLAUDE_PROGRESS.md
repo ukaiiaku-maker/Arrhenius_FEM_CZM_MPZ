@@ -1,6 +1,6 @@
 # Claude progress
 
-- Updated: 2026-08-03 22:03 PDT
+- Updated: 2026-08-03 22:40 PDT
 - Repository: /Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude
 - Branch: claude/v10.0.5.18.4.0-j-controlled-loading
 - HEAD: ad06e4c4197f768e3e3f2b182228afafce2b703e at start of session
@@ -26,8 +26,13 @@
 ## Current phase
 
 Phase 0 (provenance/baseline) is **complete**. Phase 1 (PF driving-force
-trajectory reader) is **complete**. Not yet started: Phase 2 (transactional
-J-controlled loading controller).
+trajectory reader) is **complete**. Phase 2a (the controller's decision
+logic: predictor + safeguarded secant + tolerance/iteration bookkeeping,
+as a standalone FEM-independent module) is **complete**. Phase 2b (wiring
+that controller into the real `sharp_front.run_2d` step loop) is **not
+started** — this is the next task and is the highest-risk remaining step;
+see "sharp_front.py architecture" and "Exact next command" below before
+touching that file.
 
 ## Phase 0 — completed findings
 
@@ -119,26 +124,163 @@ hazard state, RNG, or mesh. It is the input Phase 2's transactional
 controller will consume to compute `J_target(t)` at each candidate solver
 step.
 
+## sharp_front.py architecture (researched this session — expensive to
+## re-derive; read this before touching sharp_front.py)
+
+`arrhenius_fracture/sharp_front.py::run_2d(args)` is the **single shared
+step loop** for the entire `mode_i_first_passage_*` family. ~15 other
+modules (`kinetic_progressive_2d_v10/v1002/v1003.py`,
+`mode_i_first_passage_v9_18_5.py`,
+`mode_i_first_passage_v10_0_5_3_fatigue_audited.py`,
+`mode_i_first_passage_v10_0_5_5_stochastic_vhcf.py`, etc.) do not call a
+different loop — they `inspect.getsource(sharp_front.run_2d)` and
+AST/text-patch it, or monkey-patch pieces of it, to build progressively
+specialized variants. **Treat `run_2d`'s source text as load-bearing for
+other modules, not just for its own behavior** — an edit that changes
+matched text patterns could silently break unrelated wrapper modules.
+
+The production entry chain for this workspace's target case is:
+`mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py:46`
+→ `..._parity.py:298 main()` (monkey-patches policy/defaults) →
+`_base.main` (`mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor`) →
+... → `sharp_front.py:1095 run_2d`.
+
+Inside `run_2d`, the per-step structure (theta=0, non-deflect, non-fatigue
+path, which is what the Peak/1000K/seed8666 case uses):
+- Outer loop: `while step < args.steps:` at **`sharp_front.py:2451`**.
+- Inner trial loop: `while True:` at **`sharp_front.py:2456`**.
+  - **Already snapshots** `u_saved = u.copy(); ep_saved = ep_gp.copy();
+    rho_saved = rho_gp.copy(); Uapp_saved = Uapp_accepted` at
+    **lines 2457-2460**.
+  - Fixed ramp applied at **line 2472**: `dU_step = cfg.loading.dU_top *
+    trial_frac` (production forces `--dU 2.0e-7`), then `Uapp = Uapp_saved
+    + dU_step` (line 2473).
+  - FEM solve: `assemble_mechanics`/`solve_dirichlet`/`update_plasticity`
+    inside an `n_stagger` loop at **lines 2477-2492**. `update_plasticity`
+    DOES mutate `ep_gp`/`rho_gp` even during a "trial" — but this is safe
+    because of the snapshot above.
+  - KJ computed (non-deflect path) at **lines 2554-2557**:
+    `J, KJ, _ = compute_J_integral(mesh, u, sigma_gp, psi_gp, d,
+    np.array([a_tip, 0.0]), np.array([1.0, 0.0]), mat, ell=..., ...)`.
+  - **Only existing accept/reject** at **lines 2581-2586**: rejects only if
+    `predicted_clock > adaptive_target` (a hazard-clock/CFL safety check,
+    NOT a KJ-target check); on reject it restores `u, ep_gp, rho_gp, Uapp`
+    from the saved copies and shrinks `trial_frac`; on accept it `break`s.
+  - **Key finding**: front-engine hazard/RNG/MPZ state (`B`, `N_em`,
+    `_hazard_rng`, `_emission_rngs`, event-length draw, etc.) is only
+    touched **after** this trial loop breaks (step commit, further down in
+    `run_2d`, not yet located precisely). It is NOT read or written during
+    trial evaluation for the non-deflect path. This means: **a KJ-target
+    retry loop that replaces/extends the lines-2581-2586 accept condition
+    gets full transactionality for free from the existing
+    u_saved/ep_saved/rho_saved/Uapp_saved scaffolding** — no additional
+    front-engine snapshot is needed for the retry loop itself, because
+    front-engine state simply isn't mutated yet at that point. (A full
+    front-engine `_capture_state()`/`_restore_state()` — see below — would
+    only become necessary if a future change moves hazard integration
+    earlier into the trial loop; it is not necessary for the currently
+    planned integration.)
+
+Full front-engine transactional snapshot/restore already exists (for a
+different purpose — internal microstepping retries — but is the reference
+implementation if ever needed): `_capture_state()`/`_restore_state()`
+rooted at `persistent_site_moving_tip_v100515.py:71-115`, subclassed at
+`persistent_site_stochastic_tip_v100516.py:188` (adds hazard RNG
+`bit_generator.state`, threshold/action/event-index, event-length draw),
+`persistent_site_stochastic_emission_v100518.py:331` (adds per-slip-system
+emission RNGs + thresholds), etc. Do **not** use
+`arrhenius_fracture/cohesive_trial_state.py::KineticCZMTransactionSnapshot`
+for this — it is gated on `state_model == 'kinetic_campaign_czm'` and
+`ARRHENIUS_CZM_OPENING_COUPLING == 'clock_linear'`, neither of which the
+theta0 production entry sets (it uses `front_state_model = 'moving_pz'`
+and the `atomic_path_corridor_czm` backend) — that transaction class is
+simply not wired into this production path.
+
+`compute_J_integral` (`j_integral.py:50`) is pure/read-only given
+`(mesh, u, sigma_gp, psi_gp, d, ...)`. `solve_dirichlet` (`fem.py:173`)
+returns a new array and doesn't mutate inputs. So a trial evaluation
+(assemble → solve → optionally update_plasticity → compute_J_integral) is
+exactly what `solve_trial(Uapp) -> KJ` in the new controller module
+expects, matching the existing trial-loop body almost verbatim.
+
+There is no pre-existing KJ/J-target retry loop anywhere in the codebase.
+The closest prior art is `mixed_mode_first_passage_v8.py`'s safeguarded
+secant controller for mode-mixity phase angle (`safeguarded_alpha_update`,
+line ~89), but that wraps an entire `sf.run_2d(args)` call from outside
+via monkey-patched `femmod.solve_dirichlet`/`jimod.compute_J_integral`,
+not a per-step inner-loop retry — architecturally a different pattern
+than what's needed here (we need to seek a target within one step, not
+across a whole run).
+
+## Phase 2a — completed: standalone J/KJ-target controller decision logic
+
+New module: `arrhenius_fracture/pf_theta0_j_controlled_loading_v10051840.py`
+- `elastic_predictor(Uapp_old, achieved_old, target, power, achieved_min)` —
+  `U_new = U_old * (target/max(achieved_old, achieved_min))**(1/power)`.
+  `channel_power_for("J")==2.0` reduces this to the handoff's literal
+  square-root formula; `channel_power_for("KJ")==1.0` gives the equivalent
+  linear form (since KJ ~ sqrt(J) ~ U in the elastic prefracture regime).
+- `solve_to_target(Uapp_initial, achieved_initial, target, solve_trial,
+  config)` — the safeguarded predictor+secant loop: predicts, calls the
+  caller's `solve_trial` callback, checks tolerance, and on rejection
+  falls back to a secant correction (bounded by `max_growth_ratio`/
+  `max_shrink_ratio` per iteration — the "bounded secant/proportional
+  correction" the handoff requires), capped at `max_iterations`. Never
+  raises on non-convergence — returns `converged=False` with the
+  best-effort last trial so the caller can decide (e.g. right-censor the
+  step, matching the `control_state: right_censored_endpoint` convention
+  already used elsewhere in this codebase's run outputs).
+- Returns `JControlledStepResult` with the full `trials` history
+  (`TrialRecord` per iteration, `accepted` flag) so a caller/audit can
+  record every rejected trial's `(Uapp, achieved)` pair — feeding directly
+  into the event-resolved audit table FEM_CZM_HANDOFF.md section 8 asks
+  for (`target J`, `achieved J`, `controller iteration count`, etc.).
+- **Deliberately does not touch FEM state, mesh, plasticity, MPZ, hazard,
+  or RNG** — it is pure scalar control logic, dependency-injected via
+  `solve_trial`. This was a deliberate scope decision this session: wiring
+  it into the monolithic, AST-patched `run_2d` is materially riskier and
+  deserves its own dedicated step with a real production smoke test, not
+  a rushed edit bundled with writing the algorithm itself.
+
+Regression test: `tests/test_pf_theta0_j_controlled_loading_v10051840.py`
+— 11/11 passing. Covers: predictor formula reduction to the handoff's
+literal sqrt form (J channel) and its linear KJ-channel equivalent; exact
+1-iteration convergence for a synthetic linear response; secant-refined
+convergence for a synthetic nonlinear (softening) response; safeguard
+clamping of an oversized predictor jump; graceful (non-exception)
+non-convergence reporting under a pathological constant-response
+callback; zero-call short-circuit when already within tolerance; the
+achieved_min floor preventing division-by-zero from a Uapp=0/achieved=0
+rest state; rejected-trials bookkeeping; and config validation.
+
 ## Files changed this session
 
 - New: `arrhenius_fracture/pf_theta0_driving_force_trajectory_v10051840.py`
+  (Phase 1, committed at 7562911)
 - New: `tests/test_pf_theta0_driving_force_trajectory_v10051840.py`
+  (Phase 1, committed at 7562911)
+- New: `arrhenius_fracture/pf_theta0_j_controlled_loading_v10051840.py`
+  (Phase 2a, not yet committed as of this update)
+- New: `tests/test_pf_theta0_j_controlled_loading_v10051840.py`
+  (Phase 2a, not yet committed as of this update)
 - Modified: `CLAUDE_PROGRESS.md` (this file)
 - Untracked, not committed: `runs/phase0_slow_ramp_reproduction_smoke_20260803/`
   (local smoke-run output; `runs/` stays out of git per CLAUDE.md)
 
 ## Commits created
 
-Pending this update — the plan is to commit the two new files together as
-`feat: add PF driving-force trajectory reader` (one of the milestones
-CLAUDE.md suggests verbatim), including this CLAUDE_PROGRESS.md update.
-Check `git log --oneline -3` for the actual resulting hash.
+- `7562911` — `feat: add PF driving-force trajectory reader` (Phase 1).
+- Pending this update: a second commit for the two Phase 2a files, planned
+  message `feat: add safeguarded J/KJ-target loading controller`. Check
+  `git log --oneline -3` for the actual resulting hash after this update
+  is committed.
 
 ## Tests run
 
 - 19/19 Phase 0 focused tests (see list above).
-- 7/7 new Phase 1 trajectory-reader tests.
-- 26/26 combined (Phase 0 set + Phase 1 test) run together — no
+- 7/7 Phase 1 trajectory-reader tests.
+- 11/11 Phase 2a controller tests.
+- 37/37 combined (Phase 0 set + both new test files) run together — no
   interaction/import-order issues.
 
 ## Simulations run
@@ -151,12 +293,15 @@ Check `git log --oneline -3` for the actual resulting hash.
 
 ## Latest accepted physical state
 
-No FEM/CZM solver source code has been modified yet — only a new read-only
-trajectory-reader module was added. The archived + freshly reproduced
+**`sharp_front.py` (the real FEM/CZM solver loop) has still not been
+modified.** Both new modules this session (Phase 1 reader, Phase 2a
+controller logic) are pure, read-only/side-effect-free additions that sit
+beside the solver, not inside it. The archived + freshly reproduced
 slow-ramp evidence (step 9400, KJ=11.4 MPa√m, B=0, N_em=0, no growth) is
-the accepted Phase 0 baseline confirming the reported defect. The PF
-prefracture target trajectory (176 rows, up to KJ=53.9 MPa√m) is now
-available in-code as the Phase 2 controller's reference input.
+still the accepted Phase 0 baseline. The PF prefracture target trajectory
+(176 rows, up to KJ=53.9 MPa√m) and a tested, FEM-independent
+predictor+secant target-seeking algorithm are now both available in-code,
+ready to be wired into `run_2d`.
 
 ## Latest numerical blocker
 
@@ -166,9 +311,11 @@ extrapolated to first passage). This is a controller problem, not a
 hazard/kernel/mesh problem — none of B, N_em, or crack extension have
 moved yet at step 9400. Root cause per FEM_CZM_HANDOFF.md §5: FEM and PF
 geometries have different compliance, so equal dU/dt does not produce
-equal dJ/dt. Not yet fixed — that is Phase 2's job. No FEM/CZM solver code
-has been touched to address it yet; only the read-only target-trajectory
-input Phase 2 will consume has been built and tested.
+equal dJ/dt. **Still not fixed** — the fix requires editing
+`sharp_front.py::run_2d`'s trial loop (lines ~2456-2586, see architecture
+notes above), which has not happened yet this session. Only the two
+supporting modules it will call (trajectory reader, controller) have been
+built and tested in isolation.
 
 ## Failed approaches that should not be repeated
 
@@ -190,39 +337,52 @@ input Phase 2 will consume has been built and tested.
 
 ## Exact next command
 
-1. Design and implement Phase 2: the transactional trial-solve controller.
-   Concretely: a function that, given the current accepted FEM/hazard/MPZ
-   state and a target `(physical_time_s, KJ_target)` pair from
-   `prefracture_slice(...)`, (a) predicts a trial boundary displacement via
-   the elastic square-root predictor
-   `U_new = U_old * sqrt(KJ_target / max(KJ_old, KJ_min))` (note: the
-   handoff's predictor formula is written in terms of J; since
-   `KJ ∝ sqrt(J)`, the equivalent KJ-based predictor is
-   `U_new = U_old * (KJ_target / max(KJ_old, KJ_min))`, i.e. linear in KJ,
-   not sqrt — verify which the codebase's existing J vs. KJ solve path
-   expects before choosing), (b) solves the FEM system at the trial U,
-   (c) compares achieved KJ against target within a tolerance, (d) applies
-   a safeguarded secant/proportional correction and retries if outside
-   tolerance, (e) on acceptance, integrates hazard/plasticity state over
-   the actual elapsed physical time and localizes any stochastic crossing
-   strictly inside the interval, (f) on rejection, restores exact prior
-   state (bulk plastic strain, forest density, MPZ populations, B,
-   thresholds, event-length draw, geometry, cohesive state, RNG) with zero
-   net change. Before writing solver-loop-integration code, first locate
-   where the existing production entry
-   (`mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py`)
-   currently applies the fixed `dU` ramp per step, and how it already
-   captures/restores state on a rejected trial solve (the atomic cohesive
-   commit/rollback machinery in `cohesive_trial_state.py` /
-   `KineticCZMTransactionSnapshot` likely has the pattern to extend, per
-   FEM_CZM_HANDOFF.md §6 — read that before designing a new snapshot
-   mechanism from scratch).
-2. Add a focused regression proving state is bit-identical before and
-   after a rejected controller trial (no hazard/RNG/MPZ/plastic drift).
-3. Wire the controller into a new or flagged production-entry variant
-   (do not silently change the existing archived-baseline entry point's
-   default behavior without a flag, so the Phase 0 slow-ramp reproduction
-   remains re-runnable for comparison).
+Phase 2b: wire `pf_theta0_j_controlled_loading_v10051840.solve_to_target`
+into `sharp_front.py::run_2d`'s trial loop. This is the highest-risk step
+remaining (editing a monolithic function that ~15 other modules
+AST/text-patch — see "sharp_front.py architecture" above) — read that
+section in full before starting. Concretely:
+
+1. Do **not** edit `run_2d` in place as the first move. First write a
+   small standalone script/test that imports `sharp_front`, builds the
+   real args for the Peak/1000K/theta0/seed8666 case (same as
+   `run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh`'s CLI
+   flags), and confirms you can call `assemble_mechanics` +
+   `solve_dirichlet` + `compute_J_integral` directly (the same calls at
+   `sharp_front.py:2477-2492,2554-2557`) to get a `solve_trial(Uapp)->KJ`
+   closure working in isolation against the real mesh/materials, before
+   touching the loop itself.
+2. In `run_2d`, locate the exact accept/reject block at
+   **lines 2581-2586** (`if adaptive_events and predicted_clock >
+   adaptive_target ...`). Add a **new, separately flagged** code path
+   (e.g. gated on a new `args.j_target_controlled` / an env var, default
+   OFF) that, instead of shrinking `trial_frac` to satisfy the hazard
+   clock, calls `solve_to_target` with `solve_trial` wrapping the existing
+   assemble/solve/(optionally update_plasticity)/compute_J_integral block
+   at a candidate `Uapp`, targeting `interpolate_target(prefracture_slice,
+   physical_time_s, channel="KJ")` for the current step's PF-reference
+   physical time. Reuse the loop's own `u_saved/ep_saved/rho_saved/
+   Uapp_saved` restore-on-reject pattern for every rejected controller
+   trial (confirmed transactional for free — see architecture notes).
+   Do NOT call `update_plasticity` on rejected trials if avoidable, or if
+   it must be called (n_stagger loop structure), rely on the existing
+   `ep_saved`/`rho_saved` restore to undo it exactly as the current
+   hazard-clock path already does.
+3. Keep the existing `--dU`-fixed-ramp default path completely unchanged
+   (default OFF for the new flag) so the Phase 0 slow-ramp reproduction
+   stays re-runnable as a regression baseline for comparison.
+4. Add a focused regression proving: (a) `ep_gp`/`rho_gp`/`u`/`Uapp` are
+   bit-identical before and after a rejected controller trial in a real
+   (small) FEM setup, and (b) a short controller-driven run reaches a
+   target KJ materially faster (fewer accepted steps) than the fixed-ramp
+   baseline for the same physical-time interval.
+5. Run the Phase 0+1+2a 37-test focused suite plus the new regression,
+   then a real production-entry smoke (short STEPS, as in the Phase 0
+   smoke command) with the new flag enabled, comparing against the
+   archived/reproduced slow-ramp baseline's early KJ values as a sanity
+   check that non-controller behavior is unaffected when the flag is off.
+6. Commit as `feat: add transactional J-controlled loading`, matching
+   CLAUDE.md's suggested milestone name.
 
 ## Exact next scientific acceptance gate
 
@@ -234,11 +394,14 @@ crack-growth qualification (Phase 4) is attempted.
 
 ## Continuation handoff (for a fresh session or Codex)
 
-If context is exhausted before Phase 2 lands, everything needed to resume
-is in this file plus the two new Phase-1 files. A fresh agent should: (1)
-read this file, CLAUDE.md, and FEM_CZM_HANDOFF.md in full; (2) re-run
-`git log --oneline -5` and `git status --short` to confirm no uncommitted
-drift; (3) re-run the 26-test combined focused suite listed above to
-re-confirm the accepted baseline before writing new code; (4) proceed
-directly to the "Exact next command" section above — Phase 0 and Phase 1
-do not need to be repeated.
+If context is exhausted before Phase 2b lands, everything needed to
+resume is in this file plus the four new Phase 1/2a files — re-deriving
+the "sharp_front.py architecture" section above cost a full Explore-agent
+pass this session; do not repeat that research, just read it here. A
+fresh agent should: (1) read this file, CLAUDE.md, and
+FEM_CZM_HANDOFF.md in full; (2) re-run `git log --oneline -5` and
+`git status --short` to confirm no uncommitted drift; (3) re-run the
+37-test combined focused suite listed above to re-confirm the accepted
+baseline before writing new code; (4) proceed directly to the "Exact next
+command" section above (Phase 2b: wiring into `sharp_front.run_2d`) —
+Phase 0, Phase 1, and Phase 2a do not need to be repeated.
