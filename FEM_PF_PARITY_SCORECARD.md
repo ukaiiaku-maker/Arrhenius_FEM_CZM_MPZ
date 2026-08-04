@@ -89,6 +89,78 @@ untested.**
 
 Newest entry first. Use the required form from the governing instructions.
 
+### 2026-08-04 (continued — stochastic-identity fingerprint + anchor regression found and fixed)
+
+```text
+Highest completed gate:      None (Gate 1 still partial).
+Current gate:                Gate 1 (controlled prefracture mechanics).
+Real PF reference available?: No -- still blocked, see EXTERNAL BLOCKER
+                              and PF_REFERENCE_REGENERATION_CONTRACT.md
+                              (now a complete, executable request
+                              identifying the best-candidate PF commit).
+Production configuration exercised?: No -- only the minimal
+                              legacy_scalar front engine, via a synthetic
+                              target. A fail-closed frozen-reference
+                              interface (arrhenius_fracture/
+                              pf_theta0_frozen_reference_v10051840.py)
+                              and launcher plumbing are now ready for the
+                              moment real artifacts arrive.
+Largest discrepancy:         Not a physics discrepancy this entry -- a
+                              numerical/engineering regression: the
+                              earlier default-off wiring (commit ad2c446)
+                              silently broke 7 tests in unrelated modules
+                              by re-indenting text two AST/text-patch
+                              anchors depended on matching verbatim. Not
+                              caught by the narrower focused-suite runs
+                              used throughout the session; only surfaced
+                              running the full `tests/` suite.
+Likely subsystem:            loading/controller wiring mechanics (not
+                              physics) -- and test-coverage practice
+                              (relying on a narrow suite instead of the
+                              full one after editing shared code).
+Evidence:                    A from-scratch AST-based anchor audit
+                              across every module that patches
+                              sharp_front.run_2d, cross-checked against a
+                              temporary git worktree at the pre-session
+                              baseline commit to separate the 7 real
+                              regressions from unrelated pre-existing
+                              failures. Fixed by no longer wrapping the
+                              original mechanics/KJ block in any new
+                              conditional; the controller now determines
+                              its target Uapp via a small, purely local
+                              search before that block, which runs
+                              completely unconditionally and unchanged.
+Change made:                 c998041 (the anchor fix) plus, earlier in
+                              this entry's work: 12b02e6 (stochastic-
+                              identity fingerprint + fail-closed
+                              transactionality check across RNG/
+                              threshold/event-length/B/N_em/MPZ state,
+                              not just mechanics), f6fad45 (fail-closed
+                              frozen-reference interface + completed PF
+                              regeneration request), 4bb2d09 (Gate 3/4
+                              event-audit schema, unpopulated).
+Physics changed?:            No.
+Regression result:           Full suite: 725 passed, 3 skipped, 8
+                              failed -- all 8 independently confirmed
+                              pre-existing at the baseline commit, none
+                              caused by this session.
+Real-run result:              9/9 real-engine tests pass (audit output,
+                              rejected-trial recording, determinism,
+                              flag-off no-op, direct-step state equality,
+                              stochastic-identity preservation across
+                              rejected trials, fail-closed tamper
+                              detection).
+Next discriminating experiment: Recover/regenerate the frozen PF
+                              reference bundle per the now-complete
+                              regeneration request, freeze it into
+                              reference_inputs/, then run Gate 1 for
+                              real: point --pf-kj-target-csv and the
+                              production launcher's PF_FROZEN_REFERENCE_DIR
+                              at it and inspect the controller audit +
+                              stochastic-identity output against the
+                              production front-engine configuration.
+```
+
 ### 2026-08-04 (continued — real-engine controller audit)
 
 ```text

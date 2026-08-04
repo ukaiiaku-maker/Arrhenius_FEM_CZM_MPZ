@@ -1,9 +1,11 @@
 # Claude progress
 
 - Updated: 2026-08-04 (session continuation — real-engine controller
-  audit output added; see `FEM_PF_PARITY_SCORECARD.md` for the scientific
-  status ledger, which now organizes ongoing work per explicit user
-  instruction. This file remains the narrative/commit/environment record.)
+  audit output, stochastic-identity fingerprint, and a confirmed-and-fixed
+  AST-patcher anchor regression added this continuation; see
+  `FEM_PF_PARITY_SCORECARD.md` for the scientific status ledger, which now
+  organizes ongoing work per explicit user instruction. This file remains
+  the narrative/commit/environment record.)
 - Repository: /Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude
 - Branch: claude/v10.0.5.18.4.0-j-controlled-loading
 - Development workflow: all source-code development is version-controlled
@@ -19,6 +21,11 @@
   - `ad2c446` — `feat: wire default-off PF KJ-target controller` (Phase 2b checkpoint)
   - `040610f` — `docs: add FEM/PF parity scorecard and PF artifact regeneration contract`
   - `99f6e5c` — `test: add real-engine controller audit output and integration tests`
+  - `437973d` — `test: add direct-step state-equality proof for the KJ-target controller`
+  - `f6fad45` — `feat: add fail-closed frozen PF reference interface; complete regeneration request`
+  - `12b02e6` — `feat: add stochastic-identity fingerprint and fail-closed transactionality check`
+  - `c998041` — `fix: restore two AST-patcher anchors broken by the PF-controller wiring` **(important — read the "AST-patcher anchor regression" section below)**
+  - `4bb2d09` — `feat: define Gate 3/4 first-passage event-audit schema (unpopulated)`
   (HEAD before this session's work: `ad06e4c`, the workspace-handoff
   commit; `ad06e4c~1` = `293491157063484bb10df6adc479f847a6a08ba6`, the
   verified source commit on `v10.0.5.18.4.0-theta0-pf-parity`.)
@@ -190,12 +197,50 @@ Pure function of the CSV; touches no FEM/hazard/RNG/mesh state.
 step loop** for the entire `mode_i_first_passage_*` family. ~15 other
 modules `inspect.getsource(sharp_front.run_2d)` and AST/text-patch it
 rather than calling a different loop. **Treat `run_2d`'s source text as
-load-bearing for other modules.** Before this session's edit, `git grep`
+load-bearing for other modules.**
+
+**AST-patcher anchor regression (confirmed and fixed, commit `c998041`) —
+read this before trusting any `git grep`-based anchor safety check
+again.** The initial wiring commit's own safety check (`git grep` for
+`dU_step`/`trial_frac`/`adaptive_target`/`Uapp_saved`, confirming the two
+anchors matching THOSE specific names sat outside the edited region) was
+**incomplete and gave false confidence** — it missed two anchors in
+`mode_i_first_passage_v10_0_5_5_stochastic_vhcf.py`
+(`_CACHE_INIT_ANCHOR`, matching the literal adjacency between
+`prev_a_tip_for_block = float(a_tip)` and `while step < args.steps:`, and
+`_CACHE_MECHANICS_ANCHOR`, matching the mechanics/stagger block's exact
+16-space indentation) because that grep only searched for specific
+variable names, not for "every anchor literal anywhere in the package."
+The `if pf_target_active: <new> else: <original re-indented>` structure
+used at the time re-indented the mechanics block by 4 extra spaces and
+inserted new lines between the two `_CACHE_INIT_ANCHOR` lines, silently
+breaking both anchors. **This was invisible in the focused PF-controller
+test suite this session mostly ran** — it only surfaced running the FULL
+`tests/` suite, 7 failures deep in modules with no obvious PF-controller
+connection. **Lesson: after any edit to `run_2d`, run the full test suite
+at least once, and/or run
+`tests/test_sharp_front_ast_patcher_anchors_v10051840.py` (added in the
+fix commit — an AST-based scan of every anchor literal in the package,
+checked against `inspect.getsource(run_2d)`) — do not rely on a
+name-specific `git grep` as a substitute.**
+
+The fix: stopped wrapping the original mechanics/KJ block in any new
+conditional at all. It now runs completely unconditionally, at its exact
+original text/indentation, regardless of whether the controller is
+active. The controller instead runs its own small, purely local search
+(distinct variable names, local-only arrays, never touching the shared
+`u`/`ep_gp`/`rho_gp`/`sigma_gp`/`psi_gp`/`Ftop`) BEFORE that block, solely
+to determine the target `Uapp`; the untouched original block then
+performs the one real, authoritative solve. See `c998041`'s commit
+message for full detail.
+
+Prior (now-corrected) belief: before this session's edit, `git grep`
 confirmed the only two external text anchors
 (`kinetic_progressive_2d_v10.py`/`v1002.py`'s `adaptive_target = min(...)`
 at line 2435, and an `info = eng.step(KJ, T, dt_cur)` anchor at ~3071) both
 fall **outside** the edited region (~2451-2665 pre-edit numbering), so the
-edit should not break those patchers.
+edit should not break those patchers. **This was true for those two named
+anchors but incomplete as a safety check** — see above.
 
 Production entry chain for this workspace's target case:
 `mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py:46`
@@ -383,24 +428,49 @@ bookkeeping, config validation).
   `PF_REFERENCE_REGENERATION_CONTRACT.md`
 - Modified/new, committed at `99f6e5c`: `arrhenius_fracture/sharp_front.py`
   (controller audit-output block), `tests/test_pf_theta0_j_controlled_loading_real_engine_v10051840.py`
+- New, committed at `437973d`: direct-step state-equality test added to
+  the real-engine test file above.
+- New, committed at `f6fad45`: `arrhenius_fracture/pf_theta0_frozen_reference_v10051840.py`,
+  `tests/test_pf_theta0_frozen_reference_v10051840.py`; modified
+  `.gitignore`, `run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh`,
+  `PF_REFERENCE_REGENERATION_CONTRACT.md`; created (gitignored, untracked)
+  `reference_inputs/pf_v10_4_1_theta0_peak1000K_seed8666/README.md`.
+- New, committed at `12b02e6`: `arrhenius_fracture/pf_theta0_stochastic_fingerprint_v10051840.py`,
+  `tests/test_pf_theta0_stochastic_fingerprint_v10051840.py`; modified
+  `arrhenius_fracture/sharp_front.py` (fingerprint capture + fail-closed
+  check) and the real-engine test file (2 more tests).
+- Modified, committed at `c998041`: `arrhenius_fracture/sharp_front.py`
+  (anchor-safety restructure — see "AST-patcher anchor regression"
+  above); new `tests/test_sharp_front_ast_patcher_anchors_v10051840.py`.
+- New, committed at `4bb2d09`: `arrhenius_fracture/pf_theta0_first_passage_event_audit_v10051840.py`,
+  `tests/test_pf_theta0_first_passage_event_audit_v10051840.py`.
 - Untracked, not committed (correctly gitignored under `runs/`):
   various `runs/*_20260804/` smoke/regression-check directories, several
   of which failed at the launcher's PF-file precondition check once the
-  EXTERNAL BLOCKER hit (documented, not a code defect)
+  EXTERNAL BLOCKER hit (documented, not a code defect).
 - Untracked, not part of this project's code, not touched:
   `.claude/settings.json`, `.claude/settings.local.json` (local harness
-  config, not FEM/CZM source)
+  config, not FEM/CZM source).
 
 ## Tests run (cumulative)
 
 - 19/19 Phase 0 focused tests.
 - 7/7 Phase 1 trajectory-reader tests (6 synthetic + 1 skipif-guarded real).
 - 11/11 Phase 2a controller tests.
-- 4/4 real-engine integration tests (`99f6e5c`) — real mesh/solve/plasticity
-  against a synthetic target, no PF artifact needed.
-- Latest combined focused-suite run: 40 passed, 1 skipped (the
-  skipif-guarded real-PF-reference test correctly skips per the EXTERNAL
-  BLOCKER — expected, not a failure).
+- 9/9 real-engine integration tests (audit output, rejected-trial
+  recording, determinism, flag-off no-op, direct-step state equality,
+  stochastic-identity preservation, fail-closed tamper detection).
+- 8/8 frozen-reference resolver tests.
+- 7/7 stochastic-fingerprint unit tests.
+- 3/3 event-audit-schema tests.
+- 17/19 (2 skipped, pre-existing) AST-patcher anchor-guard tests.
+- **Full `tests/` suite** (not just the focused PF-controller subset):
+  725 passed, 3 skipped, 8 failed — all 8 failures independently verified
+  (via a temporary worktree at the pre-session baseline commit `ad06e4c`)
+  to be pre-existing and unrelated to this session's work (5 stale
+  package-version-string assertions, 1 unrelated fatigue-anchor break, 2
+  more found via the same baseline check). See "AST-patcher anchor
+  regression" above for why running the full suite mattered here.
 
 ## Latest accepted physical state
 
@@ -436,6 +506,19 @@ Two, layered:
   `conda run -n ... python3 /path/to/script.py` instead.
 - Do not retry the flag-ON smoke against the live external PF repo path
   hoping it stabilizes — see EXTERNAL BLOCKER.
+- Do not trust a name-specific `git grep` as a complete anchor-safety
+  check before editing `run_2d` — see "AST-patcher anchor regression"
+  above. Run the full `tests/` suite and/or
+  `tests/test_sharp_front_ast_patcher_anchors_v10051840.py` instead.
+- Do not wrap an existing block of `run_2d` code in a new `if/else` to
+  make it conditional if any other module's AST/text-patch anchor might
+  match text inside that block — Python's mandatory indentation means
+  ANY such wrapping changes that text's exact indentation, which breaks
+  literal-substring anchors even though the logic is unchanged. Prefer
+  determining a value via a small, separate, distinctly-named local
+  computation BEFORE the untouched original block, then feeding that
+  value into the one line that already varied (e.g. the `dU_step`
+  assignment) — this was the actual fix in `c998041`.
 
 ## Exact next command
 
