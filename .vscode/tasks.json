@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Verify FEM/CZM workspace",
+      "type": "shell",
+      "command": "pwd && git branch --show-current && git rev-parse HEAD && git status --short && python -c \"import sys, arrhenius_fracture; print(sys.executable); print(arrhenius_fracture.__file__)\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "Git status and recent commits",
+      "type": "shell",
+      "command": "git status --short && git log --oneline --decorate -8",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run full pytest suite",
+      "type": "shell",
+      "command": "python -m pytest -q",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

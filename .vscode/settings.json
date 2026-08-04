@@ -1,0 +1,21 @@
+{
+  "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniconda/base/envs/arrhenius-fem-czm-claude/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "jupyter.askForKernelRestart": false,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "search.exclude": {
+    "**/runs/**": true,
+    "**/results/**": true,
+    "**/snapshots/**": true,
+    "**/*.h5": true,
+    "**/*.npz": true
+  },
+  "files.watcherExclude": {
+    "**/runs/**": true,
+    "**/results/**": true,
+    "**/snapshots/**": true
+  }
+}
