@@ -134,3 +134,48 @@ def test_flag_off_path_writes_no_controller_audit_file(tmp_path: Path):
     out_dir = _run(tmp_path, steps=3, extra_args=[])
     audit_path = out_dir / "pf_kj_target_controller_audit_1000K.json"
     assert not audit_path.exists()
+
+
+def test_controller_driven_accepted_state_matches_direct_single_step_at_same_Uapp(
+    tmp_path: Path,
+):
+    """The strongest available transactionality proof without exposing
+    run_2d's internal u/ep_gp/rho_gp arrays directly: the FEM state after
+    the controller accepts a step (having tried and discarded several
+    candidate Uapp values along the way) must be numerically
+    indistinguishable from a single direct step solved once at exactly
+    that accepted Uapp. If a rejected trial left any residue in the
+    accepted plastic/mechanical state, this would not hold.
+    """
+    controller_out = _run(tmp_path / "controller", steps=1)
+    audit = _load_audit(controller_out)
+    record = audit["records"][0]
+    assert record["iterations"] >= 2  # exercised the rejection path for real
+    accepted_Uapp = record["Uapp_accepted_m"]
+
+    controller_steps = pd.read_csv(controller_out / "steps_1000K.csv")
+    assert len(controller_steps) == 1
+
+    # Reproduce the exact same physical step directly: a single fixed-ramp
+    # step whose --dU equals the controller's accepted Uapp, with no PF
+    # target controller involved at all.
+    direct_out = tmp_path / "direct" / "out"
+    direct_argv = [
+        "--mode", "2d",
+        "--steps", "1",
+        *MESH_ARGS,
+        "--temperatures", "1000",
+        "--out", str(direct_out),
+        "--print-every", "1",
+        "--no-plots",
+        "--dt", "8.4",
+        "--dU", f"{accepted_Uapp:.17g}",
+    ]
+    sharp_front.main(direct_argv)
+    direct_steps = pd.read_csv(direct_out / "steps_1000K.csv")
+    assert len(direct_steps) == 1
+
+    for column in ("Uapp_m", "Ftop_N", "KJ_Pa_sqrtm", "sigma_tip_Pa", "sigma_back_Pa"):
+        controller_value = float(controller_steps.iloc[0][column])
+        direct_value = float(direct_steps.iloc[0][column])
+        assert controller_value == pytest.approx(direct_value, rel=1.0e-9), column

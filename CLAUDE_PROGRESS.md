@@ -1,21 +1,24 @@
 # Claude progress
 
-- Updated: 2026-08-04 09:09 PDT (as part of the checkpoint commit described
-  below — check `git log --oneline -4` for the exact resulting HEAD hash).
+- Updated: 2026-08-04 (session continuation — real-engine controller
+  audit output added; see `FEM_PF_PARITY_SCORECARD.md` for the scientific
+  status ledger, which now organizes ongoing work per explicit user
+  instruction. This file remains the narrative/commit/environment record.)
 - Repository: /Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude
 - Branch: claude/v10.0.5.18.4.0-j-controlled-loading
 - Development workflow: all source-code development is version-controlled
-  in Git on this branch and pushed to GitHub only after tested milestones
-  (push is a separate, explicit, user-approved step — see "Exact next
-  command" below for the precise push command; nothing has been pushed
-  yet). The local `arrhenius-fem-czm-claude` Conda environment runs the
-  editable install (`pip install -e .`) from this exact local Git checkout
-  — confirmed via `importlib.metadata.version('arrhenius-fem-czm')`.
+  in Git on this branch. Local commits are authorized and ongoing; nothing
+  has been pushed yet (push is a separate, explicit, user-approved step —
+  see "Exact next command" below for the precise push command). The local
+  `arrhenius-fem-czm-claude` Conda environment runs the editable install
+  from this exact local Git checkout — confirmed via
+  `importlib.metadata.version('arrhenius-fem-czm')`.
 - Completed commits on this branch this session, oldest first:
   - `7562911` — `feat: add PF driving-force trajectory reader` (Phase 1)
   - `3cc67bb` — `feat: add safeguarded J/KJ-target loading controller` (Phase 2a)
-  - a checkpoint commit for the default-off Phase 2b wiring (see below;
-    this file's own update is part of that commit)
+  - `ad2c446` — `feat: wire default-off PF KJ-target controller` (Phase 2b checkpoint)
+  - `040610f` — `docs: add FEM/PF parity scorecard and PF artifact regeneration contract`
+  - `99f6e5c` — `test: add real-engine controller audit output and integration tests`
   (HEAD before this session's work: `ad06e4c`, the workspace-handoff
   commit; `ad06e4c~1` = `293491157063484bb10df6adc479f847a6a08ba6`, the
   verified source commit on `v10.0.5.18.4.0-theta0-pf-parity`.)
@@ -111,12 +114,20 @@ Phase 0 (provenance/baseline): **complete**. Phase 1 (PF driving-force
 trajectory reader): **complete, committed at `7562911`**. Phase 2a
 (standalone controller decision logic): **complete, committed at
 `3cc67bb`**. Phase 2b (wiring into `sharp_front.run_2d` + launcher
-plumbing): **default-off integration complete and checkpointed; flag-ON
-physical qualification is pending recovery of the immutable PF reference
-artifacts (see EXTERNAL BLOCKER)**. Do **not** describe the flag-on
-controller as physically qualified — only its wiring, default-off safety,
-and code-level correctness (via synthetic-callback unit tests) have been
-verified.
+plumbing): **default-off integration complete and checkpointed at
+`ad2c446`; controller audit-output + real-engine integration tests added
+at `99f6e5c`** (real mesh, real solve, synthetic target — proves the
+controller tracks a target KJ(t) correctly against the actual FEM engine,
+not just synthetic callbacks). **Flag-ON qualification against the real,
+audited PF reference data is still pending recovery of the immutable PF
+reference artifacts** (see EXTERNAL BLOCKER below and
+`PF_REFERENCE_REGENERATION_CONTRACT.md`). Do **not** describe the
+controller as physically qualified against PF — only its wiring,
+default-off safety, and real-engine numerical correctness against a
+synthetic target have been verified. This project's scientific status is
+now tracked primarily in **`FEM_PF_PARITY_SCORECARD.md`** (gate ladder +
+per-quantity table); consult that file first for "what's actually been
+proven," this file for "how/when/which commit."
 
 ## Phase 0 — completed findings
 
@@ -351,9 +362,13 @@ bookkeeping, config validation).
   `max_iterations`, tracks a real PF KJ(t) trajectory sanely, or reaches
   first passage faster than the fixed ramp, against real (non-synthetic)
   FEM state.
-- No dedicated regression test exists yet for the real-integration
-  flag-ON path (only Phase 2a's 11 synthetic-callback tests and this
-  checkpoint's default-off evidence exist).
+- UPDATE (`99f6e5c`): a real-integration test now exists
+  (`tests/test_pf_theta0_j_controlled_loading_real_engine_v10051840.py`,
+  4 tests) — but against a synthetic target trajectory and the minimal
+  `legacy_scalar` front engine, not the real PF reference data or
+  production front-engine configuration. See
+  `FEM_PF_PARITY_SCORECARD.md` Gate 1 row for exactly what this does and
+  does not prove.
 
 ## Files changed this session (cumulative)
 
@@ -361,15 +376,17 @@ bookkeeping, config validation).
   `tests/test_pf_theta0_driving_force_trajectory_v10051840.py`
 - New, committed at `3cc67bb`: `arrhenius_fracture/pf_theta0_j_controlled_loading_v10051840.py`,
   `tests/test_pf_theta0_j_controlled_loading_v10051840.py`
-- Modified, part of this checkpoint commit: `arrhenius_fracture/sharp_front.py`,
+- Modified, committed at `ad2c446`: `arrhenius_fracture/sharp_front.py`,
   `run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh`,
-  `CLAUDE_PROGRESS.md` (this file)
+  `CLAUDE_PROGRESS.md`
+- New, committed at `040610f`: `FEM_PF_PARITY_SCORECARD.md`,
+  `PF_REFERENCE_REGENERATION_CONTRACT.md`
+- Modified/new, committed at `99f6e5c`: `arrhenius_fracture/sharp_front.py`
+  (controller audit-output block), `tests/test_pf_theta0_j_controlled_loading_real_engine_v10051840.py`
 - Untracked, not committed (correctly gitignored under `runs/`):
-  `runs/phase0_slow_ramp_reproduction_smoke_20260803/`,
-  `runs/phase2b_regression_check_flag_off_20260804/`,
-  `runs/phase2b_flag_on_smoke_20260804/` (failed at precondition check,
-  see EXTERNAL BLOCKER), `runs/checkpoint_flag_off_reverify_20260804/`
-  (failed at precondition check, same reason)
+  various `runs/*_20260804/` smoke/regression-check directories, several
+  of which failed at the launcher's PF-file precondition check once the
+  EXTERNAL BLOCKER hit (documented, not a code defect)
 - Untracked, not part of this project's code, not touched:
   `.claude/settings.json`, `.claude/settings.local.json` (local harness
   config, not FEM/CZM source)
@@ -379,8 +396,11 @@ bookkeeping, config validation).
 - 19/19 Phase 0 focused tests.
 - 7/7 Phase 1 trajectory-reader tests (6 synthetic + 1 skipif-guarded real).
 - 11/11 Phase 2a controller tests.
-- This checkpoint: 36 passed, 1 skipped (the real-reference test now
-  skips per the EXTERNAL BLOCKER — expected, not a failure).
+- 4/4 real-engine integration tests (`99f6e5c`) — real mesh/solve/plasticity
+  against a synthetic target, no PF artifact needed.
+- Latest combined focused-suite run: 40 passed, 1 skipped (the
+  skipif-guarded real-PF-reference test correctly skips per the EXTERNAL
+  BLOCKER — expected, not a failure).
 
 ## Latest accepted physical state
 
