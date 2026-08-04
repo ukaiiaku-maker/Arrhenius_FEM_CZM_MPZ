@@ -2455,6 +2455,7 @@ def run_2d(args):
         pf_controller_config = None
         physical_time_accepted = 0.0
         KJ_accepted = 0.0
+        pf_controller_audit = []
         pf_kj_target_csv = getattr(args, 'pf_kj_target_csv', None)
         if pf_kj_target_csv:
             from .pf_theta0_driving_force_trajectory_v10051840 import (
@@ -2691,6 +2692,21 @@ def run_2d(args):
             if pf_target_trajectory is not None:
                 KJ_accepted = float(KJ)
                 physical_time_accepted += dt_cur
+                if pf_target_active:
+                    pf_controller_audit.append({
+                        'step': int(step),
+                        'physical_time_target_s': float(_pf_target_time),
+                        'physical_time_accepted_s': float(physical_time_accepted),
+                        'KJ_target_Pa_sqrtm': float(_pf_target_kj),
+                        'KJ_achieved_Pa_sqrtm': float(_pf_result.achieved),
+                        'converged': bool(_pf_result.converged),
+                        'iterations': int(_pf_result.iterations),
+                        'Uapp_accepted_m': float(_pf_result.accepted_Uapp),
+                        'rejected_trials': [
+                            {'Uapp_m': float(t.Uapp), 'KJ_achieved_Pa_sqrtm': float(t.achieved)}
+                            for t in _pf_result.rejected_trials
+                        ],
+                    })
 
             # If requested, resolve the full 2-D body through the accepted cycle
             # block before the front hazards are committed.  This uses the old
@@ -3425,6 +3441,14 @@ def run_2d(args):
                     refine_centers = active_tips.copy()
 
         tag = f"{int(T):04d}K"
+        if pf_target_trajectory is not None:
+            with open(os.path.join(args.out, f'pf_kj_target_controller_audit_{tag}.json'), 'w') as fp:
+                json.dump({
+                    'schema': 'pf_kj_target_controller_audit_v10_0_5_18_4_0',
+                    'source_csv': pf_target_trajectory.source_path,
+                    'source_csv_sha256': pf_target_trajectory.source_sha256,
+                    'records': pf_controller_audit,
+                }, fp, indent=2, sort_keys=True, default=str)
         if crack_backend.name != 'sharp_wake':
             crack_backend.write_diagnostics(os.path.join(args.out, f'czm_{tag}'))
         np.savetxt(os.path.join(args.out, f'steps_{tag}.csv'), np.array(rows),
