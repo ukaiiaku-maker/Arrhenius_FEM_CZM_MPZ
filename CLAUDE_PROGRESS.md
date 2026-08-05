@@ -1,6 +1,107 @@
 # Claude progress
 
-## URGENT HANDOFF (2026-08-04, latest — read this section first)
+## URGENT HANDOFF (2026-08-04, latest v2 — read this section first)
+
+**This supersedes the "exact next steps" of the section immediately
+below (kept intact underneath as the narrative record of how the
+campaign pivot and first real diagnostic happened). Everything in that
+section's numbered findings (1-9) is still accurate and not repeated
+here.**
+
+### What this continuation did
+
+1. Verified workspace/branch/HEAD/environment all matched the expected
+   checkpoint (`6100d50`, clean tree) before changing anything.
+2. Read all six required documents in full (CLAUDE.md, FEM_CZM_HANDOFF.md,
+   CLAUDE_PROGRESS.md, FEM_PF_PARITY_SCORECARD.md,
+   PF_FINAL_CAMPAIGN_REFERENCE_SUMMARY.md,
+   PF_REFERENCE_REGENERATION_CONTRACT.md).
+3. **Updated `FEM_PF_PARITY_SCORECARD.md`** (this file's companion): added
+   the PF campaign reference-bank pivot, a full write-up of the Gate 1
+   real controlled-K_J diagnostic (with an explicit, repeated distinction
+   between numerical-controller evidence and physical-correspondence
+   evidence -- the ~7e-6 relative K_J tracking agreement is a statement
+   about the controller's own root-finder, not FEM/PF physics agreeing),
+   a "Kernel provenance limitation" section (what it blocks vs. does not),
+   a table of the nine recommended Stage-A anchors with status, a
+   Path A/Path B next-experiment recommendation (**Path A chosen** --
+   extend the existing kernel-free controlled diagnostic toward first
+   passage, not kernel-provenance reconstruction, since Path A needs no
+   new infrastructure and produces a physics-relevant answer faster), and
+   a Task 4 native-loading preparation note (explicitly not launched this
+   session).
+4. **Converted the ad hoc Gate 1 diagnostic into a reusable script**:
+   `scripts/run_pf_anchor_controlled_kj_diagnostic_v10051840.py`. It
+   contains an `ANCHOR_REGISTRY` (currently one entry,
+   `peak_1000K_rate1x_seed8666_v10230`, matching the frozen
+   `reference_inputs/pf_final_v10_2_30/rate1x/v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/`
+   bundle), the exact Peak-class barrier row from
+   `PF_REFERENCE_REGENERATION_CONTRACT.md`, and the exact mesh/controller
+   settings from the original ad hoc run
+   (`runs/anchor_diagnostics/peak_1000K_rate1x_barriers/run_args.json`,
+   confirmed byte-for-byte via `--dry-run` producing the same argv).
+   Resolves PF inputs exclusively via
+   `pf_theta0_frozen_reference_v10051840.resolve_frozen_pf_reference`
+   (fails closed on missing/tampered frozen files, never touches the live
+   PF `runs/` tree), writes a `provenance_manifest.json` (git commit,
+   package version, resolved hashes, full argv) into the output directory
+   before running, supports `--dry-run` (resolve + assemble + write
+   manifest, no solver invocation -- used for all testing so no long
+   calculation was launched this session), and refuses to overwrite a
+   non-empty output directory without `--force`.
+5. Verified the assembled argv is accepted by `sharp_front._build_parser()`
+   itself (not just internally consistent) via a direct parse-only check.
+6. Added `tests/test_run_pf_anchor_controlled_kj_diagnostic_v10051840.py`
+   (13 tests): anchor registry lookup/unknown-anchor error, argv assembly
+   content/defaults, argv acceptance by the real `sharp_front` parser,
+   fail-closed resolution (hash mismatch, missing files), successful
+   resolution on matching hashes, provenance manifest contents, dry-run
+   never invoking the solver, fail-closed check ordering (bad reference
+   caught before the output directory is created), non-empty-output-dir
+   refusal, and an end-to-end `--dry-run` CLI smoke against the real
+   committed frozen anchor bundle.
+7. `sharp_front.py` and no other physics/controller module were touched
+   this continuation -- the AST-patcher anchor test suite
+   (`tests/test_sharp_front_ast_patcher_anchors_v10051840.py`) was run
+   anyway as part of the focused suite and still passes, unaffected.
+8. Test results: focused PF-controller-family suite + the new test file:
+   **74 passed, 3 skipped**. Full `tests/` suite: **740 passed, 3 skipped,
+   8 failed** -- the identical 8 failures already documented as
+   pre-existing baseline noise in this file's "Tests run (cumulative)"
+   section below (stale package-version-string assertions + one unrelated
+   fatigue-anchor break); no new failures introduced.
+
+### Exact next steps (in order, supersedes the list further below)
+
+1. **Path A**: rerun
+   `scripts/run_pf_anchor_controlled_kj_diagnostic_v10051840.py --anchor
+   peak_1000K_rate1x_seed8666_v10230 --steps <N>` with `N` increased
+   toward this case's real first-passage row (PF row 163, step 164,
+   K_J≈53.9 MPa√m in the v10.2.30 campaign's Peak/1000K/rate1x/seed8666
+   case -- confirm the exact row against
+   `reference_inputs/pf_final_v10_2_30/.../steps_1000K.csv` before
+   relying on this number, since it is a different frozen file than the
+   older v10.4.1 case's row 176/step 177 recorded earlier in this file).
+   Inspect: does the controller keep converging, does `B(t)` remain
+   sensible, does `N_em(t)` keep growing smoothly, does anything resemble
+   the two earlier failure modes (premature ligament severing)? This is
+   still a Gate 1 / reduced-configuration diagnostic, not a
+   Physical-correspondence result, regardless of outcome -- do not
+   describe it as more than that even if it reaches first passage cleanly.
+2. Only after step 1's outcome is known: decide whether to pursue Path B
+   (kernel provenance reconstruction) per
+   `PF_REFERENCE_REGENERATION_CONTRACT.md`'s "Development note" (nearby
+   PF commits to try if `59da598` does not reproduce), or to proceed
+   directly to a native-loading run (Task 4, prepared but not launched --
+   see `FEM_PF_PARITY_SCORECARD.md`'s "Task 4 preparation" section) using
+   whatever opening-rate schedule step 1's step count to first passage
+   suggests.
+3. Do not process the other eight Stage-A anchors until step 1/2 above
+   produce a credible result for this first one.
+
+---
+
+## URGENT HANDOFF (2026-08-04, first version this session — narrative record, still accurate)
 
 **Everything below this section is from an earlier point in the same
 session and is still accurate, but the single most important pivot is
@@ -611,6 +712,15 @@ bookkeeping, config validation).
 - Untracked, not part of this project's code, not touched:
   `.claude/settings.json`, `.claude/settings.local.json` (local harness
   config, not FEM/CZM source).
+- New, committed at `4fcf08a`: `scripts/run_pf_anchor_controlled_kj_diagnostic_v10051840.py`,
+  `tests/test_run_pf_anchor_controlled_kj_diagnostic_v10051840.py`.
+  Modified, committed at `2bb128c`: `FEM_PF_PARITY_SCORECARD.md`.
+  Modified, this commit: `CLAUDE_PROGRESS.md` (this file).
+- Untracked, not created by this continuation, not touched/committed:
+  `v1005135_candidate_audit.json` at the repository root -- a
+  pre-existing side effect of running `tests/test_v1005135_long_corridor.py`
+  as part of the full-suite regression check, unrelated to this
+  continuation's own files.
 
 ## Tests run (cumulative)
 
@@ -631,6 +741,13 @@ bookkeeping, config validation).
   package-version-string assertions, 1 unrelated fatigue-anchor break, 2
   more found via the same baseline check). See "AST-patcher anchor
   regression" above for why running the full suite mattered here.
+- **This continuation (2026-08-04, "latest v2")**: 13/13 new tests for
+  the anchor-diagnostic script. Focused PF-controller-family suite +
+  the new file: 74 passed, 3 skipped. Full `tests/` suite re-run: 740
+  passed, 3 skipped, 8 failed — the identical 8 pre-existing failures
+  listed directly above, confirmed by test name; no new failures. No new
+  FEM solve was launched (only `--dry-run` config/provenance paths
+  exercised).
 
 ## Latest accepted physical state
 
