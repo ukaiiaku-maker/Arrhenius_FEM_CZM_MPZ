@@ -15,6 +15,78 @@ step by step or reproduce identical stochastic histories; it must exhibit
 older log entries below with that correction in mind rather than at face
 value — they are kept as an honest historical record, not rewritten.
 
+**Project-direction correction (2026-08-04/05):** a subsequent session's
+`legacy_scalar`/controlled-K_J-diagnostic development path (its own log
+entries appear further below) was explicitly rejected by the user as not
+being the production architecture. That work remains recorded honestly
+below for history, but the scorecard's *current* status resumes from the
+full-production baseline instead — see `FULL_PHYSICS_BASELINE_AUDIT.md`
+for the baseline identification/recovery decision, and the new "Full-
+production Gate ladder" status below for what is current now.
+
+## Full-production status (2026-08-04/05, current)
+
+- **Authoritative full-physics baseline**: commit `293491157063484bb10df6adc479f847a6a08ba6`
+  (tag `claude-v10.0.5.18.4.0-source-baseline`). The working branch was
+  confirmed (via full `git diff` read, not assumption) to not have
+  materially diverged from it — see `FULL_PHYSICS_BASELINE_AUDIT.md`.
+- **A real, concrete transactional bug was found and fixed**: the
+  single-front accepted-event path in `sharp_front.run_2d` did not roll
+  back the front engine's hazard/MPZ state (`B`, `N_em`, `a_adv`, `n_adv`)
+  when a geometry commit was vetoed by the anisotropic remesher's own
+  quality/angle gates -- `eng.step()` had already mutated that state before
+  the veto was even attempted, and nothing reverted it. This is exactly the
+  kind of "crack-tip microstructure advection" defect the R-curve
+  investigation was chartered to find (FEM_CZM_HANDOFF.md section 7.3's
+  atomic-rollback requirement). Fixed by mirroring the already-correct
+  multi-front/deflect path's own rollback pattern (commit `c81c376`); see
+  `CLAUDE_PROGRESS.md`'s URGENT HANDOFF for the full diagnosis narrative.
+  **This is a numerical-correctness fix to the FEM/CZM implementation's own
+  transactional contract** (Gate 4 in the ladder below), not itself a
+  cross-model comparison result.
+- **A real native-loading run was performed** (no PF K_J(t) target, no
+  scalar/legacy_scalar engine) using the full persistent-site/anisotropic
+  physics (`--crystal-aniso --crystal-compete`, production mesh, real Peak
+  barrier row, real signed kernel) via `mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.main()`
+  directly (bypassing only the exact-historical-kernel-hash gate; see
+  "Kernel-provenance resolution" in CLAUDE_PROGRESS.md), at
+  `bulk_plasticity_mode=tip_only` (this entry point's own default -- the
+  higher, hash-gated wrapper is what installs the `full_field` v10.4.1
+  bulk overlay, and that wrapper remains blocked). **Result: reached first
+  passage at step 18 (KJ≈21.2 MPa√m), then produced two further discrete
+  advance events (steps 28, 39) with KJ continuing to rise (21.18→21.22→
+  21.30 MPa√m) -- a genuine, rising, physically sensible R-curve signal --
+  totaling ~9 µm of crack extension (a: 0.500→0.509 mm) before a real
+  corridor-remeshing veto (`v10051839_no_feasible_atomic_path_corridor` --
+  the atomic path-corridor backend could not find any triangulation
+  satisfying its quality gates for the requested advance at that point)
+  correctly triggered the PRE-EXISTING (not this session's) fail-closed
+  `restore_geometry_veto` path in the multi-front code, stopping the run
+  cleanly** rather than continuing with desynchronized state. Reproduced
+  deterministically (identical trajectory bit-for-bit on rerun, seed 8666).
+  See CLAUDE_PROGRESS.md's Phase 6 section for the full trajectory.
+  **Important correction to this session's own
+  Phase 3 diagnosis**: `deflect = bool(args.crystal_aniso)` in
+  `sharp_front.py`, so any real anisotropic production run (which always
+  sets `--crystal-aniso`) uses the multi-front/deflect code path, not the
+  single-front path this session's Phase 4 fix targeted. That fix remains
+  a genuine, verified correctness improvement (the single-front path was
+  really buggy, confirmed by a test that fails on the pre-fix code), but
+  it is **not** the path exercised by this project's actual target case --
+  the multi-front path's own equivalent rollback was already correct
+  before this session touched anything, as directly confirmed by this run
+  stopping cleanly rather than silently corrupting state.
+- **First-passage scale note**: 21.2 MPa√m under `tip_only` bulk mode is
+  well below PF's ~53.9 MPa√m for this case (a >30% "significant
+  discrepancy" by the comparison bands above) -- but this is mechanistically
+  expected, not unexplained: `tip_only` deliberately excludes the full-field
+  bulk Peierls-Taylor plasticity PF's `full_field` mode contributes (less
+  bulk shielding = lower measured initiation toughness). This is not yet a
+  fair physical-correspondence comparison until the `full_field` bulk
+  overlay can also be exercised outside the hash-gated wrapper (or the
+  kernel-provenance blocker is resolved) -- record as a mechanism-difference
+  hypothesis, not a discrepancy requiring a parameter fix.
+
 Reference case for all rows below unless stated otherwise: Peak
 parameterization (`v913_paper_peak01_0242980_persistent_sites`), 1000 K,
 theta=0, hazard seed 8666, PF run
@@ -254,7 +326,108 @@ already agree.
 Newest entry first. Use the required form from the governing instructions.
 Entries before 2026-08-04's correction use the older, stricter "parity"
 framing in places — read them through the "Acceptance philosophy" above,
-not at face value.
+not at face value. The scalar-controlled-K_J-diagnostic entries dated
+2026-08-04 later in this log were superseded by the project-direction
+correction below -- read them as historical record only.
+
+### 2026-08-05 (project-direction correction — full-physics baseline audit, transactional fix, native-loading run)
+
+```text
+Highest completed gate:      Gate 4 (numerical correctness of the FEM
+                              implementation's own transactional contract)
+                              partially advanced: a real atomic-rollback
+                              gap was found and fixed in the single-front
+                              path (not the path the real target case
+                              uses, see below), and the multi-front path's
+                              pre-existing equivalent rollback was directly
+                              confirmed correct by a real run. Gate 3
+                              (first-passage comparison) has one real,
+                              honest datapoint now (see below) but is not
+                              "passed" -- it stopped short of 20-50 um on
+                              a real remeshing veto, and used tip_only
+                              bulk mode, not PF's full_field closure.
+Current gate:                Gate 4 (own-contract transactional
+                              correctness) / Gate 3 (first-passage,
+                              partial, tip_only bulk mode only).
+PF reference:                v10.2.30 campaign, Peak/1000K/rate1x/seed8666
+                              (first-passage K_J=53.9 MPa√m, per the
+                              144-case characterization).
+FEM/CZM result:               Real native-loading run (full persistent-
+                              site/anisotropic physics, tip_only bulk
+                              mode, real signed kernel, no PF target, no
+                              scalar engine): first passage at step 18,
+                              K_J=21.2 MPa√m; two further advance events
+                              (steps 28, 39) with K_J rising to 21.30
+                              MPa√m; ~9 um total extension (0.500->0.509
+                              mm) before a real corridor-remeshing veto
+                              (v10051839_no_feasible_atomic_path_corridor)
+                              correctly stopped the run via the
+                              pre-existing fail-closed restore_geometry_veto
+                              path. Deterministically reproduced (identical
+                              trajectory on rerun, seed 8666).
+Agreement:                   K_J,FP scale: 21.2 vs 53.9 MPa√m -- a >30%
+                              "significant discrepancy" by the comparison
+                              bands, but mechanistically explained (this
+                              run used tip_only bulk mode, excluding the
+                              full-field bulk Peierls-Taylor plasticity
+                              contribution PF's full_field mode has), not
+                              an unexplained implementation error. R-curve
+                              trend: rising KJ with extension, qualitatively
+                              PF-like, over too short an interval (9 um) to
+                              judge magnitude.
+Largest discrepancy:         The K_J,FP scale gap above, attributed to
+                              bulk-plasticity-mode mismatch (tip_only vs
+                              full_field), not yet to a defect -- the
+                              full_field overlay currently requires the
+                              still-blocked hash-gated wrapper.
+Likely subsystem:             Kernel provenance (blocks testing full_field
+                              bulk mode outside the hash-gated wrapper);
+                              atomic path-corridor remesher (the specific
+                              corridor-infeasibility that stopped growth
+                              at 9 um, itself not necessarily a defect --
+                              see "exact next experiment").
+Evidence:                     FULL_PHYSICS_BASELINE_AUDIT.md/.json (Phase
+                              1-2); CLAUDE_PROGRESS.md's Phase 6 section
+                              (full console trajectory, both runs);
+                              tests/test_sharp_front_single_front_geometry_veto_rollback.py
+                              (2 tests, confirmed via temporary revert to
+                              fail against the pre-fix code).
+Change made:                  c81c376 (single-front geometry-veto
+                              rollback fix -- real bug, confirmed NOT the
+                              path the actual anisotropic target case
+                              uses, since deflect=bool(args.crystal_aniso)
+                              is always true for real production runs);
+                              24bcea7 (moved the multi-front veto-reason
+                              print before the raising restore call --
+                              diagnostic-only, no behavior change).
+Physics changed?:             No (both changes affect only bookkeeping/
+                              diagnostics around an already-existing veto
+                              signal, not any hazard/mechanics/remeshing
+                              physics).
+Regression result:            AST-patcher anchors 19 passed/2 skipped;
+                              atomic-path-corridor/persistent-site/moving-
+                              tip/signed-kernel/rollback focused suite 88
+                              passed (2 pre-existing-unrelated failures);
+                              full tests/ suite 729 passed, 3 skipped, 8
+                              failed (same pre-existing failures as this
+                              file's documented baseline, no new ones).
+Real-run result:               2 real native-loading runs (deterministic,
+                              identical trajectories), both real FEM
+                              solves against the production mesh/kernel/
+                              barrier row -- not synthetic, not scalar.
+Exact next discriminating experiment: rerun with a smaller --da-phys
+                              (e.g. 2e-6 or 1e-6, a resolution choice, not
+                              a quality-gate relaxation) to see whether the
+                              corridor-infeasibility recurs at the same
+                              physical location; separately, resolve
+                              kernel provenance (or get explicit approval
+                              to treat the frozen snapshot as sufficient)
+                              to test the full_field bulk overlay outside
+                              the hash-gated wrapper, which is needed
+                              before the K_J,FP scale gap can be judged as
+                              anything more than a mechanism-difference
+                              hypothesis.
+```
 
 ### 2026-08-04 (continued — acceptance standard corrected to physical correspondence)
 

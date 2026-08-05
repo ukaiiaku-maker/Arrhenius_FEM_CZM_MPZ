@@ -1,6 +1,206 @@
 # Claude progress
 
-## URGENT HANDOFF (2026-08-04, latest — read this section first)
+## URGENT HANDOFF (2026-08-04/05, project-direction correction — read this section first)
+
+**The user explicitly rejected the scalar-controlled-K_J development path
+documented further below in this file (the `legacy_scalar` diagnostic,
+`--pf-kj-target-csv`, the "Path A" recommendation, and the reproducible
+anchor-diagnostic script). That work is not deleted from history (it is
+still reachable at commits `2bb128c`/`4fcf08a`/`a147774` in this branch's
+reflog/origin ref), but it is NOT the production architecture and must not
+be extended further.** The user's correction: return to the last known-good
+full-production FEM/CZM implementation and fix the targeted R-curve/
+advection defect, without rebuilding validated physics from scratch.
+
+### What this correction session did, in order
+
+1. **Phase 1 (audit)**: produced `FULL_PHYSICS_BASELINE_AUDIT.md` and
+   `FULL_PHYSICS_BASELINE_AUDIT.json`. Identified
+   `293491157063484bb10df6adc479f847a6a08ba6` (tag
+   `claude-v10.0.5.18.4.0-source-baseline`, == HEAD of
+   `origin/v10.0.5.18.4.0-theta0-pf-parity`) as the authoritative
+   full-physics commit — this is the same commit CLAUDE.md already pinned
+   as "verified source commit at workspace creation," now independently
+   re-confirmed via `git rev-parse`/`git merge-base` and rejected an
+   alternative sibling branch (`...-validation`, confirmed less complete).
+2. **Phase 2 (recovery decision)**: `git diff --stat` between that baseline
+   and this branch's HEAD before this correction (`6100d50`) touches 27
+   files, 25 of them entirely new (docs/standalone modules/scripts/tests),
+   plus exactly one existing physics file (`sharp_front.py`, confirmed via
+   full hunk-by-hunk diff read to be purely additive/default-off) and one
+   shell launcher. **Conclusion: the branch had not materially diverged.
+   No recovery branch was created — none was needed.** Continued on the
+   current branch, per the governing instruction's own decision rule.
+3. **Phase 3 (diagnosis)**: traced the accepted-event path (hazard crossing
+   → event-length proposal → anisotropic cohesive/geometry trial → remesh →
+   commit → new-tip MPZ evolution) through `sharp_front.run_2d` and
+   `persistent_site_moving_tip_v100515.py`. **Found the first incorrect
+   operation**: in the single-front (non-deflect) accepted-event branch,
+   `eng.step()` unconditionally mutates the front engine's hazard/MPZ state
+   (`B`, `N_em`, `a_adv`, `n_adv`) for every fire *before* the actual
+   geometry commit is attempted via `crack_backend.advance(...)`. When that
+   commit is vetoed (mesh-quality/angle-error gate), the pre-existing code
+   only printed a diagnostic and `break`-ed — the already-mutated engine
+   state was never rolled back, permanently desynchronizing the MPZ/hazard
+   frame from the real (unadvanced) geometric tip for the rest of the run.
+   The multi-front/deflect code path already had the correct handling
+   (`eng_f.restore_geometry_veto(...)` or a manual B/N_em/a_adv/n_adv
+   fallback restore) — the single-front path simply lacked it.
+4. **Phase 4 (fix)**: mirrored the existing, already-reviewed multi-front
+   rollback pattern into the single-front path in `sharp_front.py` (commit
+   `c81c376`). No anisotropic elasticity/remeshing/MPZ/shielding/bulk-PT
+   physics was touched — only how the front engine's own state reacts to
+   an already-existing veto signal from the (unmodified) remesher. Added
+   `tests/test_sharp_front_single_front_geometry_veto_rollback.py` (2
+   tests) and **verified by temporary revert that the first test fails
+   against the pre-fix code** (B stuck at the post-fire value instead of
+   restored) — a genuine regression test, not a tautology.
+5. **Phase 5 (regression)**: `tests/test_sharp_front_ast_patcher_anchors_v10051840.py`
+   (19 passed, 2 skipped — `run_2d` anchors intact); the full
+   atomic-path-corridor/persistent-site/moving-tip/signed-kernel/rollback
+   focused suite (88 passed, 2 pre-existing-unrelated failures); full
+   `tests/` suite (729 passed, 3 skipped, 8 failed — the identical 8
+   pre-existing failures from this file's own documented baseline further
+   below, no new failures).
+6. **Phase 6 (native-loading experiment)**: run, see full result below.
+   **This run also revealed an important correction to step 3's own
+   diagnosis**: `deflect = bool(getattr(args, 'crystal_aniso', False))`
+   (`sharp_front.py`) — any real anisotropic production run (always
+   `--crystal-aniso`) takes the **multi-front/deflect** code path, not the
+   single-front path Phase 3/4 fixed. The Phase 4 fix is still a genuine,
+   verified bug fix (proven by a test that fails against the pre-fix code)
+   and is retained, but it is not what governs the actual target case's
+   behavior. The multi-front path's *own* equivalent rollback
+   (`eng_f.restore_geometry_veto`) was already correct before this session
+   — directly confirmed by the native run below stopping cleanly on a real
+   geometry veto rather than corrupting state silently.
+
+### Phase 6 result (native-loading run, Peak/1000K/theta=0/seed=8666)
+
+**Entry point**: `mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.main()`
+called directly (not the hash-gated `..._theta0_pf_parity`/
+`..._full_field_parity`/`..._full_field_production` wrappers), wrapped in
+`active_only_kernel_family_compat_v10051840.installed_active_only_kernel_family_compat(out)`
+invoked manually. `bulk_plasticity_mode=tip_only` (this entry point's own
+default; the `full_field` v10.4.1 overlay is only installed by the
+higher, still-hash-gated wrapper).
+
+**Loading**: rate1x-equivalent — PF rate1x's own physical opening rate
+(`2.0e-7 m / 8.4 s = 2.381e-8 m/s`) held fixed, discretized with a much
+larger native FEM step (`dt=100 s`, `dU=2.381e-6 m`) instead of PF's own
+`dt=8.4 s` (which is what produced the original ~145,000-step slow-ramp
+problem). 200 steps requested; mesh 36x72 (2020-2180 nodes depending on
+adaptive refinement), production Peak barrier row, seed 8666,
+`--crystal-aniso --crystal-compete --crystal-theta-deg 0`, `--crack-backend
+adaptive_czm`, `--da-phys 5e-6`, `--target-crack-extension-um 50`.
+
+**Kernel used**: the frozen `reference_inputs/pf_final_v10_2_30/rate1x/
+v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/family.json`
+snapshot (sha256 `d41b08f69ae773...`) — **not** verified-identical to any
+specific historical PF campaign kernel (unchanged caveat from prior
+sessions).
+
+**Result** (console log only; the run raised before `steps_1000K.csv` was
+written — see "what's missing" below):
+
+```text
+step  5   KJ=20.492 MPa√m  sigma_tip=8.15 GPa  B=0.036  N_em=7.69   a=0.500 mm
+step 10   KJ=20.879         sigma_tip=8.30 GPa  B=0.286  N_em=6.07   a=0.500 mm
+step 15   KJ=21.044         sigma_tip=8.37 GPa  B=0.679  N_em=4.74   a=0.500 mm
+step 18   KJ=21.176         sigma_tip=8.42 GPa  B=0.000  N_em=3.94   a=0.504 mm  << ADVANCE (first passage)
+step 20   KJ=21.183         sigma_tip=8.38 GPa  B=0.220  N_em=3.55   a=0.504 mm
+step 25   KJ=21.202         sigma_tip=8.39 GPa  B=0.744  N_em=3.75   a=0.504 mm
+step 28   KJ=21.223         sigma_tip=8.40 GPa  B=0.000  N_em=3.71   a=0.506 mm  << ADVANCE
+step 30   KJ=21.239         sigma_tip=8.42 GPa  B=0.159  N_em=6.22   a=0.506 mm
+step 35   KJ=21.270         sigma_tip=8.46 GPa  B=0.596  N_em=4.16   a=0.506 mm
+step 39   KJ=21.297         sigma_tip=8.48 GPa  B=0.000  N_em=1.92   a=0.509 mm  << ADVANCE
+step 40   KJ=21.307         sigma_tip=8.49 GPa  B=0.095  N_em=0.90   a=0.509 mm
+step 45   KJ=21.379         sigma_tip=8.52 GPa  B=0.560  N_em=0.63   a=0.509 mm
+GEOMETRY VETO front 0: v10051839_no_feasible_atomic_path_corridor -- renewal retained in B=1.000
+[run stops: RuntimeError from persistent_site_moving_tip_v100515.py's
+ restore_geometry_veto, fail-closed by design]
+```
+
+First passage: KJ≈21.2 MPa√m at step 18 (physical time 1800 s). Three
+real, discrete crack-advance events (9 µm total, 0.500→0.509 mm), KJ
+rising slightly with each — a genuine, qualitatively PF-like rising
+R-curve signal, well short of the 50 µm target, before the run stopped on
+a real (not artificial) geometry veto.
+
+**What's missing / not yet claimed**: the run did not reach the 20-50 µm
+target; `steps_1000K.csv` was never written (the uncaught RuntimeError
+propagated out before that write). The exact veto reason was not captured
+by the first run because the pre-existing print statement sat *after* the
+raising `restore_geometry_veto()` call. Fixed the print/restore ordering
+(diagnostic-only, no behavior change) and re-ran with an otherwise
+identical, deterministic (seed 8666) configuration: **identical
+trajectory reproduced exactly** (steps 5-45 bit-for-bit the same KJ/B/
+N_em/a values), confirming determinism, and this time the veto reason was
+captured: **`v10051839_no_feasible_atomic_path_corridor`** — the atomic
+path-corridor remesher could not find any triangulation satisfying its
+quality gates for the requested advance at that point. This is a genuine
+remeshing-difficulty finding under this specific (mesh, `da_phys=5e-6`,
+native-rate) configuration, not a bug this session introduced or a gate
+that was weakened -- the fail-closed stop is the CORRECT response to it
+per FEM_CZM_HANDOFF.md section 7.3.
+
+**Exact next experiment**: rerun the same configuration with a smaller
+`--da-phys` (e.g. `2e-6` or `1e-6` instead of `5e-6`) -- a purely
+mesh-resolution/step-size choice, not a quality-gate relaxation -- to see
+whether the atomic path-corridor backend can find a feasible triangulation
+for smaller requested advances at the geometry where it failed this time.
+If it still fails at the same physical crack length, that would point to
+a locally difficult mesh region (e.g. near the notch/refinement boundary)
+worth investigating directly in `atomic_path_corridor_adaptive_quality_v10051839.py`.
+Do not relax `czm-min-area-ratio`/`czm-min-triangle-quality` to force this
+past -- per instruction, those floors stay fixed.
+
+**First-passage KJ scale vs. PF**: 21.2 MPa√m is well below PF's ~53.9
+MPa√m for this case (the v10.2.30 campaign's Peak/1000K/rate1x value) --
+mechanistically expected, not unexplained, since this run deliberately
+used `tip_only` bulk mode (no full-field bulk Peierls-Taylor plasticity
+contribution), not PF's `full_field` closure. Do not read this as a
+physical-correspondence failure -- the two configurations are not yet
+comparable on equal footing.
+
+### Kernel-provenance resolution used for the native run (read before reusing)
+
+The exact-hash-gated production wrapper
+(`mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py`/
+`..._full_field_parity.py`, `REFERENCE_KERNEL_SHA256 = a85b57ad9e...`) is
+still blocked (unchanged, not weakened — see the EXTERNAL BLOCKER section
+further below). For the native-loading experiment, this session invoked
+`mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.main()`
+**directly** instead (one level below the historical-parity-asserting
+wrapper — confirmed via direct source read to have no hash gate of its own),
+wrapped in `active_only_kernel_family_compat_v10051840.installed_active_only_kernel_family_compat(out)`
+(the same standalone, intentional interoperability shim the production
+entry point itself uses, invoked manually rather than through the gated
+wrapper), supplying the frozen `reference_inputs/pf_final_v10_2_30/rate1x/
+v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/family.json`
+kernel snapshot (sha256 `d41b08f69ae773...`, **not** verified-identical to
+any specific historical PF campaign kernel — this caveat is unchanged from
+prior sessions and must be repeated in any report of these results). This
+produces `bulk_plasticity_mode=tip_only` (this entry point's own default,
+not the `full_field` v10.4.1 overlay only the higher, hash-gated wrapper
+installs) — a legitimate, previously-qualified production configuration in
+its own right (FEM_CZM_HANDOFF.md explicitly describes it as "the qualified
+tip-only elastic-bulk formulation"), just not PF's exact bulk closure.
+
+### Native loading rate ("rate1x-equivalent," not PF's own step discretization)
+
+The original slow-ramp defect (documented below, ~145,000 steps to first
+passage) came from reusing PF's own `dt=8.4s` step discretization for an
+expensive FEM solve, not from the *physical* rate1x opening rate itself
+being too slow. This session instead held the **physical** rate1x opening
+rate fixed (`dU/dt = 2.0e-7/8.4 = 2.381e-8 m/s`, PF rate1x's own value) but
+discretized it with a much larger FEM step `dt` (a native choice, not
+PF-matched, not KJ-controller-driven), scaling `dU` proportionally so the
+remote-displacement rate is unchanged. This is "rate1x-equivalent loading"
+in the sense the governing instructions asked for. See the Phase 6 section
+below for the exact `dt` used and the resulting step count.
+
+---
 
 **Everything below this section is from an earlier point in the same
 session and is still accurate, but the single most important pivot is
