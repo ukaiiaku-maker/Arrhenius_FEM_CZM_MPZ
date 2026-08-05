@@ -66,29 +66,62 @@ def _verify_one(path: Path, *, expected_sha256: str, label: str) -> str:
 
 def resolve_frozen_pf_reference(
     reference_dir: str | Path | None = None,
+    *,
+    expected_steps_csv_sha256: str | None = None,
+    expected_kernel_sha256: str | None = None,
+    steps_csv_filename: str | None = None,
 ) -> FrozenPFReference:
-    """Resolve and verify the frozen PF steps CSV and kernel family.json.
+    """Resolve and verify a frozen PF steps CSV and kernel family.json.
 
     `reference_dir` must be an explicit local directory (defaults to
-    `DEFAULT_REFERENCE_DIR` under the current workspace). It is never
-    inferred from, or allowed to silently fall back to, any path inside a
-    PF repository's own `runs/` directory -- that directory is externally
-    mutable and is exactly what made the original artifacts disappear.
+    `DEFAULT_REFERENCE_DIR` under the current workspace, the original
+    v10.4.1 Peak/1000K case). It is never inferred from, or allowed to
+    silently fall back to, any path inside a PF repository's own `runs/`
+    directory -- that directory is externally mutable and is exactly what
+    made the original artifacts disappear.
+
+    `expected_steps_csv_sha256`/`expected_kernel_sha256` default to the
+    original v10.4.1 case's audited hashes for backward compatibility, but
+    every OTHER frozen case (e.g. any case from the final v10.2.30
+    four-class campaign, which has its own valid provenance -- see
+    PF_FINAL_CAMPAIGN_REFERENCE_SUMMARY.md) must pass its own recorded
+    hashes explicitly. Per instruction, a case is not required to match
+    the v10.4.1 hashes to be accepted -- those remain a provenance record
+    for that specific older case, not a universal acceptance requirement.
+
+    `steps_csv_filename` defaults to auto-detecting the single
+    `steps_*K.csv` file in `reference_dir` (temperature-specific, e.g.
+    `steps_300K.csv` vs `steps_1000K.csv`) -- fails closed if zero or more
+    than one match.
 
     Raises FileNotFoundError or ValueError (fail closed) if either file is
-    missing or its SHA-256 does not match the audited contract.
+    missing, ambiguous, or its SHA-256 does not match the expected value.
     """
     root = Path(reference_dir if reference_dir is not None else DEFAULT_REFERENCE_DIR)
     root = root.expanduser().resolve()
 
-    steps_csv = root / "steps_1000K.csv"
+    if steps_csv_filename is not None:
+        steps_csv = root / steps_csv_filename
+    else:
+        candidates = sorted(root.glob("steps_*K.csv")) if root.is_dir() else []
+        if len(candidates) != 1:
+            raise FileNotFoundError(
+                f"expected exactly one steps_*K.csv in {root}, found "
+                f"{len(candidates)}: {candidates}. Pass steps_csv_filename "
+                "explicitly to disambiguate, or freeze exactly one."
+            )
+        steps_csv = candidates[0]
     kernel = root / "family.json"
 
     steps_sha = _verify_one(
-        steps_csv, expected_sha256=EXPECTED_STEPS_CSV_SHA256, label="steps_1000K.csv"
+        steps_csv,
+        expected_sha256=expected_steps_csv_sha256 or EXPECTED_STEPS_CSV_SHA256,
+        label=steps_csv.name,
     )
     kernel_sha = _verify_one(
-        kernel, expected_sha256=EXPECTED_KERNEL_SHA256, label="family.json"
+        kernel,
+        expected_sha256=expected_kernel_sha256 or EXPECTED_KERNEL_SHA256,
+        label="family.json",
     )
 
     return FrozenPFReference(

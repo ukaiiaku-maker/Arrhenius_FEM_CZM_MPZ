@@ -29,7 +29,37 @@ def test_resolves_when_both_files_match_expected_hashes(tmp_path: Path, monkeypa
 
 def test_fails_closed_when_csv_missing(tmp_path: Path):
     (tmp_path / "family.json").write_bytes(b"x")
-    with pytest.raises(FileNotFoundError, match="steps_1000K.csv"):
+    with pytest.raises(FileNotFoundError, match="found 0"):
+        frozen_ref.resolve_frozen_pf_reference(tmp_path)
+
+
+def test_resolves_a_non_1000K_case_with_explicit_hashes_and_auto_detected_filename(
+    tmp_path: Path,
+):
+    """A frozen case from a different temperature/campaign (e.g. the final
+    v10.2.30 four-class campaign's Peak/300K case) must resolve correctly
+    with its own explicit hashes and a differently-named steps CSV,
+    without touching the v10.4.1 module-level defaults at all."""
+    csv_bytes = b"a 300K case's steps content"
+    kernel_bytes = b"that case's frozen kernel content"
+    (tmp_path / "steps_300K.csv").write_bytes(csv_bytes)
+    (tmp_path / "family.json").write_bytes(kernel_bytes)
+
+    result = frozen_ref.resolve_frozen_pf_reference(
+        tmp_path,
+        expected_steps_csv_sha256=hashlib.sha256(csv_bytes).hexdigest(),
+        expected_kernel_sha256=hashlib.sha256(kernel_bytes).hexdigest(),
+    )
+    assert result.steps_csv_path.endswith("steps_300K.csv")
+    assert result.steps_csv_sha256 == hashlib.sha256(csv_bytes).hexdigest()
+    assert result.kernel_sha256 == hashlib.sha256(kernel_bytes).hexdigest()
+
+
+def test_ambiguous_steps_csv_fails_closed(tmp_path: Path):
+    (tmp_path / "steps_300K.csv").write_bytes(b"a")
+    (tmp_path / "steps_1000K.csv").write_bytes(b"b")
+    (tmp_path / "family.json").write_bytes(b"c")
+    with pytest.raises(FileNotFoundError, match="found 2"):
         frozen_ref.resolve_frozen_pf_reference(tmp_path)
 
 
