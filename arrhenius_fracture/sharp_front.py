@@ -3254,6 +3254,7 @@ def run_2d(args):
                     if Kc_first is None:
                         Kc_first = KJ; Kc_first_step = len(hist['sigma_back'])
                     n_events = max(int(info.get('n_fire', 1)), 1)
+                    n_committed = 0
                     for _iev in range(n_events):
                         if crack_backend.name == 'sharp_wake':
                             len1_m = da_phys
@@ -3272,6 +3273,30 @@ def run_2d(args):
                                 front_id=0, kill_r=max(mesh.hbar_tip, 0.5e-6))
                             if not rr.inserted:
                                 print(f"  CZM advance vetoed: {rr.reason} angle_error={rr.angle_error_deg:.2f} deg")
+                                # FEM_CZM_HANDOFF.md section 7.3: a physical event that
+                                # cannot be committed geometrically must fail atomically
+                                # and restore the prior hazard/MPZ state. eng.step()
+                                # above already advanced B/N_em/a_adv/mpz_state for each
+                                # of these n_events fires before this geometry attempt
+                                # was made, so the n_restore fires that did NOT get a
+                                # committed geometry must be rolled back here -- exactly
+                                # mirroring the existing multi-front/deflect path's
+                                # `moved_now <= 0.0` handling elsewhere in this function,
+                                # which this single-front path lacked.
+                                n_restore = n_events - n_committed
+                                if hasattr(eng, 'restore_geometry_veto'):
+                                    eng.restore_geometry_veto(n_restore)
+                                else:
+                                    eng.B += float(n_restore)
+                                    if 'N_em_pre_renewal' in info:
+                                        eng.N_em = float(info['N_em_pre_renewal'])
+                                    eng.a_adv = max(float(eng.a_adv) - eng.f.da * n_restore, 0.0)
+                                    eng.n_adv = max(int(eng.n_adv) - n_restore, 0)
+                                info['geometry_vetoed'] = True
+                                info['fired'] = n_committed > 0
+                                info['n_fire'] = n_committed
+                                info['B'] = float(eng.B)
+                                info['N_em'] = float(eng.N_em)
                                 break
                             mesh, bnd, d, u = rr.mesh, rr.boundary, rr.damage, rr.displacement
                             _log = crack_backend.advance_log[-1]
@@ -3281,6 +3306,7 @@ def run_2d(args):
                             cy_e = mesh.nodes[mesh.elems].mean(axis=1)[:, 1]
                             if rho_transport_c > 0.0:
                                 adj = build_elem_adjacency(mesh)
+                            n_committed += 1
 
             # ---- density transport (common to both paths) ----
             if rho_transport_c > 0.0 and adj is not None:
