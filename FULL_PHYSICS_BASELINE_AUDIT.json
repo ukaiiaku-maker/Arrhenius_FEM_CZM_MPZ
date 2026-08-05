@@ -1,0 +1,214 @@
+{
+  "schema": "full_physics_baseline_audit_v1",
+  "generated_at_utc": "2026-08-05T01:00:00Z",
+  "authoritative_baseline_commit": {
+    "sha": "293491157063484bb10df6adc479f847a6a08ba6",
+    "message": "Make optional plot flag compatible with macOS Bash 3.2",
+    "date": "2026-08-03T15:58:31-07:00",
+    "tag": "claude-v10.0.5.18.4.0-source-baseline",
+    "also_equals_branch_tip_of": "origin/v10.0.5.18.4.0-theta0-pf-parity",
+    "pinned_by": [
+      "CLAUDE.md: 'verified source commit at workspace creation'",
+      "CLAUDE_PROGRESS.md: 'ad06e4c~1 = 293491157063484bb10df6adc479f847a6a08ba6, the verified source commit on v10.0.5.18.4.0-theta0-pf-parity'"
+    ],
+    "sibling_branch_checked_and_rejected": {
+      "branch": "origin/v10.0.5.18.4.0-theta0-pf-parity-validation",
+      "sha": "3791cab94e0ca3fbd867a21be7c9746f999a2f86",
+      "finding": "NOT a descendant of the source-baseline commit; diverges from a common ancestor 6352a4c4 and only adds a GitHub Actions CI-isolation workflow (.github/workflows/validate_v10051840_isolated.yml). It is MISSING the kernel-compat layer, the full-field production entry wiring, the preflight launcher, and the parity test file that the source-baseline commit has. Confirmed via `git diff --stat` between the common ancestor and each tip. The source-baseline commit is the more complete / more physics-correct branch; the validation branch is a CI side-branch, not a more-advanced physics branch."
+    }
+  },
+  "current_branch_divergence_from_baseline": {
+    "current_branch": "claude/v10.0.5.18.4.0-j-controlled-loading",
+    "current_head": "6100d5069ff1946aa5e28e7b8e133bf573b79d96",
+    "commits_ahead_of_baseline": 16,
+    "diff_summary": "git diff --stat between the baseline commit and current HEAD touches 27 files, 26514 insertions(+), 1 deletion(-). Of these: 25 files are entirely NEW (docs, new standalone pf_theta0_*.py modules, new scripts, new tests) that do not modify any existing physics file. Exactly ONE existing physics file is modified: arrhenius_fracture/sharp_front.py. One existing shell launcher is modified: run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh.",
+    "sharp_front_py_diff_verified_additive_only": {
+      "method": "Direct `git diff` read of every hunk between baseline and current HEAD.",
+      "finding": "Every change is a NEW code path gated by `if pf_target_active:` / `if pf_target_trajectory is not None:`, or a new CLI flag appended at the very end of _build_parser() before `return p`. The `else:` branch in every conditional is the ORIGINAL statement, unindented and byte-identical (confirmed by the fix in commit c998041, which specifically avoided re-indenting the original mechanics/KJ block to protect ~15 other modules' AST/text-patch anchors on run_2d's source). No anisotropic elasticity, remeshing, MPZ, persistent-site, shielding, bulk Peierls-Taylor, or cohesive code was touched.",
+      "conclusion": "The scalar-diagnostic session's changes to sharp_front.py are dead code when --pf-kj-target-csv is absent (the default for every production entry point). This is proven, not assumed."
+    },
+    "conclusion": "The current branch has NOT diverged materially from the known-good full-physics baseline. Phase 2 recovery strategy: continue on the current branch; no new recovery branch or cherry-pick is required. The scalar controller code may remain in sharp_front.py inertly (default-off) per the instruction that it may remain as an isolated root-finder regression; it is simply never invoked by any production entry point going forward."
+  },
+  "production_composition_chain": {
+    "entry_point_for_this_workspace_target_case": "arrhenius_fracture/mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py:main",
+    "launcher_script": "run_v10_0_5_18_4_0_peak1000_theta0_pf_full_field_parity.sh",
+    "preflight_script": "scripts/preflight_and_launch_v10051840_theta0_full_field.sh (hard-checks EXPECTED_BRANCH=v10.0.5.18.4.0-theta0-pf-parity; do not use on this dev branch)",
+    "verified_chain_by_direct_source_read": [
+      "mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py:main -> installs active_only_kernel_family_compat, then calls _base.main(args) where _base = mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity",
+      "mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py:main -> monkeypatches _v14.persistent_site_policy, _v14._replace_option, _v134.main, _core._set_bulk_barrier_defaults, _v131._apply_barrier_pt_config, _installed_bulk_pt.EmissionDerivedPeierlsTaylorModel/config_from_dislocation_config, _base._fields (all restored in `finally`); enforces --signed-kernel-family SHA-256 == REFERENCE_KERNEL_SHA256 (hard gate, see kernel_provenance_status); calls _base.main(solver_args) where _base = mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor",
+      "mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.py -> imports mode_i_first_passage_v9_18_5_6 and the atomic_path_corridor_{czm,adaptive_quality,local_scale,quality}_v10051839 modules (the anisotropic remeshing implementation); this is the v3.9 remeshing lineage referenced in FEM_CZM_HANDOFF.md as having 'demonstrated ... approximately 400 micrometers without the previous mesh failure'",
+      "ultimately reaches arrhenius_fracture/sharp_front.py:run_2d as the shared step loop (per CLAUDE_PROGRESS.md's existing architecture notes: ~15 modules inspect.getsource(run_2d) and AST/text-patch it rather than calling a different loop)"
+    ],
+    "persistent_site_engine_wiring_by_direct_source_read": [
+      "mode_i_first_passage_v10_0_5_14_persistent_site.py (_v14): defines persistent_site_policy(); its own main() (around line 302) calls persistent_site_policy(candidate) as a bare module-global name, so external reassignment of _v14.persistent_site_policy (done by full_field_parity.py) takes effect at that call site",
+      "mode_i_first_passage_v10_0_5_14_persistent_site.py:341-342 monkeypatches `_v911.MovingProcessZone2DFrontEngine = PersistentSiteMovingProcessZoneFrontEngineV100514` (mixed_mode_first_passage_v9_11's engine-class attribute), which is the class actually swapped in by mixed_mode_first_passage_v8/v9_11's own `sf.build_engine = _engine_factory(orig_build, context, <engine class>)` monkeypatch mechanism -- NOT sharp_front.build_engine's own direct `state_model == 'moving_pz'` branch, which constructs the bare (non-persistent-site) MovingProcessZoneFrontEngine and is bypassed once this monkeypatch is installed",
+      "persistent_site_front_engine_v100514.py: PersistentSiteMovingProcessZoneFrontEngineV100514(MovingProcessZoneFrontEngine) -- constructs PersistentSiteSignedMPZStateV100514 in .reset(), configured via a class-level .configure(candidate, kernel) classmethod",
+      "NOT independently re-traced hop-by-hop: the exact intermediate calls from mode_i_first_passage_v9_18_5_6.py down through the v9.18.x/v9.11 lineage to the point where mixed_mode_first_passage_v8's sf.build_engine monkeypatch is actually installed. This was not exhaustively re-derived this session given ~10 nested wrapper layers; instead the end-to-end wiring was confirmed EMPIRICALLY (see archived_run_evidence below) rather than by static call-graph tracing of every hop."
+    ],
+    "kernel_provenance_status": {
+      "gate_location": "mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py:REFERENCE_KERNEL_SHA256 (= a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a), enforced in both that module's own main() and (identically) in mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py:main() via --signed-kernel-family",
+      "current_status": "The live PF kernel-cache path's family.json content changed during unrelated concurrent PF-repo activity (observed 2026-08-03/04); no locally-available file currently hashes to a85b57ad9e.... This blocks invoking mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_production.py end-to-end for a byte-verified 'exact production replication of the historical PF case' claim.",
+      "guard_not_weakened": true,
+      "implication_for_native_loading": "A native-loading run (Phase 6) does not need to satisfy this specific hard-coded historical-parity gate at all, because that gate's entire purpose is asserting numerical identity with one specific historical PF run (fixed nx/ny/dU/dt/tip_h_fine/etc. all forced equal to the PF case's own controls -- see _require_* calls in theta0_pf_parity.py:main). A native run is FEM's own independent prediction under its own loading schedule, so it is not required to go through this specific gated wrapper. It can instead invoke the full physics (anisotropic elasticity/remeshing/persistent-site MPZ/bulk PT/signed shielding) through a lower-level entry point (e.g. mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.py or mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py directly) supplying a documented, currently-available kernel snapshot with its own hash recorded and the provenance caveat stated explicitly -- not claimed as historically verified, and not routed through the hash-gated 'theta0_pf_parity' wrapper's exact-match claim."
+    }
+  },
+  "mechanisms": [
+    {
+      "name": "Anisotropic elasticity and crystal orientation",
+      "introduced_commit": "c80f354 (Import complete Arrhenius FEM/CZM MPZ v9.0 baseline)",
+      "implementation_file_symbol": "arrhenius_fracture/crystal.py: cubic_stiffness_6x6, cubic_plane_strain_D(C11,C12,C44,theta_deg)",
+      "composition_patch_module": "consumed directly by sharp_front.py mesh/material assembly; theta_deg forced to 0.0 by both theta0_pf_parity.py and full_field_parity.py's _require_float checks",
+      "launcher_and_active_flags": "--crystal-aniso --crystal-C11 523e9 --crystal-C12 203e9 --crystal-C44 160e9 --crystal-theta-deg 0",
+      "focused_test": "tests/test_v1002_anisotropic_straight_transform.py",
+      "archived_run_evidence": "runs/v10_0_5_18_4_0_theta0_full_field_preflight/.../theta0_pf_full_field_parity_contract_v10_0_5_18_4_0.json argv (in the read-only v10_0_5_17_paper7_self_contained repo) shows --crystal-aniso --crystal-C11 523e9 --crystal-C12 203e9 --crystal-C44 160e9 --crystal-theta-deg 0 was actually used in a completed run",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Anisotropic crack direction (competition/branching)",
+      "introduced_commit": "9f8dc13 (Add PF-style two-channel FEM tensor drives) and cubic-competition logic added to sharp_front.py in the same v9.0-v9.13 era",
+      "implementation_file_symbol": "arrhenius_fracture/sharp_front.py ~line 1544-1563 (crystal_compete/cleave_gamma_aniso/gamma_110_rel-driven direction competition); arrhenius_fracture/anisotropic_two_channel_drive_v100514.py (two-channel tensor drive used by the persistent-site engine's _two_channel_drive)",
+      "composition_patch_module": "augmented_j_wrapper_factory (anisotropic_two_channel_drive_v100514.py), consumed by mode_i_first_passage_v10_0_5_14_persistent_site.py",
+      "launcher_and_active_flags": "--crystal-compete --cleave-gamma-aniso 0.3",
+      "focused_test": "no dedicated file located this session under this exact name; covered indirectly by tests/test_v1002_anisotropic_straight_transform.py and the persistent-site integration tests",
+      "archived_run_evidence": "same preflight run argv as above: --crystal-compete --cleave-gamma-aniso 0.3",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Anisotropic remeshing and mesh-quality corrections (v10.0.5.18.3.x lineage)",
+      "introduced_commit": "48b0dbf (v10.0.5.18.3.3 long-growth corridor) through 24ea0bb/8b22854/96751ca/c31027b (v10.0.5.18.3.9 atomic path-corridor quality/adaptive-quality/local-scale wrappers)",
+      "implementation_file_symbol": "atomic_path_corridor_czm_v10051839.py, atomic_path_corridor_quality_v10051839.py, atomic_path_corridor_local_scale_v10051839.py, atomic_path_corridor_adaptive_quality_v10051839.py, quality_aware_czm_{patch,retry,ray_handoff}_v10051835.py, path_aware_growth_envelope_v10051834.py, committed_tip_resolution_audit_v10051836.py, event_resolved_czm_retry_v10051837.py",
+      "composition_patch_module": "mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.py (_base of the full-field parity wrapper)",
+      "launcher_and_active_flags": "--crack-backend adaptive_czm --czm-max-angle-error-deg 35 --czm-min-area-ratio 0.08 --czm-min-triangle-quality 0.035",
+      "focused_test": "tests/test_atomic_path_corridor_v10051839.py, tests/test_atomic_path_corridor_node_compaction_v10051839.py, tests/test_path_aware_growth_envelope_v10051834.py, tests/test_committed_tip_resolution_audit_v10051836.py, tests/test_event_resolved_czm_retry_v10051837.py, tests/test_event_resolved_czm_edge_connected_v10051837.py",
+      "archived_run_evidence": "multiple archived 400 um runs in the read-only v10_0_5_17_paper7_self_contained repo, e.g. runs/v10_0_5_18_3_9_peak1000_400um_seed3100913530_local_compaction_v1, runs/v10_0_5_18_3_4_peak1000_400um_replay_diag_v1, runs/v10_0_5_18_3_8_peak1000_400um_seed3100913530_two_triangle_cavity_v1, each with its own persistent_site_production_manifest_v10_0_5_18_3_X.json. FEM_CZM_HANDOFF.md section 4 explicitly states this lineage 'demonstrated that the cohesive crack can propagate through approximately 400 micrometers without the previous mesh failure.'",
+      "current_branch_status": "unchanged -- this is explicitly the implementation the current task must NOT replace or simplify"
+    },
+    {
+      "name": "Atomic cohesive-zone trial/commit/veto behavior",
+      "introduced_commit": "226c4ca (Add full kinetic trial-interface transaction lifecycle)",
+      "implementation_file_symbol": "arrhenius_fracture/cohesive_trial_state.py; atomic_path_corridor_czm_v10051839.py (atomic commit/veto around remesh)",
+      "composition_patch_module": "mode_i_first_passage_v10_0_5_18_3_9_atomic_path_corridor.py; sharp_front.py's u_saved/ep_saved/rho_saved/Uapp_saved trial-loop scaffolding (pre-existing, documented in CLAUDE_PROGRESS.md's sharp_front architecture notes)",
+      "launcher_and_active_flags": "n/a (always active for crack-backend=adaptive_czm)",
+      "focused_test": "tests/test_atomic_path_corridor_v10051839.py",
+      "archived_run_evidence": "same 400 um archived runs as above",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Signed active shielding",
+      "introduced_commit": "9ecd6d1 (Add PF v10.2.14 signed kernel-family loader); 952da75 (Expose persistent signed MPZ production state)",
+      "implementation_file_symbol": "arrhenius_fracture/signed_kernel_family_v1005141.py; arrhenius_fracture/persistent_site_signed_mpz_v100514.py: SignedShieldingKernelV100514; persistent_site_signed_core_v100514.py",
+      "composition_patch_module": "mode_i_first_passage_v10_0_5_14_1_persistent_site_family.py (accepts --signed-kernel-family and configures the class-level kernel); mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py (re-asserts the hash gate at the production layer)",
+      "launcher_and_active_flags": "--signed-kernel-family <path to family.json>",
+      "focused_test": "tests/test_signed_kernel_family_v1005141.py",
+      "archived_run_evidence": "preflight run argv includes --signed-kernel-family pointing at the (then-valid) v10_2_28_kernel_cache/1447653d.../family.json path; persistent_site_production_manifest shows two_d_state_policy.policy_id=PF_v10_2_22_persistent_sites_signed_kernel_family_v1005141",
+      "current_branch_status": "unchanged; see kernel_provenance_status above for why re-running this exact gated path is currently blocked"
+    },
+    {
+      "name": "Persistent-site moving MPZ engine",
+      "introduced_commit": "c45ab4a (Add exact v10.2.22 persistent-site registry); ac2a4d3 (Add v10.0.5.14.1 PF kernel-family production entry)",
+      "implementation_file_symbol": "persistent_site_front_engine_v100514.py: PersistentSiteMovingProcessZoneFrontEngineV100514; persistent_site_registry_v100514.py: ROWS/select_persistent_site_row",
+      "composition_patch_module": "mode_i_first_passage_v10_0_5_14_persistent_site.py monkeypatches _v911.MovingProcessZone2DFrontEngine to this class",
+      "launcher_and_active_flags": "--parameter-option v913_paper_peak01_0242980_persistent_sites (selects the registry row)",
+      "focused_test": "tests/test_persistent_site_v100514.py, tests/test_persistent_site_diagnostics_v1005144.py",
+      "archived_run_evidence": "persistent_site_production_manifest_v10_0_5_18_3_9.json present in every archived full-field/400um run listed above",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Crack-tip Peierls transport (continuous fractional MPZ translation / kinetic tip cell)",
+      "introduced_commit": "9ab53d6 (Add PF-equivalent continuous moving-tip front engine)",
+      "implementation_file_symbol": "arrhenius_fracture/persistent_site_moving_tip_v100515.py: PersistentSitePFMovingTipFrontEngineV100515._integrate_coupled (da = self.f.da * dB via self.mpz_state.advance(da)); persistent_site_pf_update_v100515.py: evolve_pf_v10222",
+      "composition_patch_module": "same monkeypatch chain as the persistent-site MPZ engine above (this class subclasses PersistentSiteMovingProcessZoneFrontEngineV100514)",
+      "launcher_and_active_flags": "n/a (activated whenever the persistent-site engine is active); audit_payload() reports continuous_fractional_MPZ_translation=True, kinetic_tip_cell=True",
+      "focused_test": "tests/test_moving_tip_coupling_v100515.py",
+      "archived_run_evidence": "runs/v10_0_5_18_4_0_theta0_full_field_preflight/.../persistent_site_production_manifest_v10_0_5_18_3_9.json: front_engine.continuous_fractional_MPZ_translation=True, front_engine.kinetic_tip_cell=True -- directly confirms this specific class was active in a real completed run, not merely present in source",
+      "current_branch_status": "unchanged; THIS IS THE FILE MOST DIRECTLY RELEVANT TO PHASE 3's advection diagnosis"
+    },
+    {
+      "name": "Bulk full-field Peierls-Taylor evolution",
+      "introduced_commit": "3057caf (Port exact PF v10.4.1 bulk Peierls-Taylor rates)",
+      "implementation_file_symbol": "arrhenius_fracture/bulk_pt_detailed_balance_v1041_exact.py: EmissionDerivedPeierlsTaylorModel, config_from_dislocation_config",
+      "composition_patch_module": "mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_full_field_parity.py monkeypatches emission_derived_plasticity.EmissionDerivedPeierlsTaylorModel/config_from_dislocation_config to the exact v10.4.1 port for the duration of the run",
+      "launcher_and_active_flags": "--bulk-plasticity-mode full_field",
+      "focused_test": "tests/test_bulk_pt_plasticity.py",
+      "archived_run_evidence": "preflight contract bulk_parity.model = v10.4.1_bulk_peierls_taylor_detailed_balance_exact_port, exact_selected_registry_row=true, detailed_balance_forward_minus_reverse=true, zero_stress_net_rate_exactly_zero=true",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Emission-derived Peierls-Taylor barriers",
+      "introduced_commit": "81b80e7 (Add emission-derived Peierls-Taylor kinetics)",
+      "implementation_file_symbol": "arrhenius_fracture/emission_derived_plasticity.py",
+      "composition_patch_module": "installed as the default bulk PT model; overridden to the exact v10.4.1 port (above) by the full-field parity wrapper specifically for PF-matched runs",
+      "launcher_and_active_flags": "--bulk-kinetics-model emission_derived_peierls_taylor_multihit (also seen as the default in a plain non-parity-wrapped run, e.g. the earlier controlled-KJ diagnostic's run_args.json)",
+      "focused_test": "tests/test_emission_derived_peierls_taylor.py, tests/test_emission_derived_peierls_taylor_v96.py, tests/test_emission_derived_peierls_taylor_v97.py",
+      "archived_run_evidence": "same as bulk full-field Peierls-Taylor row above",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Stochastic cleavage and emission",
+      "introduced_commit": "c80f354 (v9.0 baseline hazard clock); refined across the v9.1x/v10.0.5.x lineage",
+      "implementation_file_symbol": "arrhenius_fracture/sharp_front.py: FrontEngine hazard-clock accept/reject logic (predicted_clock > adaptive_target check), cleavage/emission barrier evaluation (default_cleavage_barrier/default_emission_barrier)",
+      "composition_patch_module": "unchanged core of sharp_front.py, entirely outside the region touched by this session's scalar-controller diff (confirmed by direct diff read)",
+      "launcher_and_active_flags": "CLEAVAGE_HAZARD_SEED, CLEAVAGE_HAZARD_MODE=exponential, CLEAVAGE_EVENT_LENGTH_MODE=threshold_scaled env vars (hard-required by theta0_pf_parity.py:main)",
+      "focused_test": "large pre-existing focused suite (outside this session's scope to enumerate exhaustively); tests/test_pf_theta0_stochastic_fingerprint_v10051840.py (this session's new fail-closed check that this state never mutates during a controller trial -- itself scalar-diagnostic-only code, harmless when unused)",
+      "archived_run_evidence": "every archived run above; hazard_seed=8666 recorded in every contract file",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Event-length sampling",
+      "introduced_commit": "v9.0 baseline, refined at v10.0.5.16-stochastic-hazard-event-length-parity (branch present in remote history)",
+      "implementation_file_symbol": "arrhenius_fracture/sharp_front.py (event-length draw, factor range 0.5-4.0 per CLAUDE_PROGRESS.md); mode_i_first_passage_v10_0_5_16_stochastic_pf_parity.py",
+      "composition_patch_module": "same hazard-clock region of sharp_front.py",
+      "launcher_and_active_flags": "CLEAVAGE_EVENT_LENGTH_MODE=threshold_scaled",
+      "focused_test": "not separately enumerated this session; part of the same pre-existing focused suite as stochastic cleavage/emission",
+      "archived_run_evidence": "same as above",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Energy-gated crack extension",
+      "introduced_commit": "not a separately named FEM-side module; the FEM analog is the combination of the hazard-threshold crossing (B>=1) and the mesh-quality/geometry veto in the atomic path-corridor commit path",
+      "implementation_file_symbol": "arrhenius_fracture/sharp_front.py hazard-clock accept/reject (predicted_clock > adaptive_target) + atomic_path_corridor_quality_v10051839.py's quality gates as the commit-time veto",
+      "composition_patch_module": "n/a",
+      "launcher_and_active_flags": "--czm-min-area-ratio 0.08 --czm-min-triangle-quality 0.035",
+      "focused_test": "tests/test_atomic_path_corridor_v10051839.py and the quality-gate-specific tests",
+      "archived_run_evidence": "same 400um archived runs",
+      "current_branch_status": "GAP -- FEM does not appear to implement a separate, explicit energy-budget gate analogous to PF's own 'hazard_energy_gate' (referenced only in this session's own new, unpopulated pf_theta0_first_passage_event_audit_v10051840.py schema module, not in any pre-existing production file). This is a genuine difference between the two implementations' architectures, not a bug -- record it, do not silently invent a new FEM energy gate to force parity."
+    },
+    {
+      "name": "Exact rollback",
+      "introduced_commit": "v9.18.1-active-event-renewal-rollback (branch present in remote history); refined through v9.18.5.x veto-guard branches",
+      "implementation_file_symbol": "sharp_front.py's u_saved/ep_saved/rho_saved/Uapp_saved trial-loop snapshot/restore (pre-existing); persistent_site_moving_tip_v100515.py: restore_geometry_veto, _restore_state",
+      "composition_patch_module": "n/a",
+      "launcher_and_active_flags": "n/a (always active)",
+      "focused_test": "tests/test_active_event_renewal_rollback_v9181.py, tests/test_active_tip_resolution_veto_guard_v91854.py, tests/test_resolution_audit_only_consecutive_veto_v91855.py",
+      "archived_run_evidence": "n/a (rollback is exercised whenever a trial is rejected; not specifically isolated in the archived-run listing above)",
+      "current_branch_status": "unchanged"
+    },
+    {
+      "name": "Moving-tip state transfer",
+      "introduced_commit": "9ab53d6 / f73fe60 (persistent signed Peierls-Taylor transport mixin) / 5853e1a (conservative split transport v10.0.5.14.4)",
+      "implementation_file_symbol": "persistent_site_moving_tip_v100515.py (checkpoint-triggered translation); persistent_site_signed_transport_v100514.py: PersistentSiteSignedTransportMixin; persistent_site_transport_v1005144.py: installed_split_transport_v1005144 (within-step glide/encounter/Taylor-release transport in tip-relative coordinates)",
+      "composition_patch_module": "same persistent-site engine monkeypatch chain",
+      "launcher_and_active_flags": "n/a (always active for the persistent-site engine)",
+      "focused_test": "tests/test_persistent_site_transport_v1005142.py, tests/test_persistent_site_transport_v1005143.py, tests/test_persistent_site_transport_v1005144.py",
+      "archived_run_evidence": "same as persistent-site MPZ engine row",
+      "current_branch_status": "unchanged -- THIS IS THE SECOND FILE GROUP MOST DIRECTLY RELEVANT TO PHASE 3. Note: this module's 'conservative split transport' governs WITHIN-STEP population exchange/advection along the tip-relative x-coordinate (a fixed MPZ frame); it is NOT itself the mechanism that re-anchors the whole MPZ frame's ORIGIN when the crack tip commits a geometric advance a_new-a_old. That re-anchoring is the checkpoint-triggered `self.mpz_state.advance(da)` call inside persistent_site_moving_tip_v100515.py's _integrate_coupled, which Phase 3 must trace against a_new-a_old specifically, not against this module's own internal transport correctness (which already has its own conservation invariants and tests)."
+    },
+    {
+      "name": "Restart support",
+      "introduced_commit": "not located",
+      "implementation_file_symbol": "not located for this production chain",
+      "composition_patch_module": "n/a",
+      "launcher_and_active_flags": "--save-snapshots/--snapshot-cols/--snapshot-by-crack-extension-um write MPZ/field snapshots (field_snapshots_v912.py/v913.py) but no --restart-from/--resume-from flag or loader was found that reconstructs full solver state (mesh, u, ep_gp, rho_gp, mpz_state, hazard RNG state, cohesive geometry) from a prior run's output to continue stepping",
+      "focused_test": "none located",
+      "archived_run_evidence": "none located",
+      "current_branch_status": "GAP -- restart-from-checkpoint support for a long production run does not appear to exist in this codebase today. FEM_CZM_HANDOFF.md section 14 Task 5 calls for 'restart safety' to be preserved during 400/1000 um campaigns; this audit did not find a mechanism to preserve, only snapshot-writing. Flagging honestly rather than assuming; do not build this speculatively -- only relevant if/when a run needs to be resumed after interruption."
+    }
+  ],
+  "focused_test_suite_this_audit_did_not_yet_run": "The full pre-existing suite (740 passed / 3 skipped / 8 pre-existing-and-unrelated failures at the prior checkpoint) was not re-run as part of Phase 1 itself (a read-only audit); it will be re-run before/after any Phase 3/4 code change per Phase 5.",
+  "explicit_non_actions_this_audit": [
+    "No physics code was written or modified during this audit.",
+    "No recovery branch was created (Phase 2 determined the current branch is not materially diverged).",
+    "No PF campaign files were modified.",
+    "No kernel hash guard was weakened or bypassed."
+  ]
+}
