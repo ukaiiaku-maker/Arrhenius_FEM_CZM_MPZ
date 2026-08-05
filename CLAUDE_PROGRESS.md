@@ -1,5 +1,154 @@
 # Claude progress
 
+## URGENT HANDOFF (2026-08-04, latest — read this section first)
+
+**Everything below this section is from an earlier point in the same
+session and is still accurate, but the single most important pivot is
+not yet reflected further down: the PF final v10.2.30 four-class
+campaign is now the principal PF reference bank (superseding the
+v10.4.1 Peak/1000K case), and a real, meaningful controlled-K_J
+diagnostic against REAL PF data has now run successfully for the first
+time this session.**
+
+### What just happened, in order
+
+1. User redirected: use
+   `PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1`
+   (3 rates x 4 classes x 12 temperatures = 144 cases) as the principal
+   PF physical-correspondence reference bank, not the older, unavailable
+   v10.4.1 case. Do not regenerate the older case unless a specific
+   diagnostic needs a quantity this campaign lacks.
+2. Wrote `scripts/inventory_pf_final_campaign_v10230.py` (read-only,
+   walks all 144 cases, extracts completion/first-passage/event/kernel
+   info + content hashes) and
+   `scripts/characterize_pf_final_campaign_v10230.py` (derives comparison
+   CSVs from the manifest). Committed at `7870f36`.
+3. **All 144 cases verified `complete_target_extension`, zero
+   missing/malformed fields** — see `PF_FINAL_CAMPAIGN_REFERENCE_MANIFEST.json`
+   (workspace root, tracked) and `PF_FINAL_CAMPAIGN_REFERENCE_SUMMARY.md`
+   for the human-readable writeup. Derived CSVs are in
+   `runs/pf_final_campaign_v10230/` (gitignored, regenerate with the two
+   scripts above in order).
+4. **Key PF characterization finding** (rate1x, first-passage K_J vs T):
+   the four classes reproduce their names' qualitative signatures exactly:
+   - Peak: broad gradual transition, ~800-950 K (23→57 MPa√m).
+   - DBTT: SHARP transition, exactly between 950 K (21.7) and 1000 K
+     (56.2) — much narrower than Peak's.
+   - weak-T: flat 19-21 MPa√m across the entire 300-1300 K range.
+   - ceramic: monotonically decreasing 13.6→9.3 MPa√m, no transition.
+   Ordering `ceramic < weak-T < {Peak, DBTT}` holds at nearly every
+   (rate, T). Rate sensitivity is weak at low T (~1.1x spread) and strong
+   above ~800 K (1.7-2.35x spread), consistent with thermally-activated
+   plasticity/emission becoming active there. Full tables in
+   `runs/pf_final_campaign_v10230/pf_*.csv`.
+5. **Recommended 9 Stage-A anchor cases** (see
+   `PF_FINAL_CAMPAIGN_REFERENCE_SUMMARY.md`'s table): Peak 300/1000K,
+   DBTT 900/1000/1100K (bracketing its sharp transition), weak-T and
+   ceramic at 300/1300K.
+6. **Important broadened finding on the kernel-provenance blocker**: the
+   SAME externally-mutated `v10_2_28_kernel_cache/1447653d.../family.json`
+   path (SHA-256 changed from the original `a85b57ad9e...` to
+   `d41b08f69a...` — see the older "EXTERNAL BLOCKER" section below) is
+   referenced by EVERY case in this v10.2.30 campaign too (confirmed via
+   each case's `command.sh`), not just the old v10.4.1 case. **No case's
+   own audit JSON records a byte-level kernel fingerprint from generation
+   time** (only shape/policy metadata) to verify against, so it is
+   possible the mutation already post-dates BOTH campaigns' generation
+   (this campaign is dated 2026-07-29, before the observed 2026-08-03/04
+   mutation) — meaning `a85b57ad9e...` may in fact be the correct
+   historical hash for this campaign's kernel too, but no local copy with
+   that hash exists anywhere (already exhaustively searched, see
+   `PF_REFERENCE_REGENERATION_CONTRACT.md`). **This blocks the FULL
+   production entry point for ANY case** (native-loading or
+   controlled-K_J) because
+   `mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.py`'s
+   `REFERENCE_KERNEL_SHA256` constant is hardcoded to `a85b57ad9e...` and
+   is enforced regardless of which PF case you're comparing against.
+   **Did not weaken this check.**
+7. Generalized `pf_theta0_frozen_reference_v10051840.py`'s
+   `resolve_frozen_pf_reference` to accept explicit
+   `expected_steps_csv_sha256`/`expected_kernel_sha256`/`steps_csv_filename`
+   (defaults preserve exact v10.4.1 behavior) since the new campaign's
+   cases have their own valid, different hashes and temperature-specific
+   filenames. Committed at `8dfda9a`, 10/10 tests pass.
+8. Froze the first anchor case (Peak, 1000 K, rate1x, seed 8666) into
+   `reference_inputs/pf_final_v10_2_30/rate1x/v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/`
+   (gitignored, per policy) — `steps_1000K.csv` sha256
+   `50153f1b93dee23407ec7971658fc8da917629c14e4ff3290b7a7a0c88449faa`,
+   `family.json` sha256 `d41b08f69ae773009f65f4c0094ef5436ba7f0f290a94172e5b894d09a41f7c3`
+   (the latter carries the provenance caveat from point 6 above — see
+   that directory's own README.md). **Not yet committed as a workspace
+   change since `reference_inputs/` is gitignored by design** — nothing
+   to commit there, this is just a note that the files exist locally.
+9. **Ran the first real controlled-K_J diagnostic against REAL PF data
+   this session** (not a synthetic target): `sharp_front.main()` directly
+   (NOT the kernel-gated production wrapper — see point 6), with:
+   - production-scale mesh (`--nx 36 --ny 72 --tip-h-fine 1e-6
+     --tip-ratio 1.20 --da-phys 5e-6`) — confirmed to produce **exactly
+     1124 nodes, hbar_tip=1.385e-06 m**, matching this PF case's own
+     `stage3_case_status.json` (`n_nodes: 1124`,
+     `hbar_tip_m: 1.3845799113363694e-06`) almost exactly — strong
+     confirmation the geometry/mesh parameters are correctly understood.
+   - **the correct Peak-class cleavage AND emission barrier parameters**
+     installed directly via `sharp_front.py`'s own low-level CLI flags
+     (`--cleave-G00-eV`, `--cleave-gT-eV-per-K`, `--cleave-sigc0-GPa`,
+     `--cleave-sT-GPa-per-K`, `--cleave-exp-a`, `--cleave-exp-n`,
+     `--cleave-floor-frac`, `--cleave-Tref-K`, and the `--emit-*`
+     equivalents) — using the exact values already documented in
+     `PF_REFERENCE_REGENERATION_CONTRACT.md`'s "shared_contract" block.
+     **This does NOT require the kernel-gated wrapper at all** — it's a
+     legitimate, intentional feature of the base CLI, not a workaround.
+   - `--pf-kj-target-csv` pointing at the frozen real steps CSV.
+   - **Still missing**: the signed kernel (blocked, point 6), the
+     persistent-site MPZ engine, and the full-field bulk Peierls-Taylor
+     detailed-balance model — this run used the base `legacy_scalar`
+     engine's plain cleavage/emission hazard only, no MPZ/shielding/bulk
+     plasticity. **Not yet a production-configuration or
+     physical-correspondence result** — it is real Gate 1 (numerical
+     correctness) evidence against real data, nothing more, and should
+     not be reported as more than that.
+   - **Result** (40 steps, `runs/anchor_diagnostics/peak_1000K_rate1x_barriers/`,
+     not committed — gitignored under `runs/`): all 40 steps converged
+     (`pf_kj_target_controller_audit_1000K.json`), 3-9 controller
+     iterations per step (mean 5), achieved K_J matched target to ~7e-6
+     relative at the last step (13.587140 vs 13.587047 MPa√m), all
+     stochastic-identity fingerprints preserved across every trial. B
+     stayed exactly 0.0 through all 40 steps while N_em grew steadily
+     (0.62 → 13.53) — **qualitatively consistent** with the real PF
+     trajectory's own early behavior (B numerically negligible, N_em
+     growing) at the corresponding early rows. No premature failure, no
+     ligament severing (unlike two earlier attempts this same investigation
+     with (a) a tiny 6x10 toy mesh and (b) production mesh but generic/
+     default barrier parameters — both severed the ligament within 6
+     steps at unrealistically low K_J~1-2 MPa√m; recorded here so this
+     exact failure mode is not re-discovered from scratch next session).
+
+### Exact next steps (in order)
+
+1. **Do not re-derive any of the above** — it's all recorded here and in
+   `PF_FINAL_CAMPAIGN_REFERENCE_SUMMARY.md`/`PF_FINAL_CAMPAIGN_REFERENCE_MANIFEST.json`.
+2. Decide whether to (a) extend the just-run diagnostic further (more
+   steps, toward this case's real first passage at row 163/step 164,
+   KJ≈53.9 MPa√m) with the same barrier-parameters-but-no-kernel
+   configuration, accepting it stays Gate-1-only since MPZ/kernel/bulk-PT
+   are absent, or (b) invest in resolving the kernel blocker first (see
+   point 6) so a genuine production-configuration/physical-correspondence
+   comparison becomes possible. The user has not yet been asked which to
+   prioritize.
+3. Turn the ad-hoc diagnostic invocation (the Python snippet in point 9
+   above) into a proper reusable script under `scripts/` if continuing
+   down path (a) — it was run ad hoc via `python3 -c "..."` this session,
+   not yet saved as a file.
+4. Repeat the freeze-and-diagnose pattern (points 8-9 above) for the
+   other 8 recommended Stage-A anchor cases once a decision is made on
+   step 2.
+5. Update `FEM_PF_PARITY_SCORECARD.md` with this session's actual
+   evidence (the campaign characterization findings and the diagnostic
+   run's results) — **this was not yet done as of this handoff**; the
+   scorecard still only reflects the pre-campaign-pivot state.
+
+---
+
 - Updated: 2026-08-04 (session continuation — real-engine controller
   audit output, stochastic-identity fingerprint, a confirmed-and-fixed
   AST-patcher anchor regression, and a corrected acceptance standard
