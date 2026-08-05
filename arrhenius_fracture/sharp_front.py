@@ -3091,6 +3091,14 @@ def run_2d(args):
                         info_f = f.get('info') or {}
                         n_restore = max(int(info_f.get('n_fire', 1)), 1)
                         eng_f = f['eng']
+                        # Print the veto reason BEFORE attempting the restore:
+                        # eng_f.restore_geometry_veto() (when available) always
+                        # raises after restoring state (fail-closed by design --
+                        # see persistent_site_moving_tip_v100515.py), so a print
+                        # placed after that call never executes and the reason
+                        # is lost from the run's own console/log record.
+                        print(f"  GEOMETRY VETO front {f['id']}: {f.get('advance_veto_reason','unknown')} "
+                              f"-- renewal retained in B={float(eng_f.B) + float(n_restore):.3f}")
                         if hasattr(eng_f, 'restore_geometry_veto'):
                             eng_f.restore_geometry_veto(n_restore)
                         else:
@@ -3105,8 +3113,6 @@ def run_2d(args):
                         info_f['B'] = float(eng_f.B)
                         info_f['N_em'] = float(eng_f.N_em)
                         f['fired'] = False
-                        print(f"  GEOMETRY VETO front {f['id']}: {f.get('advance_veto_reason','unknown')} "
-                              f"-- renewal retained in B={eng_f.B:.3f}")
                 for f in fronts:
                     _refresh_branch_resolution(f)
                 _record_mechanically_starved_fronts()
