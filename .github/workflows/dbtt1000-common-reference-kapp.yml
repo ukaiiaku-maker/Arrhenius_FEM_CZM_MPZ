@@ -1,0 +1,33 @@
+name: DBTT 1000 K common-reference Kapp
+
+on:
+  push:
+    branches:
+      - agent/dbtt1000-pf-fem-k-decomposition
+    paths:
+      - 'scripts/generate_dbtt1000_common_reference_kapp.py'
+      - '.github/workflows/dbtt1000-common-reference-kapp.yml'
+  workflow_dispatch:
+
+jobs:
+  reference-mechanics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install solver dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy matplotlib
+      - name: Generate common projected-crack K/F calibration
+        run: |
+          python scripts/generate_dbtt1000_common_reference_kapp.py
+      - name: Upload calibration
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbtt1000-common-reference-kapp
+          path: dbtt1000_common_reference/
+          if-no-files-found: error
