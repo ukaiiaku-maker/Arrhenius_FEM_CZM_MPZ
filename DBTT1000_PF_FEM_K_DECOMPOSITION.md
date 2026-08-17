@@ -35,7 +35,7 @@ KJ_local = KJ recorded by the solver from its live J evaluation
 
 This includes the solver's current crack representation and mechanical state.
 
-### Remote-load apparent K using the common fresh reference
+### Remote-load diagnostic using the common fresh reference
 
 ```text
 K_app_initial_geometry = F_actual * (KJ/F)_fresh
@@ -43,8 +43,10 @@ K_app_initial_geometry = F_actual * (KJ/F)_fresh
 
 The two archived DBTT histories used for the current audit share the same fresh
 elastic first row, so this calibration is common to the two calculations. This
-quantity asks how the required remote force changes while deliberately holding
-the microscopic fresh-tip load-to-K mapping fixed.
+quantity is intentionally a **load-only diagnostic**: it asks how the required
+remote force changes while holding the microscopic fresh-tip load-to-K mapping
+fixed. It is not the final experimental-equivalent K once the projected crack
+length has changed substantially.
 
 ### Projected-crack experimental-style diagnostic
 
@@ -52,10 +54,11 @@ the microscopic fresh-tip load-to-K mapping fixed.
 K_app_SENT = K_app_initial_geometry * g(a_projected)/g(a0)
 ```
 
-with the conventional single-edge-tension finite-width polynomial. This is
-only a diagnostic; it is not asserted to remain ASTM-valid at the largest
+with a conventional single-edge-tension finite-width polynomial. This is only
+a secondary diagnostic; it is not asserted to remain ASTM-valid at the largest
 a/W. The preferred final apparent-K metric is an independently generated
-elastic reference-FEM calibration for the actual specimen/BC:
+elastic reference-FEM calibration for the actual specimen and boundary
+conditions:
 
 ```text
 K_app_reference = F_actual * [K_reference/F](a_projected)
@@ -71,9 +74,12 @@ DeltaK_map = K_app - KJ_local
 M_map = KJ_local / K_app
 ```
 
-The output also carries global stiffness/compliance, tip stress, backstress,
+The output also carries the recorded F/U and U/F ratios, tip stress, backstress,
 MPZ shielding/counts where present, and a clearly labelled kinematic radius
-proxy derived from KJ and sigma_tip.
+proxy derived from KJ and sigma_tip. F/U is treated as a recorded global
+load/displacement diagnostic until its exact interpretation is revalidated
+against the solver boundary-condition bookkeeping; it is not automatically
+called an experimental tangent stiffness.
 
 ## Dynamic tip site audit
 
@@ -100,38 +106,39 @@ This is preferable to introducing new state into the production kinetics.
 The decomposition was exercised on the two supplied DBTT/1000 K histories that
 share the exact same fresh elastic first row:
 
-- FEM/CZM history: flat long-growth KJ, final extension ~1000.10 um.
-- strong-R-curve PF-reference candidate: final extension ~1000.01 um.
+- FEM/CZM history: final projected extension ~1000.10 um.
+- strong-R-curve PF-reference candidate: final projected extension ~1000.01 um.
 
 The strong-R-curve history must remain labelled a reference candidate until its
 originating directory manifest is attached to the CSV itself; its behavior and
 fresh first row are consistent with the PF comparison data supplied for this
 audit.
 
-Headline read-only results from the existing histories:
+The event-row selector uses either an accepted `n_fire > 0` event or a positive
+committed crack-extension increment. With that event-resolved selection:
 
 ```text
 first fracture:
-    PF/FEM remote-force ratio          ~0.4883
-    PF - FEM live KJ                  ~+0.276 MPa sqrt(m)
+    PF/FEM remote-force ratio          ~0.48833
+    PF - FEM live KJ                  ~+0.2759 MPa sqrt(m)
 
-near 1 mm:
-    PF/FEM remote-force ratio          ~0.8836
+last accepted event near 1 mm:
+    PF/FEM remote-force ratio          ~0.9705
     PF - FEM live KJ                  ~+25.48 MPa sqrt(m)
 ```
 
-The FEM/CZM event-state live KJ is approximately 59.3 MPa sqrt(m) at both first
-fracture and ~1 mm. Its recorded F/U changes by less than ~1% from the first to
-last fracture event, despite ~1 mm projected crack advance.
+The FEM/CZM event-state live KJ is ~59.30 MPa sqrt(m) at first fracture and
+~59.25 MPa sqrt(m) at the last event near 1 mm. The recorded F/U ratio changes
+by less than ~1% between those two events despite ~1 mm projected crack advance.
 
 The strong-R-curve reference candidate begins near the same first-fracture KJ
-but reaches ~84.7 MPa sqrt(m) near 1 mm. Its load/J mapping and F/U history
-change strongly.
+but reaches ~84.73 MPa sqrt(m) at the last event near 1 mm. Its recorded F/U
+history changes strongly.
 
 Therefore the disagreement is not adequately described as a difference in
 material resistance alone. The two crack representations assign very different
-relationships among projected crack advance, global load/compliance, and local
-J-equivalent K.
+relationships among projected crack advance, global load/displacement response,
+and local J-equivalent K.
 
 A second important observation is that the mappings have already diverged at
 first fracture: nearly equal local KJ is reached at very different remote
@@ -156,10 +163,11 @@ with configuration fingerprint:
 ```
 
 The exact `family.json` bytes are not tracked in the current remote FEM repo or
-the PF GitHub branch. The diagnostic CI therefore fails closed rather than
-substituting another kernel.
+the PF GitHub branch. A different Library `family.json` candidate was checked
+and rejected because its SHA-256 did not match. The diagnostic therefore fails
+closed rather than substituting another kernel.
 
-Once that exact compact artifact is made available to the branch/runtime, the
+Once the exact compact artifact is made available to the branch/runtime, the
 fresh instrumented FEM/CZM rerun can use `run_with_tip_site_audit.py` and the
 matched PF v10.4.1 theta=0 DBTT/1000 K case can be run without changing the
 physics.
@@ -169,8 +177,8 @@ physics.
 `.github/workflows/dbtt1000-k-decomposition.yml` runs the decomposition unit
 tests and syntax/import checks and records the production-input preflight.
 
-The initial workflow run for commit `17e02496ee88c8d839489ee1c4a1457851260f81`
-completed successfully.
+Workflow run `32057594901` completed successfully for commit
+`17e02496ee88c8d839489ee1c4a1457851260f81`.
 
 ## Next exact calculation after the kernel is restored
 
@@ -182,7 +190,7 @@ Uapp
 Ftop
 live J and KJ
 reference-FEM K_app
-F/U and U/F
+recorded F/U and U/F
 sigma_tip
 sigma_back
 K_shield
@@ -196,9 +204,9 @@ aggregate emission hazard
 
 Then compare separately:
 
-1. remote-load R-curve, `K_app(a)`;
+1. reference-mechanics apparent R-curve, `K_app(a)`;
 2. live local R-curve, `KJ(a)`;
 3. `DeltaK_map(a) = K_app(a)-KJ(a)`;
 4. tip-geometry/site evolution and its saturation length;
-5. global compliance evolution;
+5. global load/displacement evolution;
 6. changes that occur before first cleavage versus changes caused by crack/wake growth.
