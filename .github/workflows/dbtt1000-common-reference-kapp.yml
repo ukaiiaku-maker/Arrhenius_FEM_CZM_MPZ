@@ -24,7 +24,7 @@ jobs:
           python -m pip install numpy scipy matplotlib
       - name: Generate common projected-crack K/F calibration
         run: |
-          python scripts/generate_dbtt1000_common_reference_kapp.py
+          PYTHONPATH=. python scripts/generate_dbtt1000_common_reference_kapp.py
       - name: Upload calibration
         uses: actions/upload-artifact@v4
         with:
