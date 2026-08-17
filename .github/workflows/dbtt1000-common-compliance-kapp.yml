@@ -1,0 +1,29 @@
+name: DBTT 1000 K common compliance Kapp
+
+on:
+  push:
+    branches: [agent/dbtt1000-pf-fem-k-decomposition]
+    paths:
+      - 'scripts/generate_dbtt1000_common_compliance_kapp.py'
+      - '.github/workflows/dbtt1000-common-compliance-kapp.yml'
+  workflow_dispatch:
+
+jobs:
+  compliance-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy
+      - name: Generate fixed-mesh elastic compliance calibration
+        run: PYTHONPATH=. python scripts/generate_dbtt1000_common_compliance_kapp.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dbtt1000-common-compliance-kapp
+          path: dbtt1000_common_compliance_reference/
+          if-no-files-found: error
