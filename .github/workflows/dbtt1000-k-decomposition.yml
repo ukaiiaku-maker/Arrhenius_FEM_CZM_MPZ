@@ -1,0 +1,64 @@
+name: DBTT 1000 K PF-FEM K decomposition
+
+on:
+  push:
+    branches:
+      - agent/dbtt1000-pf-fem-k-decomposition
+    paths:
+      - 'scripts/analyze_dbtt1000_k_decomposition.py'
+      - 'scripts/run_with_tip_site_audit.py'
+      - 'tests/test_dbtt1000_k_decomposition.py'
+      - '.github/workflows/dbtt1000-k-decomposition.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnostic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout FEM/CZM diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install diagnostic dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy matplotlib pytest
+
+      - name: Run K-decomposition regressions
+        run: |
+          pytest -q tests/test_dbtt1000_k_decomposition.py
+
+      - name: Verify sidecar audit imports without changing solver physics
+        run: |
+          python -m py_compile scripts/run_with_tip_site_audit.py
+          python -m py_compile scripts/analyze_dbtt1000_k_decomposition.py
+
+      - name: Record exact production-input preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_KERNEL_SHA='d41b08f69ae773009f65f4c0094ef5436ba7f0f290a94172e5b894d09a41f7c3'
+          EXPECTED_PF_BRANCH='v10.4.1-bulk-detailed-balance'
+          {
+            echo '# DBTT 1000 K fresh-run preflight'
+            echo
+            echo "FEM branch: ${GITHUB_REF_NAME}"
+            echo "FEM commit: ${GITHUB_SHA}"
+            echo "PF required branch: ${EXPECTED_PF_BRANCH}"
+            echo "Exact signed-kernel SHA256 required: ${EXPECTED_KERNEL_SHA}"
+            echo
+            echo 'A fresh paired production run is fail-closed unless the exact signed kernel is supplied.'
+            echo 'This workflow deliberately does not substitute a different kernel artifact.'
+          } > dbtt1000_fresh_run_preflight.md
+
+      - name: Upload diagnostic preflight
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbtt1000-k-decomposition-preflight
+          path: dbtt1000_fresh_run_preflight.md
+          if-no-files-found: error
