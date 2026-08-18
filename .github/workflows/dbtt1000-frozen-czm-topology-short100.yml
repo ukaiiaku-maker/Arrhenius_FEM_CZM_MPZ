@@ -3,9 +3,11 @@ name: DBTT 1000 K frozen CZM topology short100
 on:
   push:
     branches:
-      - agent/dbtt1000-pf-fem-k-decomposition
+      - agent/dbtt1000-frozen-topology-audit-run
     paths:
+      - 'scripts/audit_dbtt1000_frozen_czm_topology.py'
       - 'scripts/audit_dbtt1000_frozen_czm_topology_short100.py'
+      - 'audit_inputs/dbtt1000_tip_only_event_lengths_m.json'
       - '.github/workflows/dbtt1000-frozen-czm-topology-short100.yml'
   workflow_dispatch:
 
@@ -44,8 +46,8 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add audit_results/dbtt1000_frozen_czm_topology_short100
-          git commit -m 'audit: record 100 um frozen DBTT topology gate'
-          git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
+          git commit -m 'audit: record isolated 100 um frozen DBTT topology gate'
+          git push origin HEAD:agent/dbtt1000-frozen-topology-audit-run
       - name: Fail on replay error
         if: always()
         run: test "${{ steps.replay.outputs.exit_code }}" = "0"
