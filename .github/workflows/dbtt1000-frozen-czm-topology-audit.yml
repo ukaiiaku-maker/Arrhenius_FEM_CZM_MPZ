@@ -27,17 +27,28 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install numpy scipy matplotlib triangle
       - name: Run frozen elastic topology replay
+        id: replay
         env:
           PYTHONPATH: ${{ github.workspace }}
+        shell: bash
         run: |
-          python scripts/audit_dbtt1000_frozen_czm_topology.py
+          set +e
+          mkdir -p dbtt1000_frozen_czm_topology_audit
+          python scripts/audit_dbtt1000_frozen_czm_topology.py > dbtt1000_frozen_czm_topology_audit/run.log 2>&1
+          rc=$?
+          echo "$rc" > dbtt1000_frozen_czm_topology_audit/exit_code.txt
+          cat dbtt1000_frozen_czm_topology_audit/run.log
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: Upload frozen topology audit
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dbtt1000-frozen-czm-topology-audit
           path: dbtt1000_frozen_czm_topology_audit/
           if-no-files-found: error
       - name: Persist audit result on diagnostic branch
+        if: always()
         run: |
           set -euo pipefail
           rm -rf audit_results/dbtt1000_frozen_czm_topology
@@ -52,3 +63,7 @@ jobs:
             git commit -m 'audit: record frozen DBTT CZM topology replay'
             git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
           fi
+      - name: Fail job if replay failed
+        if: always()
+        run: |
+          test "${{ steps.replay.outputs.exit_code }}" = "0"
