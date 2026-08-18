@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# CI trigger: frozen-mechanics audit; no physics changes.
 """Frozen mechanics audit of adaptive-CZM crack topology.
 
 No Arrhenius hazard, RNG, MPZ state, backstress evolution, plasticity, or fracture
@@ -35,7 +36,6 @@ from arrhenius_fracture.fem import assemble_mechanics, solve_dirichlet
 from arrhenius_fracture.crystal import cubic_plane_strain_D
 from arrhenius_fracture.crack_backend import AdaptiveCZMBackend, SharpWakeBackend
 
-# Matched production controls from the DBTT 1000 K tip-only manifest.
 NX = 36
 NY = 72
 TIP_H_FINE_M = 1.0e-6
@@ -98,11 +98,7 @@ def frozen_solve(mesh, bnd, d, cohesive_network, cfg):
 
 
 def append_row(rows, representation, extension_m, result, extra=None):
-    row = {
-        "representation": representation,
-        "extension_um": extension_m * 1e6,
-        **result,
-    }
+    row = {"representation": representation, "extension_um": extension_m * 1e6, **result}
     if extra:
         row.update(extra)
     rows.append(row)
@@ -110,168 +106,95 @@ def append_row(rows, representation, extension_m, result, extra=None):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-
     cfg_a, mesh_a, bnd_a, d_a, u_a = initial_state()
     cfg_s, mesh_s, bnd_s, d_s, u_s = initial_state()
-
-    adaptive = AdaptiveCZMBackend(
-        geom=cfg_a.geometry,
-        event_damage=1.0,
-        max_angle_error_deg=35.0,
-    )
+    adaptive = AdaptiveCZMBackend(geom=cfg_a.geometry, event_damage=1.0, max_angle_error_deg=35.0)
     sharp = SharpWakeBackend()
-
     rows = []
-
-    # Baseline initial-notch mechanics.
-    r_a = frozen_solve(mesh_a, bnd_a, d_a, adaptive.cohesive_network, cfg_a)
-    r_n = frozen_solve(mesh_a, bnd_a, d_a, None, cfg_a)
-    r_s = frozen_solve(mesh_s, bnd_s, d_s, None, cfg_s)
-    append_row(rows, "adaptive_czm_failed", 0.0, r_a, {"failed_interfaces": 0})
-    append_row(rows, "adaptive_split_no_network", 0.0, r_n, {"failed_interfaces": 0})
-    append_row(rows, "sharp_wake", 0.0, r_s, {"failed_interfaces": 0})
-
+    append_row(rows, "adaptive_czm_failed", 0.0, frozen_solve(mesh_a, bnd_a, d_a, adaptive.cohesive_network, cfg_a), {"failed_interfaces": 0})
+    append_row(rows, "adaptive_split_no_network", 0.0, frozen_solve(mesh_a, bnd_a, d_a, None, cfg_a), {"failed_interfaces": 0})
+    append_row(rows, "sharp_wake", 0.0, frozen_solve(mesh_s, bnd_s, d_s, None, cfg_s), {"failed_interfaces": 0})
     target_set = set(CHECKPOINT_UM[1:])
-    p0_a = np.array([A0_M, 0.0])
-    p0_s = np.array([A0_M, 0.0])
-    ext_a = 0.0
-    ext_s = 0.0
+    p0_a = np.array([A0_M, 0.0]); p0_s = np.array([A0_M, 0.0])
+    ext_a = 0.0; ext_s = 0.0
     n_events = int(round(TARGET_EXTENSION_M / DA_M))
-
     adaptive_fail = None
     for iev in range(1, n_events + 1):
         p1_req_a = np.array([A0_M + iev * DA_M, 0.0])
-        rr = adaptive.advance(
-            mesh=mesh_a,
-            boundary=bnd_a,
-            damage=d_a,
-            displacement=u_a,
-            p0=p0_a,
-            p1=p1_req_a,
-            direction=np.array([1.0, 0.0]),
-            front_id=0,
-            kill_r=max(mesh_a.hbar_tip, 0.5e-6),
-        )
+        rr = adaptive.advance(mesh=mesh_a, boundary=bnd_a, damage=d_a, displacement=u_a,
+            p0=p0_a, p1=p1_req_a, direction=np.array([1.0, 0.0]), front_id=0,
+            kill_r=max(mesh_a.hbar_tip, 0.5e-6))
         if not rr.inserted:
-            adaptive_fail = {
-                "event": iev,
-                "requested_extension_um": iev * DA_M * 1e6,
-                "reason": rr.reason,
-                "angle_error_deg": rr.angle_error_deg,
-            }
+            adaptive_fail = {"event": iev, "requested_extension_um": iev * DA_M * 1e6,
+                             "reason": rr.reason, "angle_error_deg": rr.angle_error_deg}
             break
         mesh_a, bnd_a, d_a, u_a = rr.mesh, rr.boundary, rr.damage, rr.displacement
         p0_a = np.array([adaptive.advance_log[-1]["x1"], adaptive.advance_log[-1]["y1"]])
         ext_a = float(p0_a[0] - A0_M)
-
-        # Sharp-wake control: same requested straight segment and physical length.
         p1_s = np.array([A0_M + iev * DA_M, 0.0])
-        rs = sharp.advance(
-            mesh=mesh_s,
-            boundary=bnd_s,
-            damage=d_s,
-            displacement=u_s,
-            p0=p0_s,
-            p1=p1_s,
-            direction=np.array([1.0, 0.0]),
-            front_id=0,
-            kill_r=max(mesh_s.hbar_tip, 0.5e-6),
-        )
+        rs = sharp.advance(mesh=mesh_s, boundary=bnd_s, damage=d_s, displacement=u_s,
+            p0=p0_s, p1=p1_s, direction=np.array([1.0, 0.0]), front_id=0,
+            kill_r=max(mesh_s.hbar_tip, 0.5e-6))
         if not rs.inserted:
             raise RuntimeError(f"sharp-wake advance failed at event {iev}: {rs.reason}")
         mesh_s, bnd_s, d_s, u_s = rs.mesh, rs.boundary, rs.damage, rs.displacement
-        p0_s = p1_s
-        ext_s = float(p0_s[0] - A0_M)
-
+        p0_s = p1_s; ext_s = float(p0_s[0] - A0_M)
         requested_um = int(round(iev * DA_M * 1e6))
         if requested_um in target_set:
-            ra = frozen_solve(mesh_a, bnd_a, d_a, adaptive.cohesive_network, cfg_a)
-            rn = frozen_solve(mesh_a, bnd_a, d_a, None, cfg_a)
-            rslt = frozen_solve(mesh_s, bnd_s, d_s, None, cfg_s)
-            append_row(rows, "adaptive_czm_failed", ext_a, ra,
+            append_row(rows, "adaptive_czm_failed", ext_a,
+                       frozen_solve(mesh_a, bnd_a, d_a, adaptive.cohesive_network, cfg_a),
                        {"failed_interfaces": adaptive.cohesive_network.failed_count()})
-            append_row(rows, "adaptive_split_no_network", ext_a, rn,
+            append_row(rows, "adaptive_split_no_network", ext_a,
+                       frozen_solve(mesh_a, bnd_a, d_a, None, cfg_a),
                        {"failed_interfaces": adaptive.cohesive_network.failed_count()})
-            append_row(rows, "sharp_wake", ext_s, rslt,
+            append_row(rows, "sharp_wake", ext_s, frozen_solve(mesh_s, bnd_s, d_s, None, cfg_s),
                        {"failed_interfaces": 0})
-
     if adaptive_fail is not None:
         (OUT / "adaptive_failure.json").write_text(json.dumps(adaptive_fail, indent=2))
-
-    # Normalize each representation to its initial-notch compliance.
     initial = {}
     for row in rows:
         initial.setdefault(row["representation"], row["compliance_m2_per_N"])
     for row in rows:
         row["normalized_compliance"] = row["compliance_m2_per_N"] / initial[row["representation"]]
         row["normalized_stiffness"] = 1.0 / row["normalized_compliance"]
-
     with (OUT / "frozen_topology_compliance.csv").open("w", newline="") as fp:
-        writer = csv.DictWriter(fp, fieldnames=list(rows[0].keys()))
-        writer.writeheader(); writer.writerows(rows)
-
-    # Internal identity test: failed cohesive network must contribute zero stiffness.
+        writer = csv.DictWriter(fp, fieldnames=list(rows[0].keys())); writer.writeheader(); writer.writerows(rows)
     by_key = {(r["representation"], r["extension_um"]): r for r in rows}
     identity = []
-    extensions = sorted({r["extension_um"] for r in rows})
-    for ext in extensions:
-        a = by_key.get(("adaptive_czm_failed", ext))
-        n = by_key.get(("adaptive_split_no_network", ext))
-        if a is None or n is None:
-            continue
+    for ext in sorted({r["extension_um"] for r in rows}):
+        a = by_key.get(("adaptive_czm_failed", ext)); n = by_key.get(("adaptive_split_no_network", ext))
+        if a is None or n is None: continue
         rel = abs(a["abs_Ftop_N_per_m"] - n["abs_Ftop_N_per_m"]) / max(a["abs_Ftop_N_per_m"], n["abs_Ftop_N_per_m"], 1e-300)
         identity.append({"extension_um": ext, "relative_reaction_difference": rel})
     with (OUT / "failed_network_zero_stiffness_identity.csv").open("w", newline="") as fp:
-        writer = csv.DictWriter(fp, fieldnames=list(identity[0].keys()))
-        writer.writeheader(); writer.writerows(identity)
-
+        writer = csv.DictWriter(fp, fieldnames=list(identity[0].keys())); writer.writeheader(); writer.writerows(identity)
     max_identity = max(x["relative_reaction_difference"] for x in identity)
     summary = {
-        "schema": "dbtt1000_frozen_czm_topology_audit_v1",
-        "diagnostic_only": True,
-        "stochastic_simulation_rerun": False,
-        "hazard_active": False,
-        "MPZ_active": False,
-        "plasticity_active": False,
-        "backstress_active": False,
-        "theta_deg": THETA_DEG,
-        "straight_control_path": True,
-        "physical_step_um": DA_M * 1e6,
+        "schema": "dbtt1000_frozen_czm_topology_audit_v1", "diagnostic_only": True,
+        "stochastic_simulation_rerun": False, "hazard_active": False, "MPZ_active": False,
+        "plasticity_active": False, "backstress_active": False, "theta_deg": THETA_DEG,
+        "straight_control_path": True, "physical_step_um": DA_M * 1e6,
         "target_extension_um": TARGET_EXTENSION_M * 1e6,
         "matched_mesh_controls": {"nx": NX, "ny": NY, "tip_h_fine_m": TIP_H_FINE_M, "tip_ratio": TIP_RATIO},
         "adaptive_failure": adaptive_fail,
         "max_failed_network_vs_no_network_relative_reaction_difference": max_identity,
-        "failed_network_zero_stiffness_identity_pass": bool(max_identity < 1e-10),
-        "rows": rows,
-        "interpretation_contract": (
-            "This is a controlled topology replay, not an exact historical path replay. "
-            "If adaptive-CZM compliance remains nearly flat while sharp-wake compliance grows, "
-            "the representation/topology is implicated independently of Arrhenius physics."
-        ),
+        "failed_network_zero_stiffness_identity_pass": bool(max_identity < 1e-10), "rows": rows,
+        "interpretation_contract": "Controlled topology replay, not exact historical path replay."
     }
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2))
-
     try:
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(figsize=(8.5, 5.8))
         for name in ("adaptive_czm_failed", "adaptive_split_no_network", "sharp_wake"):
             rr = [r for r in rows if r["representation"] == name]
             ax.plot([r["extension_um"] for r in rr], [r["normalized_compliance"] for r in rr], marker="o", label=name)
-        ax.set_xlabel("Projected crack extension (um)")
-        ax.set_ylabel("Compliance / initial-notch compliance")
-        ax.set_title("Frozen elastic crack-topology audit")
-        ax.grid(alpha=0.25); ax.legend(); fig.tight_layout()
-        fig.savefig(OUT / "frozen_topology_compliance.png", dpi=180)
-        plt.close(fig)
+        ax.set_xlabel("Projected crack extension (um)"); ax.set_ylabel("Compliance / initial-notch compliance")
+        ax.set_title("Frozen elastic crack-topology audit"); ax.grid(alpha=0.25); ax.legend(); fig.tight_layout()
+        fig.savefig(OUT / "frozen_topology_compliance.png", dpi=180); plt.close(fig)
     except Exception as exc:
         (OUT / "plot_error.txt").write_text(repr(exc))
-
-    print(json.dumps({
-        "adaptive_failure": adaptive_fail,
-        "identity_max_rel_diff": max_identity,
-        "final_rows": [r for r in rows if abs(r["extension_um"] - max(x["extension_um"] for x in rows)) < 1e-9],
-    }, indent=2))
-
+    print(json.dumps({"adaptive_failure": adaptive_fail, "identity_max_rel_diff": max_identity,
+        "final_rows": [r for r in rows if abs(r["extension_um"] - max(x["extension_um"] for x in rows)) < 1e-9]}, indent=2))
 
 if __name__ == "__main__":
     main()
