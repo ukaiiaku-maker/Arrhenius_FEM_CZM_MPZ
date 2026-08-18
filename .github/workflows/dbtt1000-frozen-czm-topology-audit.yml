@@ -9,6 +9,9 @@ on:
       - '.github/workflows/dbtt1000-frozen-czm-topology-audit.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   frozen-topology:
     runs-on: ubuntu-latest
@@ -33,3 +36,18 @@ jobs:
           name: dbtt1000-frozen-czm-topology-audit
           path: dbtt1000_frozen_czm_topology_audit/
           if-no-files-found: error
+      - name: Persist audit result on diagnostic branch
+        run: |
+          set -euo pipefail
+          rm -rf audit_results/dbtt1000_frozen_czm_topology
+          mkdir -p audit_results
+          cp -R dbtt1000_frozen_czm_topology_audit audit_results/dbtt1000_frozen_czm_topology
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit_results/dbtt1000_frozen_czm_topology
+          if git diff --cached --quiet; then
+            echo 'No audit-result changes to commit.'
+          else
+            git commit -m 'audit: record frozen DBTT CZM topology replay'
+            git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
+          fi
