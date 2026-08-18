@@ -22,6 +22,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Record audit start
+        run: |
+          set -euo pipefail
+          mkdir -p audit_results/dbtt1000_frozen_czm_topology
+          printf 'running\n' > audit_results/dbtt1000_frozen_czm_topology/status.txt
+          printf '%s\n' "$GITHUB_SHA" > audit_results/dbtt1000_frozen_czm_topology/workflow_input_commit.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audit_results/dbtt1000_frozen_czm_topology/status.txt audit_results/dbtt1000_frozen_czm_topology/workflow_input_commit.txt
+          git commit -m 'audit: mark frozen DBTT topology replay running'
+          git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
       - name: Install solver dependencies
         run: |
           python -m pip install --upgrade pip
@@ -54,15 +65,17 @@ jobs:
           rm -rf audit_results/dbtt1000_frozen_czm_topology
           mkdir -p audit_results
           cp -R dbtt1000_frozen_czm_topology_audit audit_results/dbtt1000_frozen_czm_topology
+          if test "${{ steps.replay.outputs.exit_code }}" = "0"; then
+            printf 'complete\n' > audit_results/dbtt1000_frozen_czm_topology/status.txt
+          else
+            printf 'failed\n' > audit_results/dbtt1000_frozen_czm_topology/status.txt
+          fi
+          printf '%s\n' "$GITHUB_SHA" > audit_results/dbtt1000_frozen_czm_topology/workflow_input_commit.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add audit_results/dbtt1000_frozen_czm_topology
-          if git diff --cached --quiet; then
-            echo 'No audit-result changes to commit.'
-          else
-            git commit -m 'audit: record frozen DBTT CZM topology replay'
-            git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
-          fi
+          git commit -m 'audit: record frozen DBTT CZM topology replay'
+          git push origin HEAD:agent/dbtt1000-pf-fem-k-decomposition
       - name: Fail job if replay failed
         if: always()
         run: |
