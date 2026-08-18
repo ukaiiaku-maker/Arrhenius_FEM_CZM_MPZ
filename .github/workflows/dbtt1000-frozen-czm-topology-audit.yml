@@ -6,6 +6,7 @@ on:
       - agent/dbtt1000-pf-fem-k-decomposition
     paths:
       - 'scripts/audit_dbtt1000_frozen_czm_topology.py'
+      - 'audit_inputs/dbtt1000_tip_only_event_lengths_m.json'
       - '.github/workflows/dbtt1000-frozen-czm-topology-audit.yml'
   workflow_dispatch:
 
@@ -24,7 +25,7 @@ jobs:
       - name: Install solver dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy scipy matplotlib
+          python -m pip install numpy scipy matplotlib triangle
       - name: Run frozen elastic topology replay
         env:
           PYTHONPATH: ${{ github.workspace }}
