@@ -1,0 +1,54 @@
+{
+  "schema": "dbtt1000_frozen_topology_short100_v1",
+  "startup": {
+    "nodes": 20321,
+    "triangles": 40502,
+    "hbar_tip_m": 6.730795090446911e-06
+  },
+  "events_requested": 17,
+  "failure": {
+    "event": 5,
+    "extension_before_um": 10.170421580055146,
+    "requested_length_um": 2.751192949932652,
+    "reason": "v10051839_no_feasible_atomic_path_corridor"
+  },
+  "max_failed_network_identity_rel_diff": 3.824340200953992e-14,
+  "rows": [
+    {
+      "representation": "adaptive_czm_failed",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.1209774646,
+      "compliance_m2_per_N": 5.01539422652705e-12,
+      "stiffness_N_per_m2": 199386120977.4646,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    },
+    {
+      "representation": "adaptive_split_no_network",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.12097747222,
+      "compliance_m2_per_N": 5.015394226526859e-12,
+      "stiffness_N_per_m2": 199386120977.47223,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    },
+    {
+      "representation": "sharp_wake",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.12097747222,
+      "compliance_m2_per_N": 5.015394226526859e-12,
+      "stiffness_N_per_m2": 199386120977.47223,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    }
+  ]
+}
