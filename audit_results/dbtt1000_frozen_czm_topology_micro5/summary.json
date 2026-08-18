@@ -1,0 +1,298 @@
+{
+  "schema": "dbtt1000_frozen_topology_micro5_v1",
+  "startup": {
+    "nodes": 20321,
+    "triangles": 40502,
+    "hbar_tip_m": 6.730795090446911e-06
+  },
+  "failure": null,
+  "path": [
+    {
+      "event": 1,
+      "dx_um": 2.2973400956249024,
+      "ds_um": 2.2973400956249024,
+      "selected_sign": 0.0,
+      "x_um": 2.2973400956249024,
+      "y_um": 0.0,
+      "prior_sign_trial_failures": []
+    },
+    {
+      "event": 2,
+      "dx_um": 2.2973400956249024,
+      "ds_um": 2.2973400956249024,
+      "selected_sign": 0.0,
+      "x_um": 4.594680191249805,
+      "y_um": 0.0,
+      "prior_sign_trial_failures": []
+    },
+    {
+      "event": 3,
+      "dx_um": 3.2768833392917687,
+      "ds_um": 3.278401293180556,
+      "selected_sign": 1.0,
+      "x_um": 7.871563530541573,
+      "y_um": 0.09975279344443334,
+      "prior_sign_trial_failures": []
+    },
+    {
+      "event": 4,
+      "dx_um": 2.2949469871753223,
+      "ds_um": 2.297340095624832,
+      "selected_sign": 1.0,
+      "x_um": 10.166510517716898,
+      "y_um": 0.20458523603938666,
+      "prior_sign_trial_failures": [
+        {
+          "sign": -1.0,
+          "reason": "v10051839_no_feasible_atomic_path_corridor"
+        }
+      ]
+    },
+    {
+      "event": 5,
+      "dx_um": 2.7508744695670035,
+      "ds_um": 2.751192949932652,
+      "selected_sign": -1.0,
+      "x_um": 12.9173849872839,
+      "y_um": 0.16272474818287117,
+      "prior_sign_trial_failures": []
+    }
+  ],
+  "max_failed_network_identity_rel_diff": 3.824340200953992e-14,
+  "rows": [
+    {
+      "event": 0,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.1209774646,
+      "compliance_m2_per_N": 5.01539422652705e-12,
+      "stiffness_N_per_m2": 199386120977.4646,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    },
+    {
+      "event": 0,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.12097747222,
+      "compliance_m2_per_N": 5.015394226526859e-12,
+      "stiffness_N_per_m2": 199386120977.47223,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    },
+    {
+      "event": 0,
+      "representation": "sharp_wake",
+      "extension_um": 0.0,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199386.12097747222,
+      "compliance_m2_per_N": 5.015394226526859e-12,
+      "stiffness_N_per_m2": 199386120977.47223,
+      "bulk_elastic_energy_J_per_m": 0.09965868948434056,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0
+    },
+    {
+      "event": 1,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 2.2973400956249024,
+      "failed_interfaces": 3,
+      "abs_Ftop_N_per_m": 199381.60442052627,
+      "compliance_m2_per_N": 5.0155078393834526e-12,
+      "stiffness_N_per_m2": 199381604420.52628,
+      "bulk_elastic_energy_J_per_m": 0.0996564336993474,
+      "node_count": 20326,
+      "element_count": 40504,
+      "normalized_compliance": 1.0000226528267313
+    },
+    {
+      "event": 1,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 2.2973400956249024,
+      "failed_interfaces": 3,
+      "abs_Ftop_N_per_m": 199381.6044205299,
+      "compliance_m2_per_N": 5.015507839383361e-12,
+      "stiffness_N_per_m2": 199381604420.5299,
+      "bulk_elastic_energy_J_per_m": 0.09965643369934742,
+      "node_count": 20326,
+      "element_count": 40504,
+      "normalized_compliance": 1.0000226528267513
+    },
+    {
+      "event": 1,
+      "representation": "sharp_wake",
+      "extension_um": 2.2973400956249024,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199273.31605477014,
+      "compliance_m2_per_N": 5.018233348037178e-12,
+      "stiffness_N_per_m2": 199273316054.77014,
+      "bulk_elastic_energy_J_per_m": 0.09960233681218297,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0005660814249264
+    },
+    {
+      "event": 2,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 4.594680191249805,
+      "failed_interfaces": 5,
+      "abs_Ftop_N_per_m": 199382.70006381418,
+      "compliance_m2_per_N": 5.015480278278613e-12,
+      "stiffness_N_per_m2": 199382700063.81418,
+      "bulk_elastic_energy_J_per_m": 0.09965698105149585,
+      "node_count": 20329,
+      "element_count": 40506,
+      "normalized_compliance": 1.0000171575249475
+    },
+    {
+      "event": 2,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 4.594680191249805,
+      "failed_interfaces": 5,
+      "abs_Ftop_N_per_m": 199382.70006381633,
+      "compliance_m2_per_N": 5.015480278278559e-12,
+      "stiffness_N_per_m2": 199382700063.81635,
+      "bulk_elastic_energy_J_per_m": 0.09965698105149585,
+      "node_count": 20329,
+      "element_count": 40506,
+      "normalized_compliance": 1.0000171575249748
+    },
+    {
+      "event": 2,
+      "representation": "sharp_wake",
+      "extension_um": 4.594680191249805,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199229.61390419866,
+      "compliance_m2_per_N": 5.019334126104661e-12,
+      "stiffness_N_per_m2": 199229613904.19867,
+      "bulk_elastic_energy_J_per_m": 0.09958049838418515,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0007855612938588
+    },
+    {
+      "event": 3,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 7.871563530541573,
+      "failed_interfaces": 21,
+      "abs_Ftop_N_per_m": 199369.46072945563,
+      "compliance_m2_per_N": 5.0158133364116384e-12,
+      "stiffness_N_per_m2": 199369460729.45563,
+      "bulk_elastic_energy_J_per_m": 0.09965036660084414,
+      "node_count": 20361,
+      "element_count": 40538,
+      "normalized_compliance": 1.0000835646941513
+    },
+    {
+      "event": 3,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 7.871563530541573,
+      "failed_interfaces": 21,
+      "abs_Ftop_N_per_m": 199369.46072946006,
+      "compliance_m2_per_N": 5.015813336411527e-12,
+      "stiffness_N_per_m2": 199369460729.46005,
+      "bulk_elastic_energy_J_per_m": 0.09965036660084414,
+      "node_count": 20361,
+      "element_count": 40538,
+      "normalized_compliance": 1.0000835646941673
+    },
+    {
+      "event": 3,
+      "representation": "sharp_wake",
+      "extension_um": 7.871563530541573,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199130.18501292693,
+      "compliance_m2_per_N": 5.021840360039253e-12,
+      "stiffness_N_per_m2": 199130185012.92694,
+      "bulk_elastic_energy_J_per_m": 0.09953080714887466,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0012852695563392
+    },
+    {
+      "event": 4,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 10.166510517716898,
+      "failed_interfaces": 27,
+      "abs_Ftop_N_per_m": 199372.64003135875,
+      "compliance_m2_per_N": 5.015733351590834e-12,
+      "stiffness_N_per_m2": 199372640031.35876,
+      "bulk_elastic_energy_J_per_m": 0.09965194565604253,
+      "node_count": 20370,
+      "element_count": 40550,
+      "normalized_compliance": 1.000067616830994
+    },
+    {
+      "event": 4,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 10.166510517716898,
+      "failed_interfaces": 27,
+      "abs_Ftop_N_per_m": 199372.64003136248,
+      "compliance_m2_per_N": 5.01573335159074e-12,
+      "stiffness_N_per_m2": 199372640031.3625,
+      "bulk_elastic_energy_J_per_m": 0.09965194565604253,
+      "node_count": 20370,
+      "element_count": 40550,
+      "normalized_compliance": 1.0000676168310136
+    },
+    {
+      "event": 4,
+      "representation": "sharp_wake",
+      "extension_um": 10.166510517716898,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 199061.2922588817,
+      "compliance_m2_per_N": 5.023578359470747e-12,
+      "stiffness_N_per_m2": 199061292258.8817,
+      "bulk_elastic_energy_J_per_m": 0.09949637279576341,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0016318025212458
+    },
+    {
+      "event": 5,
+      "representation": "adaptive_czm_failed",
+      "extension_um": 12.9173849872839,
+      "failed_interfaces": 30,
+      "abs_Ftop_N_per_m": 199374.15794754867,
+      "compliance_m2_per_N": 5.015695164781987e-12,
+      "stiffness_N_per_m2": 199374157947.54868,
+      "bulk_elastic_energy_J_per_m": 0.09965269894452905,
+      "node_count": 20377,
+      "element_count": 40562,
+      "normalized_compliance": 1.0000600029113056
+    },
+    {
+      "event": 5,
+      "representation": "adaptive_split_no_network",
+      "extension_um": 12.9173849872839,
+      "failed_interfaces": 30,
+      "abs_Ftop_N_per_m": 199374.15794755134,
+      "compliance_m2_per_N": 5.015695164781919e-12,
+      "stiffness_N_per_m2": 199374157947.55136,
+      "bulk_elastic_energy_J_per_m": 0.09965269894452905,
+      "node_count": 20377,
+      "element_count": 40562,
+      "normalized_compliance": 1.0000600029113302
+    },
+    {
+      "event": 5,
+      "representation": "sharp_wake",
+      "extension_um": 12.9173849872839,
+      "failed_interfaces": 0,
+      "abs_Ftop_N_per_m": 198902.80124286943,
+      "compliance_m2_per_N": 5.027581279657063e-12,
+      "stiffness_N_per_m2": 198902801242.86945,
+      "bulk_elastic_energy_J_per_m": 0.09941714153845577,
+      "node_count": 20321,
+      "element_count": 40502,
+      "normalized_compliance": 1.0024299292497778
+    }
+  ]
+}
