@@ -1,0 +1,6 @@
+{
+  "event": 10,
+  "requested_extension_um": 50.0,
+  "reason": "local_hrefine_error:degenerate elements after topology update: [2127]",
+  "angle_error_deg": 180.0
+}
