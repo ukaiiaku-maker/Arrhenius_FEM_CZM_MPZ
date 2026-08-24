@@ -1,0 +1,22 @@
+{
+  "PF": {
+    "source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+    "bulk_constraint": "PLANE_STRAIN",
+    "crack_representation": "FINITE_WIDTH_STIFFNESS_KILLED_WAKE",
+    "failed_region_state": "BINARY_STIFFNESS_KILL",
+    "local_process_zone": "FINITE_SIZE_REDUCED_STATE",
+    "continuum_G_status": "UNQUALIFIED",
+    "map_status": "NOT_EVALUATED"
+  },
+  "FEMCZM": {
+    "source_commit": "931bed66913afc970117bce900805ecc9b6225f8",
+    "bulk_constraint": "PLANE_STRAIN",
+    "crack_representation": "CODIMENSION_ONE_DISPLACEMENT_DISCONTINUITY",
+    "failed_interface_state": "TRACTION_FREE",
+    "local_process_zone": "FINITE_SIZE_REDUCED_STATE",
+    "native_J_map_status": "NOT_EVALUATED",
+    "qualified_G_map_status": "NOT_EVALUATED"
+  },
+  "interpolation": "BOUNDED_PIECEWISE_LINEAR_NO_EXTRAPOLATION",
+  "campaign_outputs_populated": false
+}

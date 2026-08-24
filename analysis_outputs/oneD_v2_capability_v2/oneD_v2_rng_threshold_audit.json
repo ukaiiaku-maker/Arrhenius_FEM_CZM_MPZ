@@ -1,0 +1,17 @@
+{
+  "PF": {
+    "threshold_action": [
+      1,
+      1,
+      1
+    ],
+    "subdivision_redraw": false,
+    "event_length_draws_per_event": 1,
+    "geometry_commits_per_event": 1,
+    "qualification": "QUALIFIED_FOR_PRODUCTION_DETERMINISTIC_THRESHOLD_CONTRACT"
+  },
+  "FEMCZM": {
+    "joint_transaction_commit": "30b53ff",
+    "qualification": "QUALIFIED_BY_EXISTING_EXACT_DIGEST_EVIDENCE"
+  }
+}

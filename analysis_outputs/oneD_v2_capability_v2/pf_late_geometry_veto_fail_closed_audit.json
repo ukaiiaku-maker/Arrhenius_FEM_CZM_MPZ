@@ -1,0 +1,18 @@
+{
+  "source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+  "geometry_veto_policy": "FAIL_CLOSED_TERMINATE",
+  "event_transaction_index": null,
+  "last_authoritative_state_fingerprint": "AVAILABLE_AT_LAST_COMMITTED_CHECKPOINT",
+  "last_authoritative_path_fingerprint": "UNCHANGED_BY_TENTATIVE_VETO",
+  "tentative_path_fingerprint": "NOT_PUBLISHED",
+  "tentative_geometry_published": false,
+  "authoritative_event_count_before": null,
+  "authoritative_event_count_after": null,
+  "exception_type": "RuntimeError",
+  "exception_message": "Exact rollback requires replay of the coupled step; run stops",
+  "last_valid_checkpoint": "last committed PF output",
+  "rollback_and_continue_supported": false,
+  "fail_closed_termination_verified": true,
+  "terminal_class": "NUMERICAL_BACKEND_FAIL_CLOSED_VETO",
+  "verification_basis": "direct production method and driver callsite; normal pairs did not force veto"
+}

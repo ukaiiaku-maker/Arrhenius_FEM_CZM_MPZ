@@ -1,0 +1,3 @@
+# One D V2 Backend Capability Matrix
+
+PF normal accepted-event lifecycle is qualified for the three-event Peak and DBTT bounded paths: authoritative physical outputs are byte-identical diagnostics OFF/ON, thresholds remain 1.0 through requested subdivision, each fixed event length is consumed once, and each event has exactly one geometry commit. PF fail-closed veto termination is source-contract qualified; rollback-and-continue is unsupported, not a lifecycle failure. FEM/CZM is independent: existing commit 30b53ff provides exact joint tip/RNG/bulk/topology late-veto restoration, and certified 931bed6 normal trajectories provide accepted-event evidence.

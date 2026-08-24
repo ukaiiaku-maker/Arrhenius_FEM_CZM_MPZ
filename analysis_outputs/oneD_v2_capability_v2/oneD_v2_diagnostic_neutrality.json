@@ -1,0 +1,82 @@
+{
+  "source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+  "pairs": {
+    "peak": {
+      "branch_diagnostics_1000K.csv": true,
+      "crack_path_1000K.csv": true,
+      "crack_path_front0_1000K.csv": true,
+      "fronts_1000K.csv": true,
+      "kinetic_tip_cell_audit_v101.json": true,
+      "sharp_wake_advance_log.csv": true,
+      "steps_1000K.csv": true,
+      "stochastic_avalanche_geometry_events.json": true,
+      "summary.json": true,
+      "v10_2_30_hazard_energy_gate_audit.json": true
+    },
+    "dbtt": {
+      "branch_diagnostics_1000K.csv": true,
+      "crack_path_1000K.csv": true,
+      "crack_path_front0_1000K.csv": true,
+      "fronts_1000K.csv": true,
+      "kinetic_tip_cell_audit_v101.json": true,
+      "sharp_wake_advance_log.csv": true,
+      "steps_1000K.csv": true,
+      "stochastic_avalanche_geometry_events.json": true,
+      "summary.json": true,
+      "v10_2_30_hazard_energy_gate_audit.json": true
+    }
+  },
+  "cases": [
+    {
+      "material_class": "peak",
+      "event_count": 3,
+      "all_authoritative_byte_identical": true,
+      "thresholds": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "event_lengths_m": [
+        5.000000000000013e-06,
+        5.000000000000013e-06,
+        5.000000000000013e-06
+      ],
+      "geometry_commit_counts": [
+        1,
+        1,
+        1
+      ],
+      "endpoint_errors_m": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "material_class": "dbtt",
+      "event_count": 3,
+      "all_authoritative_byte_identical": true,
+      "thresholds": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "event_lengths_m": [
+        5.000000000000013e-06,
+        5.000000000000013e-06,
+        5.000000000000013e-06
+      ],
+      "geometry_commit_counts": [
+        1,
+        1,
+        1
+      ],
+      "endpoint_errors_m": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "pass": true
+}

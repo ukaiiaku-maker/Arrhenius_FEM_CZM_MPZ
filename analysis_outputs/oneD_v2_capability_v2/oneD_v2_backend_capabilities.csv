@@ -1,0 +1,23 @@
+backend,capability,status,evidence
+PF,NORMAL_INTERVAL_EVOLUTION,QUALIFIED,PF bounded neutrality pairs
+PF,NORMAL_ACCEPTED_EVENT,QUALIFIED,PF bounded neutrality pairs
+PF,SUBDIVISION_THRESHOLD_PRESERVATION,PARTIALLY_QUALIFIED,PF source contract
+PF,REJECTED_TRIAL_STATE_PRESERVATION,PARTIALLY_QUALIFIED,PF source contract
+PF,POST_EVENT_PROCESS_ZONE_RENEWAL,QUALIFIED,PF bounded neutrality pairs
+PF,POST_EVENT_THRESHOLD_RENEWAL,QUALIFIED,PF bounded neutrality pairs
+PF,EXACTLY_ONCE_GEOMETRY_COMMIT,QUALIFIED,PF bounded neutrality pairs
+PF,LATE_VETO_FAIL_CLOSED_TERMINATION,SOURCE_CONTRACT_QUALIFIED,PF source contract
+PF,LATE_VETO_ROLLBACK_AND_CONTINUE,UNSUPPORTED_BY_PRODUCTION,PF source contract
+PF,MECHANICS_MAP,NOT_EVALUATED,PF source contract
+PF,FORWARD_REDUCED_MODEL,BLOCKED_BY_REQUIRED_CAPABILITIES,PF source contract
+FEMCZM,NORMAL_INTERVAL_EVOLUTION,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,NORMAL_ACCEPTED_EVENT,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,SUBDIVISION_THRESHOLD_PRESERVATION,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,REJECTED_TRIAL_STATE_PRESERVATION,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,POST_EVENT_PROCESS_ZONE_RENEWAL,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,POST_EVENT_THRESHOLD_RENEWAL,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,EXACTLY_ONCE_GEOMETRY_COMMIT,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,LATE_VETO_FAIL_CLOSED_TERMINATION,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,LATE_VETO_ROLLBACK_AND_CONTINUE,QUALIFIED,30b53ff joint rollback plus certified normal long-run lineage
+FEMCZM,MECHANICS_MAP,NOT_EVALUATED,map pending
+FEMCZM,FORWARD_REDUCED_MODEL,BLOCKED_BY_REQUIRED_CAPABILITIES,map pending
