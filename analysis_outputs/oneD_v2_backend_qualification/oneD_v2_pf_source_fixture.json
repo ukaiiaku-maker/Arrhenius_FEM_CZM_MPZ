@@ -1,0 +1,16 @@
+{
+  "backend": "PF",
+  "production_class": "UnifiedMPZFrontEngine/UnifiedMPZState",
+  "frozen_rates": {
+    "cleavage": 1.648498058177364e-85,
+    "emission": 71891573.16830096
+  },
+  "no_event_update_fired": false,
+  "emission_only_state_changed": true,
+  "cleavage_crossing_fired": true,
+  "post_event_renewal_pass": true,
+  "rollback_pass": true,
+  "snapshot_restore_pass": true,
+  "subdivision_status": "SOURCE_EXERCISED_NOT_CLAIMED_EXACT",
+  "rng_threshold_status": "B_IS_SERIALIZABLE_BASE_ENGINE_HAS_NO_STOCHASTIC_THRESHOLD_STREAM"
+}

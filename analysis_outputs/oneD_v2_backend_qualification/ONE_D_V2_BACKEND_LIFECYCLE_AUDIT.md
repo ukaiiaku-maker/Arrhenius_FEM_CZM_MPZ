@@ -1,0 +1,3 @@
+# One D V2 Backend Lifecycle Audit
+
+`CommonEventLifecyclePolicy` was removed. PF and FEM/CZM now have separate lifecycle policies. PF source fixtures exercise no-event, emission-only, cleavage crossing, one-renewal, and rollback. FEM/CZM fixtures exercise no-event, emission-only, MPZ translation/renewal, and rollback; cleavage crossing, threshold renewal, RNG restore, rejected subdivision, and atomic geometry rollback remain driver-owned. Request exactly four bounded 3–5-event instrumented diagnostics: PF Peak 1000 K, PF DBTT 1000 K, FEM/CZM Peak 1000 K, and FEM/CZM DBTT 1000 K. These diagnostics must serialize complete pre/trial/post state and RNG snapshots; no long 2-D run is requested.

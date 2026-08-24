@@ -1,0 +1,13 @@
+{
+  "backend": "FEMCZM",
+  "production_class": "MovingProcessZoneState v9.11",
+  "frozen_rates_available": true,
+  "no_event_update_available": true,
+  "emission_only_state_changed": true,
+  "cleavage_crossing_status": "DRIVER_OWNED_NOT_MPZ_STATE",
+  "post_event_renewal_pass": true,
+  "rollback_pass": true,
+  "snapshot_restore_pass": true,
+  "subdivision_status": "SOURCE_EXERCISED_NOT_CLAIMED_EXACT",
+  "rng_threshold_status": "DRIVER_OWNED_NOT_MPZ_STATE"
+}

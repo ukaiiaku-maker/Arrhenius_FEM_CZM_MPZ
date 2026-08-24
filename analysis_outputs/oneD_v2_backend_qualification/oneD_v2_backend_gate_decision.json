@@ -1,0 +1,9 @@
+{
+  "source_fixture_gate": "PARTIAL_PASS",
+  "full_transaction_gate": "REQUIRES_FOUR_BOUNDED_INSTRUMENTED_DIAGNOSTICS",
+  "pf_map_gate": "BLOCKED",
+  "femczm_map_gate": "BLOCKED",
+  "1000K_baseline_gate": "NOT_RUN",
+  "campaigns_launched": false,
+  "canonical_parameters_changed": false
+}

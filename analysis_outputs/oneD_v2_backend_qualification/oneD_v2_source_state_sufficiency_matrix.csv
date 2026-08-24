@@ -1,0 +1,19 @@
+source_owner,production_state_field,units,v2_adapter_field,serialization_status,exact_comparison_status
+PF,mobile,count/bin,mobile,EXACT,PASS_SNAPSHOT_RESTORE
+PF,retained,count/bin,retained,EXACT,PASS_SNAPSHOT_RESTORE
+PF,accumulated_slip,count/bin,local_slip,EXACT,PASS_SNAPSHOT_RESTORE
+PF,wake_mobile,count/bin,wake_mobile,EXACT,PASS_SNAPSHOT_RESTORE
+PF,wake_retained,count/bin,wake_retained,EXACT,PASS_SNAPSHOT_RESTORE
+PF,available_sites,count/system,available_sites,EXACT,PASS_SNAPSHOT_RESTORE
+PF,B,action,cleavage_action,EXACT,PASS_SNAPSHOT_RESTORE
+PF,K_prev,Pa sqrt(m),previous_native_drive,EXACT,PASS_SNAPSHOT_RESTORE
+PF,threshold stream/RNG,state,threshold_rng_snapshot,DRIVER_OWNED_NOT_IN_STATE_FIXTURE,REQUIRES_INSTRUMENTED_DRIVER_DIAGNOSTIC
+FEMCZM,mobile,count/bin,mobile,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,retained,count/bin,retained,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,accumulated_slip,count/bin,local_slip,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,time_s,s,time_s,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,emitted_total,count,emitted_total,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,advance_total_m,m,crack_advance,EXACT,PASS_SNAPSHOT_RESTORE
+FEMCZM,cleavage action/threshold,action,cleavage_action_threshold,DRIVER_OWNED_NOT_IN_STATE_FIXTURE,REQUIRES_INSTRUMENTED_DRIVER_DIAGNOSTIC
+FEMCZM,threshold stream/RNG,state,threshold_rng_snapshot,DRIVER_OWNED_NOT_IN_STATE_FIXTURE,REQUIRES_INSTRUMENTED_DRIVER_DIAGNOSTIC
+FEMCZM,geometry transaction,mesh/path,geometry_snapshot,DRIVER_OWNED_NOT_IN_STATE_FIXTURE,REQUIRES_INSTRUMENTED_DRIVER_DIAGNOSTIC
