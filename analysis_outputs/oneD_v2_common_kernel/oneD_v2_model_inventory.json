@@ -1,0 +1,24 @@
+{
+  "schema": "oneD_v2_model_inventory_v1",
+  "V1": {
+    "label": "ONE_D_V1_HISTORICAL",
+    "commit": "559425321b9a8739f32788322d8a1c2af8abad73",
+    "audit_head": "a5dece9",
+    "fingerprint": "069b24bb04032bf2f8b6ffb52320932acbf4bbd6d58a790059f7107eda9e0fc5",
+    "preserved": true
+  },
+  "V2": {
+    "label": "ONE_D_V2_COMMON_KERNEL",
+    "layers": [
+      "ReducedFractureKernel",
+      "MechanicsProvider",
+      "CommonEventLifecyclePolicy",
+      "StochasticSequence",
+      "V2 analysis"
+    ],
+    "PF_replay": "implemented typed adapter; lifecycle qualification blocked by missing complete archived state",
+    "FEMCZM_replay": "implemented typed adapter; mechanics ledger available, complete kinetics state missing",
+    "PF_forward": "typed tabulated provider exists; no qualified actual-operator 1000um map",
+    "FEMCZM_forward": "typed G=M_G(a)U^2 provider exists; no committed qualified 1000um coefficient map"
+  }
+}

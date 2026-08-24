@@ -1,0 +1,29 @@
+{
+  "schema": "oneD_v2_shared_physics_graph_v1",
+  "shared": [
+    {
+      "quantity": "EXP-floor cleavage/emission barrier algebra",
+      "PF_source": "materials.py/config.py at 0a340f6",
+      "FEM_source": "materials.py/config.py at a5f0d63",
+      "units": "eV, Pa, K",
+      "sign": "absolute stress",
+      "status": "ALGEBRA_SHARED"
+    },
+    {
+      "quantity": "canonical parameter rows",
+      "status": "SHARED_FULL_PRECISION_REGISTRY"
+    }
+  ],
+  "not_yet_proven_shared": [
+    "process-zone transport",
+    "tip-radius/front-width evolution",
+    "source multiplicity",
+    "backstress",
+    "signed shielding",
+    "post-event renewal"
+  ],
+  "backend_specific": {
+    "PF": "sharp-wake native J/KJ; continuum G unqualified",
+    "FEMCZM": "zero-thickness qualified G via energy/compliance/VCCT"
+  }
+}

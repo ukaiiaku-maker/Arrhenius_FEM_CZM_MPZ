@@ -1,0 +1,15 @@
+{
+  "schema": "oneD_v2_parameter_decision_v1",
+  "shared_kernel_gate": "PARTIAL_PASS_BARRIER_HAZARD_ALGEBRA",
+  "frozen_source_gate": "BLOCKED_STATE_ADAPTER",
+  "event_lifecycle_gate": "BLOCKED_MISSING_ARCHIVED_STATE",
+  "full_replay_gate": "BLOCKED_MISSING_ARCHIVED_STATE",
+  "PF_forward_map_gate": "BLOCKED_NO_QUALIFIED_GENERATIVE_MAP",
+  "FEMCZM_forward_map_gate": "BLOCKED_NO_COMMITTED_1000UM_M_G_MAP",
+  "baseline_forward": "NOT_RUN_GATE_BLOCKED",
+  "100um_40_case_campaign": "NOT_RUN_GATE_BLOCKED",
+  "1000um_40_case_campaign": "NOT_RUN_GATE_BLOCKED",
+  "parameter_classification": "INSUFFICIENT_EVIDENCE",
+  "parameter_refit_required": false,
+  "twoD_stochastic_rerun_required": false
+}
