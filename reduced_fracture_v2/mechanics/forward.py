@@ -24,3 +24,15 @@ class TabulatedForwardProvider(MechanicsProvider):
     def evaluate_pre_event(self,index): raise RuntimeError("forward provider requires extension and opening")
     def evaluate_post_event(self,index): raise RuntimeError("forward provider requires extension and opening")
     def evaluate_reload(self,index): raise RuntimeError("forward provider requires extension and opening")
+
+
+class PFMechanicsProvider(TabulatedForwardProvider):
+    def __post_init__(self):
+        if self.observable_kind not in (ObservableKind.PF_NATIVE_DRIVE,ObservableKind.PF_NATIVE_KJ): raise ValueError("PF provider requires PF-native observable")
+        if self.qualification==Qualification.QUALIFIED_ENERGY_COMPLIANCE_VCCT: raise ValueError("PF discrete drive is not qualified continuum G")
+
+
+class FEMCZMMechanicsProvider(TabulatedForwardProvider):
+    def __post_init__(self):
+        if self.observable_kind!=ObservableKind.FEM_STRUCTURAL_G: raise ValueError("FEM/CZM primary provider requires structural G")
+        if self.qualification!=Qualification.QUALIFIED_ENERGY_COMPLIANCE_VCCT: raise ValueError("FEM/CZM structural G map must be qualified")

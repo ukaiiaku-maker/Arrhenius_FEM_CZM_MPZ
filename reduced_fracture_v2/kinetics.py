@@ -21,7 +21,7 @@ class KernelResult:
     emission_hazard_increment: float
 
 
-class ReducedFractureKernel:
+class SharedBarrierHazardCore:
     """Backend-free canonical EXP-floor barrier and hazard evaluation.
 
     Mechanics supplies local stresses. This class neither knows nor labels J/G/K.
@@ -47,3 +47,6 @@ class ReducedFractureKernel:
         cr=self._rate(c,temperature_K,1e13)*state.source_multiplicity; er=self._rate(e,temperature_K,1e13)*state.source_multiplicity
         pr=self._rate(self.p["peierls_H0_eV"],temperature_K,self.p["peierls_nu0_s"]); tr=self._rate(self.p["taylor_H0_eV"],temperature_K,self.p["taylor_nu0_s"])
         return KernelResult(c,e,cr,er,pr,tr,cr*dt_s,er*dt_s)
+
+
+ReducedFractureKernel = SharedBarrierHazardCore
