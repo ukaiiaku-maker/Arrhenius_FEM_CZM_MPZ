@@ -1,0 +1,72 @@
+{
+  "blocking_evidence": {
+    "FEM_map_provides": [
+      "reaction",
+      "FEM_native_J",
+      "FEM_native_KJ",
+      "qualified_G",
+      "qualified_KG",
+      "G_uncertainty"
+    ],
+    "PF_map_provides": [
+      "reaction",
+      "PF_native_J",
+      "PF_native_KJ"
+    ],
+    "hazard_kernel_requires": [
+      "cleavage_stress_Pa",
+      "emission_stress_Pa"
+    ],
+    "missing_source_qualified_contract": "backend-native mechanics plus process-zone state to local cleavage/emission stresses",
+    "prohibited_substitution": "native KJ or qualified KG cannot be passed as a local stress"
+  },
+  "campaign_launched": false,
+  "canonical_parameters_changed": false,
+  "cases": [
+    {
+      "material_class": "Peak",
+      "provider": "PF_CONSISTENT",
+      "seed": 8666,
+      "status": "NOT_LAUNCHED"
+    },
+    {
+      "material_class": "DBTT",
+      "provider": "PF_CONSISTENT",
+      "seed": 1008666,
+      "status": "NOT_LAUNCHED"
+    },
+    {
+      "material_class": "Peak",
+      "provider": "FEMCZM_CONSISTENT",
+      "seed": 8666,
+      "status": "NOT_LAUNCHED"
+    },
+    {
+      "material_class": "DBTT",
+      "provider": "FEMCZM_CONSISTENT",
+      "seed": 1008666,
+      "status": "NOT_LAUNCHED"
+    }
+  ],
+  "forward_launch_gate": "BLOCKED_NATIVE_METRIC_TO_LOCAL_PROCESS_ZONE_CLOSURE_ABSENT",
+  "long_cases_launched": 0,
+  "map_hashes": {
+    "FEM_native": "21b13ca048482b560e2427dfd6beb359fcc406c421cafa488567c5fc27b4ffbd",
+    "FEM_structural_G": "1e8a77a642d6c086582963f9eb576227ebb658b6a392910ce81f3c94186e0607",
+    "PF": "b508d5ba6a7562e53f5280ffecf015d3c6f8c801d0e03abe8bc9d7ddef8f0fc1"
+  },
+  "mechanics_maps": {
+    "FEM_native": "QUALIFIED",
+    "FEM_structural_G": "QUALIFIED",
+    "PF": "PF_PRODUCTION_DISCRETE_MAP_QUALIFIED"
+  },
+  "new_2d_stochastic_run_required": false,
+  "next_required_work": "derive and source-test backend-specific local stress/state closures; deterministic frozen-state diagnostics are sufficient",
+  "parameter_status": "INSUFFICIENT_EVIDENCE",
+  "physical_or_stochastic_law_altered": false,
+  "prefixes_launched": 0,
+  "production_trajectory_altered": false,
+  "refit_justified": false,
+  "schema": "oneD_v2_baseline_decision_v1",
+  "typed_provider_interface": "QUALIFIED"
+}
