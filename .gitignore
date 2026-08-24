@@ -8,4 +8,6 @@ __pycache__/
 runs/
 *.log
 *.nohup.log
+analysis_outputs/oneD_four_class_audit/historical_100um/
+analysis_outputs/oneD_four_class_audit/historical_100um_serial/
 candidates/v9_12_targeted_local_4096_registry.csv
