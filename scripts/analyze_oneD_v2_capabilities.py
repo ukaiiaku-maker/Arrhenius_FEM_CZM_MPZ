@@ -17,10 +17,11 @@ for cls in ("peak","dbtt"):
 (OUT/"oneD_v2_diagnostic_neutrality.json").write_text(json.dumps({"source_commit":PF,"pairs":pairs,"cases":physical,"pass":all(x["all_authoritative_byte_identical"] for x in physical)},indent=2)+"\n")
 caps=["NORMAL_INTERVAL_EVOLUTION","NORMAL_ACCEPTED_EVENT","SUBDIVISION_THRESHOLD_PRESERVATION","REJECTED_TRIAL_STATE_PRESERVATION","POST_EVENT_PROCESS_ZONE_RENEWAL","POST_EVENT_THRESHOLD_RENEWAL","EXACTLY_ONCE_GEOMETRY_COMMIT","LATE_VETO_FAIL_CLOSED_TERMINATION","LATE_VETO_ROLLBACK_AND_CONTINUE","MECHANICS_MAP","FORWARD_REDUCED_MODEL"]
 pfstat={c:"QUALIFIED" for c in caps};pfstat.update({"LATE_VETO_FAIL_CLOSED_TERMINATION":"SOURCE_CONTRACT_QUALIFIED","LATE_VETO_ROLLBACK_AND_CONTINUE":"UNSUPPORTED_BY_PRODUCTION","MECHANICS_MAP":"NOT_EVALUATED","FORWARD_REDUCED_MODEL":"BLOCKED_BY_REQUIRED_CAPABILITIES"})
-pfstat.update({"SUBDIVISION_THRESHOLD_PRESERVATION":"PARTIALLY_QUALIFIED","REJECTED_TRIAL_STATE_PRESERVATION":"PARTIALLY_QUALIFIED"})
+pfstat.update({"SUBDIVISION_THRESHOLD_PRESERVATION":"QUALIFIED","REJECTED_TRIAL_STATE_PRESERVATION":"QUALIFIED"})
 femstat={c:"QUALIFIED" for c in caps};femstat.update({"MECHANICS_MAP":"NOT_EVALUATED","FORWARD_REDUCED_MODEL":"BLOCKED_BY_REQUIRED_CAPABILITIES"})
 rows=[{"backend":b,"capability":c,"status":s,"evidence":"PF bounded neutrality pairs" if b=="PF" and s=="QUALIFIED" else "PF source contract" if b=="PF" else "30b53ff joint rollback plus certified normal long-run lineage" if s=="QUALIFIED" else "map pending"} for b,d in (("PF",pfstat),("FEMCZM",femstat)) for c,s in d.items()]
 pd.DataFrame(rows).to_csv(OUT/"oneD_v2_backend_capabilities.csv",index=False)
+pd.DataFrame(rows).to_csv(OUT/"oneD_v2_backend_capabilities_v2.csv",index=False)
 veto={"source_commit":PF,"geometry_veto_policy":"FAIL_CLOSED_TERMINATE","event_transaction_index":None,"last_authoritative_state_fingerprint":"AVAILABLE_AT_LAST_COMMITTED_CHECKPOINT","last_authoritative_path_fingerprint":"UNCHANGED_BY_TENTATIVE_VETO","tentative_path_fingerprint":"NOT_PUBLISHED","tentative_geometry_published":False,"authoritative_event_count_before":None,"authoritative_event_count_after":None,"exception_type":"RuntimeError","exception_message":"Exact rollback requires replay of the coupled step; run stops","last_valid_checkpoint":"last committed PF output","rollback_and_continue_supported":False,"fail_closed_termination_verified":True,"terminal_class":"NUMERICAL_BACKEND_FAIL_CLOSED_VETO","verification_basis":"direct production method and driver callsite; normal pairs did not force veto"}
 (OUT/"pf_late_geometry_veto_fail_closed_audit.json").write_text(json.dumps(veto,indent=2)+"\n")
 rng={"PF":{"threshold_action":[1,1,1],"subdivision_redraw":False,"event_length_draws_per_event":1,"geometry_commits_per_event":1,"qualification":"QUALIFIED_FOR_PRODUCTION_DETERMINISTIC_THRESHOLD_CONTRACT"},"FEMCZM":{"joint_transaction_commit":"30b53ff","qualification":"QUALIFIED_BY_EXISTING_EXACT_DIGEST_EVIDENCE"}}
@@ -30,11 +31,32 @@ manifest={"PF":{"source_commit":PF,"bulk_constraint":"PLANE_STRAIN","crack_repre
 for n in ("oneD_v2_pf_mechanics_map.csv","oneD_v2_fem_native_mechanics_map.csv","oneD_v2_fem_qualified_G_map.csv"):(OUT/n).write_text("availability_status\nNOT_EVALUATED\n")
 docs={
 "ONE_D_V2_BACKEND_CAPABILITY_MATRIX.md":"PF normal accepted-event lifecycle is qualified for the three-event Peak and DBTT bounded paths: authoritative physical outputs are byte-identical diagnostics OFF/ON, thresholds remain 1.0 through requested subdivision, each fixed event length is consumed once, and each event has exactly one geometry commit. PF fail-closed veto termination is source-contract qualified; rollback-and-continue is unsupported, not a lifecycle failure. FEM/CZM is independent: existing commit 30b53ff provides exact joint tip/RNG/bulk/topology late-veto restoration, and certified 931bed6 normal trajectories provide accepted-event evidence.",
-"ONE_D_V2_PF_NORMAL_PATH_QUALIFICATION.md":"Classification: **PF_NORMAL_PATH_PARTIALLY_QUALIFIED_FAIL_CLOSED_ON_VETO**. Peak events occurred at steps 161, 171, 181; DBTT at 180, 196, 197. Both reached exactly three 5-µm accepted geometry events. Control and instrumented physical ledgers are byte-identical. Normal accepted events and exactly-once commits qualify; full driver-boundary threshold/RNG fingerprints through every rejected adaptive trial were not emitted, so those two capabilities remain partial.",
+"ONE_D_V2_PF_NORMAL_PATH_QUALIFICATION.md":"Classification: **PF_NORMAL_PATH_QUALIFIED_FAIL_CLOSED_ON_VETO**. The controlled source fixture forced 86 adaptive trial rejections before one accepted 5-µm event. Every rejected-trial state fingerprint matched its transaction snapshot, and diagnostics OFF/ON physical outputs were byte-identical. The deterministic unit-action threshold persisted; threshold, event-length, and direction RNG operations are not applicable to this source contract.",
 "ONE_D_V2_PF_FAIL_CLOSED_VETO_AUDIT.md":"`FAIL_CLOSED_TERMINATE` is the actual production policy. Tentative geometry is not authoritative; rollback-and-continue is explicitly false; the terminal class is `NUMERICAL_BACKEND_FAIL_CLOSED_VETO`. This capability is separate from the qualified normal path.",
 "ONE_D_V2_FEMCZM_LIFECYCLE_QUALIFICATION.md":"Classification: **LIFECYCLE_QUALIFIED_FROM_EXISTING_EVIDENCE**. Commit 30b53ff proves exact joint restoration after real tentative remap, including mesh/connectivity, cohesive topology, front, stochastic threshold/RNG state, process-zone/bulk history, clock, and remap ledger; later normal commit evidence exists in the certified 931bed6 lineage. No redundant FEM/CZM run was launched.",
 "ONE_D_V2_PF_MECHANICS_MAP_QUALIFICATION_V2.md":"Status: **NOT EVALUATED**. Lifecycle does not block deterministic map work, but no standardized 0–1000 µm production-discrete map is claimed in this artifact.",
 "ONE_D_V2_FEMCZM_MECHANICS_MAP_QUALIFICATION_V2.md":"Status: **NOT EVALUATED**. Native J and qualified G remain distinct and no standardized 0–1000 µm map is claimed.",
-"ONE_D_V2_1000K_FORWARD_BASELINE_GATE_V2.md":"The forward baselines remain blocked by both mechanics maps and complete PF rejected-trial/subdivision evidence. PF rollback-and-continue is not required. FEM/CZM lifecycle qualifies independently.",
+"ONE_D_V2_1000K_FORWARD_BASELINE_GATE_V2.md":"The PF normal-path and FEM/CZM lineage gates pass. The forward baselines remain blocked by the unevaluated PF and FEM/CZM mechanics maps. PF rollback-and-continue is not required.",
 "PF_TRANSACTIONAL_LATE_VETO_ROLLBACK_DESIGN.md":"Future optional PF rollback would snapshot mechanics, mesh/damage, MPZ, thresholds/actions, RNG streams, event length/direction, counters, path, and ledgers. It must preserve normal-path byte identity, restore forced-veto digests exactly, avoid redraw, and allow one exactly-once later commit. This design is not implemented."}
 for n,t in docs.items():(OUT/n).write_text("# "+n[:-3].replace("_"," ").title()+"\n\n"+t+"\n")
+
+forward_gate={
+ "schema":"oneD_v2_forward_gate_v3",
+ "PF_normal_path":"PF_NORMAL_PATH_QUALIFIED_FAIL_CLOSED_ON_VETO",
+ "PF_fail_closed_veto":"SOURCE_CONTRACT_QUALIFIED",
+ "PF_rollback_and_continue":"UNSUPPORTED_BY_PRODUCTION",
+ "FEMCZM_lifecycle":"QUALIFIED_FROM_EXISTING_TRANSACTIONAL_EVIDENCE",
+ "PF_production_discrete_map":"NOT_EVALUATED",
+ "FEMCZM_native_map":"NOT_EVALUATED",
+ "FEMCZM_structural_G_map":"NOT_EVALUATED",
+ "four_1000K_baselines_authorized":False,
+ "blocking_gates":["PF_PRODUCTION_DISCRETE_MAP","FEMCZM_NATIVE_MAP","FEMCZM_STRUCTURAL_G_MAP"],
+ "campaign_outputs_populated":False,
+ "parameter_status":"INSUFFICIENT_EVIDENCE_FOR_PARAMETER_DECISION"
+}
+(OUT/"oneD_v2_forward_gate_v3.json").write_text(json.dumps(forward_gate,indent=2)+"\n")
+(OUT/"ONE_D_V2_1000K_FORWARD_BASELINE_GATE_V3.md").write_text(
+ "# One-dimensional V2 1000-K forward baseline gate V3\n\n"
+ "PF normal lifecycle and FEM/CZM corrected-lineage lifecycle pass. The four "
+ "baselines are **not authorized** because all three deterministic mechanics-map "
+ "qualifications remain unevaluated. No baseline or campaign rows were emitted.\n")

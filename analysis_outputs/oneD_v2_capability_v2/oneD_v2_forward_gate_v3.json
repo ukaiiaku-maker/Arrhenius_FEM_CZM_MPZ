@@ -1,0 +1,18 @@
+{
+  "schema": "oneD_v2_forward_gate_v3",
+  "PF_normal_path": "PF_NORMAL_PATH_QUALIFIED_FAIL_CLOSED_ON_VETO",
+  "PF_fail_closed_veto": "SOURCE_CONTRACT_QUALIFIED",
+  "PF_rollback_and_continue": "UNSUPPORTED_BY_PRODUCTION",
+  "FEMCZM_lifecycle": "QUALIFIED_FROM_EXISTING_TRANSACTIONAL_EVIDENCE",
+  "PF_production_discrete_map": "NOT_EVALUATED",
+  "FEMCZM_native_map": "NOT_EVALUATED",
+  "FEMCZM_structural_G_map": "NOT_EVALUATED",
+  "four_1000K_baselines_authorized": false,
+  "blocking_gates": [
+    "PF_PRODUCTION_DISCRETE_MAP",
+    "FEMCZM_NATIVE_MAP",
+    "FEMCZM_STRUCTURAL_G_MAP"
+  ],
+  "campaign_outputs_populated": false,
+  "parameter_status": "INSUFFICIENT_EVIDENCE_FOR_PARAMETER_DECISION"
+}

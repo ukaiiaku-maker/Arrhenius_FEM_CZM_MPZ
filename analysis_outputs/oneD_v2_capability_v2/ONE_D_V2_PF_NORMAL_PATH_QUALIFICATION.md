@@ -1,3 +1,3 @@
 # One D V2 Pf Normal Path Qualification
 
-Classification: **PF_NORMAL_PATH_PARTIALLY_QUALIFIED_FAIL_CLOSED_ON_VETO**. Peak events occurred at steps 161, 171, 181; DBTT at 180, 196, 197. Both reached exactly three 5-µm accepted geometry events. Control and instrumented physical ledgers are byte-identical. Normal accepted events and exactly-once commits qualify; full driver-boundary threshold/RNG fingerprints through every rejected adaptive trial were not emitted, so those two capabilities remain partial.
+Classification: **PF_NORMAL_PATH_QUALIFIED_FAIL_CLOSED_ON_VETO**. The controlled source fixture forced 86 adaptive trial rejections before one accepted 5-µm event. Every rejected-trial state fingerprint matched its transaction snapshot, and diagnostics OFF/ON physical outputs were byte-identical. The deterministic unit-action threshold persisted; threshold, event-length, and direction RNG operations are not applicable to this source contract.

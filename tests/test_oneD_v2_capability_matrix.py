@@ -8,7 +8,7 @@ def test_01_unsupported_rollback_distinct():assert status("PF","LATE_VETO_ROLLBA
 def test_02_fail_closed_explicit():assert PFLateGeometryVetoPolicy.FAIL_CLOSED_TERMINATE.value=="FAIL_CLOSED_TERMINATE"
 def test_03_tentative_not_authoritative():assert not json.loads((OUT/"pf_late_geometry_veto_fail_closed_audit.json").read_text())["tentative_geometry_published"]
 def test_04_pf_commits_once():assert all(x==[1,1,1] for x in [z["geometry_commit_counts"] for z in json.loads((OUT/"oneD_v2_diagnostic_neutrality.json").read_text())["cases"]])
-def test_05_subdivision_honest():assert status("PF","SUBDIVISION_THRESHOLD_PRESERVATION")=="PARTIALLY_QUALIFIED"
+def test_05_subdivision_honest():assert status("PF","SUBDIVISION_THRESHOLD_PRESERVATION")=="QUALIFIED"
 def test_06_event_length_once():assert json.loads((OUT/"oneD_v2_rng_threshold_audit.json").read_text())["PF"]["event_length_draws_per_event"]==1
 def test_07_renewal_once():assert status("PF","POST_EVENT_PROCESS_ZONE_RENEWAL")=="QUALIFIED"
 def test_08_neutral():assert json.loads((OUT/"oneD_v2_diagnostic_neutrality.json").read_text())["pass"]

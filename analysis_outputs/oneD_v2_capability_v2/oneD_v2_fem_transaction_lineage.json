@@ -1,0 +1,95 @@
+{
+  "schema": "oneD_v2_fem_transaction_lineage_v1",
+  "qualified_evidence_commit": "30b53ff",
+  "corrected_production_commit": "931bed66913afc970117bce900805ecc9b6225f8",
+  "qualified_commit_is_ancestor": true,
+  "functions": [
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "outer transaction begin",
+      "responsibility": "transaction snapshot and process-zone capture",
+      "source_hash_at_30b53ff": "3a21b36e2efe37d172b0a626b77fa7ccbbe6ee7fd39133009f60076a71e98bea",
+      "source_hash_at_931bed6": "3a21b36e2efe37d172b0a626b77fa7ccbbe6ee7fd39133009f60076a71e98bea",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "mechanics interval begin",
+      "responsibility": "accepted/working process-zone separation",
+      "source_hash_at_30b53ff": "feffeb9abd5958cb6bfb217d20de5faa2619988c4383952d57827b7a7fbd325d",
+      "source_hash_at_931bed6": "feffeb9abd5958cb6bfb217d20de5faa2619988c4383952d57827b7a7fbd325d",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "accepted mechanics interval",
+      "responsibility": "accepted physical-interval state",
+      "source_hash_at_30b53ff": "cbfe1612044f56e750bf3415f43ea09e888b952a1cc12fd15feb3a966bf5eb60",
+      "source_hash_at_931bed6": "cbfe1612044f56e750bf3415f43ea09e888b952a1cc12fd15feb3a966bf5eb60",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "pre-remap cohesive snapshot",
+      "responsibility": "tentative geometry and geometry snapshot",
+      "source_hash_at_30b53ff": "875b6a7aa25a0c00536a3036db4a64b1c3eaa92055b8fbdb9d11aa43742c5088",
+      "source_hash_at_931bed6": "875b6a7aa25a0c00536a3036db4a64b1c3eaa92055b8fbdb9d11aa43742c5088",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "overlap topology remap",
+      "responsibility": "tentative remap",
+      "source_hash_at_30b53ff": "b89261df5589658d7266e74cab70a02420857a0b4983edb8b1704c2d3e922191",
+      "source_hash_at_931bed6": "b89261df5589658d7266e74cab70a02420857a0b4983edb8b1704c2d3e922191",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "deflect geometry veto rollback",
+      "responsibility": "late veto; threshold/RNG and geometry restoration",
+      "source_hash_at_30b53ff": "6c087f554033a8b6f0d802968be46dfc18ae157a868ec174dc377266cf018b15",
+      "source_hash_at_931bed6": "6c087f554033a8b6f0d802968be46dfc18ae157a868ec174dc377266cf018b15",
+      "change_classification": "IDENTICAL"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "build_bulk_run_2d",
+      "boundary_name": "authoritative commit",
+      "responsibility": "authoritative process-zone commit",
+      "source_hash_at_30b53ff": "53ad2fb3e96fc7b2188343a839ddb3d7b787f6344ec3c4e1a8407fc7dc5e078c",
+      "source_hash_at_931bed6": "296a25b6cbb21c9f2d84dff9f2451e10efb4613835a6708b4c47652bebbec18d",
+      "change_classification": "NONSEMANTIC_CHANGE"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "remesh_with_failure_capture",
+      "boundary_name": "tentative remap/failure capture",
+      "responsibility": "tentative remap, material provenance, failure capture",
+      "source_hash_at_30b53ff": "a54b3c5f0326f686a119e84be46249d40b7b92203ee9907d78fa1eb86426a984",
+      "source_hash_at_931bed6": "74727c01a140368837a08b2a57d8b0671974af11756a53bb3a1a835b8ac5ecb3",
+      "change_classification": "SEMANTIC_CHANGE_REQUALIFIED"
+    },
+    {
+      "file_path": "arrhenius_fracture/bulk_pt_live_run2d_composition_v1043.py",
+      "function_name": "write_joint_veto_audit",
+      "boundary_name": "post-rollback audit",
+      "responsibility": "post-rollback restoration verification",
+      "source_hash_at_30b53ff": "61e34a2a61cce804d0490586993411ff1a8cb680d5e175e074280b7df5c510d6",
+      "source_hash_at_931bed6": "61e34a2a61cce804d0490586993411ff1a8cb680d5e175e074280b7df5c510d6",
+      "change_classification": "IDENTICAL"
+    }
+  ],
+  "lineage_status": "QUALIFIED_FROM_EXISTING_TRANSACTIONAL_EVIDENCE",
+  "targeted_corrected_lineage_regression": {
+    "command": "python -m pytest -q tests/test_bulk_pt_live_run2d_composition_v1043.py -k 'joint_late_veto or failed_remap_capture'",
+    "environment": "arrhenius-fem-czm",
+    "result": "2 passed, 4 deselected"
+  }
+}
