@@ -1,0 +1,17 @@
+{
+  "FEMCZM_2d_runs_launched": 0,
+  "PF_transfer_runs_launched": 0,
+  "canonical_parameters_changed": false,
+  "current_four_class_matrix": "NOT_RUN_GATE_BLOCKED",
+  "level1_common_core_parity": "PASS_EXACT",
+  "level2_common_mechanics_lifecycle_parity": "PASS_EXACT",
+  "level3_native_provider": "NOT_RUN_GATE_BLOCKED",
+  "mechanics_maps_qualified": true,
+  "native_baselines": "NOT_RUN_GATE_BLOCKED",
+  "new_parameter_search": "NOT_RUN_GATE_BLOCKED",
+  "parameter_refit_justified": false,
+  "production_formulas_changed": false,
+  "production_trajectories_changed": false,
+  "schema": "oneD_v2_final_decision_v1",
+  "smallest_later_FEMCZM_validation": "NONE_UNTIL_NATIVE_REDUCED_BASELINES_PASS"
+}

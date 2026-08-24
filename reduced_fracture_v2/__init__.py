@@ -4,5 +4,6 @@ from .kinetics import KernelResult, ReducedFractureKernel, SharedBarrierHazardCo
 from .mechanics.base import MechanicsState, ObservableKind, Qualification
 from .parameters import CanonicalParameters
 from .state import ReducedState
+from .analysis import SharedEventAvalancheAnalysis
 
-__all__ = ["CanonicalParameters", "KernelResult", "MechanicsState", "ObservableKind", "Qualification", "ReducedFractureKernel", "SharedBarrierHazardCore", "ReducedState"]
+__all__ = ["CanonicalParameters", "KernelResult", "MechanicsState", "ObservableKind", "Qualification", "ReducedFractureKernel", "SharedBarrierHazardCore", "ReducedState", "SharedEventAvalancheAnalysis"]

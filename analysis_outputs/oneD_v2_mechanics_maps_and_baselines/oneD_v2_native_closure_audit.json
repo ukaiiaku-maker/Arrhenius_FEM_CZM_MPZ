@@ -1,0 +1,30 @@
+{
+  "launch_gate": "BLOCKED_SOURCE_LAWS_IDENTIFIED_BUT_V2_STATE_CLOSURE_NOT_IMPLEMENTED",
+  "schema": "oneD_v2_native_closure_audit_v1",
+  "source_findings": {
+    "FEMCZM": {
+      "ambient_checkout_head": "17f8bf67c0138b453eadff4b509afa80ebaa2c04",
+      "law": "max(K-K_shield(state),0)/sqrt(2*pi*r_eff(state)), capped",
+      "pinned_source_commit": "931bed66913afc970117bce900805ecc9b6225f8",
+      "sigma_tip_function_sha256": "22a7185a49c2c3c42d434ac89c85337ebee5bc35d4652c477cd0ada08453361a",
+      "source_file_sha256": "9731c5b4162c8019b28950a1cfa2a41954aaf610358d99f57add253df1f3bd73",
+      "status": "SOURCE_LAW_IDENTIFIED_PINNED_CONTENT_HASH_MATCH"
+    },
+    "PF": {
+      "ambient_checkout_head": "9e884fb0b0845da621d2612bdf1042e481b8df49",
+      "law": "K_eff(state)/sqrt(2*pi*r_eff(state)), capped",
+      "pinned_source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+      "sigma_tip_function_sha256": "9cbbc79a17b7a20e78c355990eebdbe1b48e831dcd2923207a9540cecca39dab",
+      "source_file_sha256": "c0c440696c6519cf36f90be4c9a4fc338da8d87bc5726b6b8a6c353e9f493178",
+      "status": "SOURCE_LAW_IDENTIFIED_PINNED_CONTENT_HASH_MATCH"
+    }
+  },
+  "v2_forward_coverage": {
+    "dynamic_K_shield": "NOT_MAPPED_IN_REDUCED_FORWARD_STATE",
+    "dynamic_r_eff": "NOT_MAPPED_IN_REDUCED_FORWARD_STATE",
+    "emission_transport_update": "BACKEND_ADAPTER_SNAPSHOT_ONLY",
+    "mapped_input": "backend-native KJ",
+    "status": "INCOMPLETE",
+    "threshold_lifecycle": "BACKEND_POLICY_SOURCE_QUALIFIED_BUT_NOT_COMPOSED_WITH_SHARED_CORE"
+  }
+}
