@@ -1,0 +1,36 @@
+{
+  "schema": "oneD_v2_backend_lifecycle_manifest_v1",
+  "analysis_parent_commit": "3fd33a3d10537ed36a0ca7220d5796ac4f2477d3",
+  "state_fingerprint_schema": {
+    "PF": "oneD_v2_pf_observer_state_v1/canonical_sorted_json_sha256",
+    "FEMCZM": "bp5_joint_late_veto_v1043/recursive_value_sha256"
+  },
+  "PF": {
+    "source_repository": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1",
+    "source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+    "analysis_observer_commit": "c695b44",
+    "test_artifact": "/private/tmp/oneD-v2-common-kernel/analysis_outputs/oneD_v2_capability_v2/oneD_v2_pf_subdivision_fixture_audit.json",
+    "test_artifact_sha256": "745a1719777d5769687d3c6b23103e0cd67e6373a19fafed3038ef7fef7bc9f3",
+    "normal_interval_evolution": "QUALIFIED",
+    "rejected_trial_state_preservation": "QUALIFIED",
+    "accepted_event_commit": "QUALIFIED",
+    "post_event_renewal": "QUALIFIED",
+    "threshold_RNG_fields_not_present": "NOT_APPLICABLE",
+    "late_veto_fail_closed_termination": "QUALIFIED",
+    "late_veto_rollback_and_continue": "UNSUPPORTED_BY_PRODUCTION"
+  },
+  "FEMCZM": {
+    "source_repository": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude",
+    "source_commit": "931bed66913afc970117bce900805ecc9b6225f8",
+    "analysis_commit": "3fd33a3d10537ed36a0ca7220d5796ac4f2477d3",
+    "test_artifact": "/private/tmp/oneD-v2-common-kernel/analysis_outputs/oneD_v2_capability_v2/oneD_v2_fem_transaction_lineage.json",
+    "test_artifact_sha256": "ff587965dd02b9eb3e8e22ccf614cfb6e51b2d096a6cbbb3e340fc6b80e7f5f6",
+    "normal_interval_evolution": "QUALIFIED",
+    "rejected_trial_state_preservation": "QUALIFIED",
+    "accepted_event_commit": "QUALIFIED",
+    "post_event_renewal": "QUALIFIED",
+    "threshold_RNG_snapshot_restore": "QUALIFIED",
+    "late_veto_rollback_and_continue": "QUALIFIED"
+  },
+  "reopen_policy": "REOPEN_ONLY_IF_RECORDED_SOURCE_HASH_DIFFERS"
+}
