@@ -1,0 +1,5 @@
+backend,material_class,temperature_K,seed,phase,source_commit,status,detail
+PF,Peak,1000,8666,ROLLBACK_BEGIN,ab6279331d050919f78e2e7f278bc332466e34f8,IRREDUCIBLE_BLOCKER_BEFORE_RUN,production restore_geometry_veto raises; exact coupled-step replay unavailable
+PF,DBTT,1000,1008666,ROLLBACK_BEGIN,ab6279331d050919f78e2e7f278bc332466e34f8,IRREDUCIBLE_BLOCKER_BEFORE_RUN,same authoritative engine and rollback contract
+FEMCZM,Peak,1000,8666,INITIAL_AUTHORITATIVE_STATE,931bed66913afc970117bce900805ecc9b6225f8,NOT_LAUNCHED_PF_COMMON_GATE_ALREADY_FAILED,no long or unnecessary diagnostic launched
+FEMCZM,DBTT,1000,1008666,INITIAL_AUTHORITATIVE_STATE,931bed66913afc970117bce900805ecc9b6225f8,NOT_LAUNCHED_PF_COMMON_GATE_ALREADY_FAILED,no long or unnecessary diagnostic launched

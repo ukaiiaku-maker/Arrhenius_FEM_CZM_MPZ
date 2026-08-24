@@ -1,0 +1,15 @@
+{
+  "PF": {
+    "source_commit": "ab6279331d050919f78e2e7f278bc332466e34f8",
+    "classification": "UNQUALIFIED",
+    "direct_source_evidence": {
+      "audit_payload": "fail_closed_no_partial_state_rollback",
+      "restore_geometry_veto": "raises RuntimeError",
+      "driver_callsite": "sharp_front.py late geometry veto"
+    }
+  },
+  "FEMCZM": {
+    "source_commit": "931bed66913afc970117bce900805ecc9b6225f8",
+    "classification": "NOT_EVALUATED"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "bulk_constraint": "PLANE_STRAIN",
+  "PF": {
+    "crack_representation": "FINITE_WIDTH_STIFFNESS_KILLED_WAKE",
+    "local_process_zone": "FINITE_SIZE_REDUCED_STATE",
+    "map_status": "NOT_GENERATED"
+  },
+  "FEMCZM": {
+    "crack_representation": "CODIMENSION_ONE_DISPLACEMENT_DISCONTINUITY",
+    "failed_interface_state": "TRACTION_FREE",
+    "local_process_zone": "FINITE_SIZE_REDUCED_STATE",
+    "map_status": "NOT_GENERATED"
+  },
+  "campaign_tables_populated": false
+}

@@ -1,0 +1,11 @@
+{
+  "PF": {
+    "diagnostic_pair_run": false,
+    "reason": "instrumentation cannot repair missing production rollback"
+  },
+  "FEMCZM": {
+    "diagnostic_pair_run": false,
+    "reason": "stopped at failed common forward gate"
+  },
+  "physical_trajectory_changed": false
+}

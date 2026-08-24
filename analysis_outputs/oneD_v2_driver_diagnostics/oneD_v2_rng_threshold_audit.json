@@ -1,0 +1,10 @@
+{
+  "PF": {
+    "threshold_subdivision": "NOT_QUALIFIED",
+    "rng_rollback": "NOT_QUALIFIED",
+    "reason": "late-veto full-state restore absent in authoritative driver"
+  },
+  "FEMCZM": {
+    "status": "NOT_RUN_AFTER_PF_GATE_FAILURE"
+  }
+}
