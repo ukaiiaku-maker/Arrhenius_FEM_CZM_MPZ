@@ -1,0 +1,29 @@
+{
+  "case_count": 20,
+  "loading_map_sha256": "4e6056ff9df2723ee05e9c22f53b78ce66bff3035d6eca620a7f806f992bd4ac",
+  "parameter_refit": false,
+  "registry_sha256": "760ce58801c978b5d9f06be151b8d3e8be46debfa0ef3a8df8dee390cbcc4bf3",
+  "schema": "oneD_historical_reproduction_manifest_v1",
+  "scientific_fingerprints": {
+    "oneD_cross_implementation_event_transaction.csv": "4afd220063cf79490ef634cbb784ba55a8e8c680e5556ae04b3e80a0f4602661",
+    "oneD_cross_implementation_frozen_states.csv": "8bab9315ed3c2c21168b6aade06b14452bea2009f6f4cc1b33e9579befbf5fc7",
+    "oneD_event_transactions_v2.csv": "b5b59c054c67d99f4aad1791f073372fb482523069cd9f0c6ac74ab71ff6ab96",
+    "oneD_four_class_temperature_summary_v2.csv": "8f7b93c23ba08d033ff935bd02f78e13a1b5a048dc897ad463a2612a8141dee9",
+    "oneD_historical_reproduction_results.csv": "77a8b2c608e09fdd69b297fe46ab27709f21094f6fbf4a0b5d7d445991df84d1",
+    "oneD_historical_selection_score_comparison.csv": "afdf3205b6a13a0d2852e60d9090b3693f068845a7ab9a44ea00e6c671e50b1d",
+    "oneD_in_avalanche_driving_force_v2.csv": "4f8e82329d23d6f8f54675fdb9673dc2089b4176e34f17e37e159e9fe49ffe62",
+    "oneD_onset_resistance_candidates_v2.csv": "693a3562a72d34d88d46f67d1534d76bbfde9ea01266ef089d78e09b45bf78a3",
+    "oneD_parameter_consistency.csv": "a1dbaf6351a1524d2f3c11091658afdf1bd61bb1cb65baf17d39ef49405613ea",
+    "oneD_physical_avalanches_v2.csv": "6382acd996359774503626b68ebc2ee62b31049f99eab712bbeaaf7c63f3ba4d"
+  },
+  "source_commit": "559425321b9a8739f32788322d8a1c2af8abad73",
+  "target_extension_um": 100,
+  "temperatures_K": [
+    300,
+    600,
+    900,
+    1100,
+    1200
+  ],
+  "translation_action_exponent": 0.95
+}

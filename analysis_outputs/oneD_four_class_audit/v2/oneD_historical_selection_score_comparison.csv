@@ -1,0 +1,5 @@
+material_class,candidate_id,original_rank,reproduced_rank,original_selection_score,reproduced_selection_score,status
+Peak,v913_zeroD_sobol_0242980,,,,,NO_MATCHED_5T100UM_SCORE
+DBTT,v913_zeroD_sobol_0202500,,,,,NO_MATCHED_5T100UM_SCORE
+weak-T,v913_zeroD_sobol_0129902,1.0,1.0,0.7597379308647852,0.7597379308647852,EXACT_ARCHIVED_SCORE
+ceramic-like,v913_zeroD_sobol_0077080,1.0,1.0,3.160949060037216,3.160949060037216,EXACT_ARCHIVED_SCORE

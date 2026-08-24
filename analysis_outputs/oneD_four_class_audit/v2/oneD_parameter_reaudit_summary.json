@@ -1,0 +1,16 @@
+{
+  "schema": "oneD_parameter_reaudit_summary_v1",
+  "stage_A_status": "PASS_20_CASES",
+  "historical_reproduction_status": "WEAKT_CERAMIC_EXACT_PEAK_DBTT_NO_MATCHED_ARCHIVE",
+  "stage_B_1000um_status": "BLOCKED_NO_AUTHORITATIVE_1000UM_LOADING_MAP",
+  "stage_C_status": "NOT_RUN_GATE_BLOCKED",
+  "parameter_decisions": {
+    "v913_zeroD_sobol_0242980": "INTERPRETATION_CHANGED_BUT_PARAMETERS_VALID",
+    "v913_zeroD_sobol_0202500": "INTERPRETATION_CHANGED_BUT_PARAMETERS_VALID",
+    "v913_zeroD_sobol_0129902": "INTERPRETATION_CHANGED_BUT_PARAMETERS_VALID",
+    "v913_zeroD_sobol_0077080": "INTERPRETATION_CHANGED_BUT_PARAMETERS_VALID"
+  },
+  "parameter_refit_required": false,
+  "two_d_rerun_required": false,
+  "recommendation": "NO_2D_RERUN; first archive/qualify a 1000um 1-D loading contract"
+}

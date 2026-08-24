@@ -1,0 +1,19 @@
+{
+  "schema": "oneD_driving_force_dependency_graph_v1",
+  "autonomous_v913": {
+    "external": "applied displacement U",
+    "geometry_map": "event-indexed K_per_U from pre-event 2-D reference",
+    "native_drive": "K_i(U)=K_per_U[i]*U",
+    "structural_G": false
+  },
+  "native_pf_1d": {
+    "external": "prescribed Kdot*time",
+    "native_drive": "prescribed K",
+    "structural_G": false
+  },
+  "fem_czm_2d": {
+    "external": "applied displacement",
+    "native_drive": "J-derived KJ",
+    "structural_G": "2-D only"
+  }
+}

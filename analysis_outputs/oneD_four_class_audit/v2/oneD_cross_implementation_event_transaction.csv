@@ -1,0 +1,5 @@
+candidate_id,material_class,autonomous_event_transaction_available,native_pf_canonical_event_transaction_available,classification,reason
+v913_zeroD_sobol_0242980,Peak,True,False,INTENDED_MODEL_DIFFERENCE,PF canonical wrapper is 2-D-only; generic PF 1-D uses a different state/loading lifecycle
+v913_zeroD_sobol_0202500,DBTT,True,False,INTENDED_MODEL_DIFFERENCE,PF canonical wrapper is 2-D-only; generic PF 1-D uses a different state/loading lifecycle
+v913_zeroD_sobol_0129902,weak-T,True,False,INTENDED_MODEL_DIFFERENCE,PF canonical wrapper is 2-D-only; generic PF 1-D uses a different state/loading lifecycle
+v913_zeroD_sobol_0077080,ceramic-like,True,False,INTENDED_MODEL_DIFFERENCE,PF canonical wrapper is 2-D-only; generic PF 1-D uses a different state/loading lifecycle
