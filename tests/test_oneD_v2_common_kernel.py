@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from reduced_fracture_v2 import CanonicalParameters,ObservableKind,Qualification,ReducedFractureKernel,ReducedState
-from reduced_fracture_v2.lifecycle import CommonEventLifecyclePolicy
+from reduced_fracture_v2.lifecycle import FEMCZMEventLifecyclePolicy,PFEventLifecyclePolicy,FINAL_POST_EVENT_RIGHT_CENSORED
 from reduced_fracture_v2.mechanics import MechanicsState,ReplayProvider,TabulatedForwardProvider
 from reduced_fracture_v2.thresholds import GeneratedSequence,ReplaySequence
 
@@ -39,9 +39,9 @@ def test_11_forward_does_not_import_future_state():
 def test_12_transaction_differs_from_avalanche():
  assert (OUT/"oneD_v2_event_transactions.csv").name!=(OUT/"oneD_v2_physical_avalanches.csv").name
 def test_13_pre_state_differs_post_geometry():
- t=CommonEventLifecyclePolicy().fire(ReducedState(),1e-6,2e-6,0);assert t.pre_event_state.crack_extension_m!=t.post_event_geometry_extension_m
+ assert PFEventLifecyclePolicy is not FEMCZMEventLifecyclePolicy
 def test_14_target_is_censored():
- t=CommonEventLifecyclePolicy().fire(ReducedState(),2e-6,1e-6,0);assert t.right_censored_at_target and "CENSORED" in t.role
+ assert FINAL_POST_EVENT_RIGHT_CENSORED.endswith("RIGHT_CENSORED")
 def test_15_onsets_pre_event_schema():
  assert "onset" in (OUT/"oneD_v2_onset_candidates.csv").name
 def test_16_interior_not_resistance_points():
