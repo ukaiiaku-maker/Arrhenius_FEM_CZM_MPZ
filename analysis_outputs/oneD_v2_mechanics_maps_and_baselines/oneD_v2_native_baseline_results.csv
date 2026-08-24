@@ -1,2 +1,1 @@
-availability_status,blocker
-NOT_RUN_GATE_BLOCKED,BLOCKED_SOURCE_LAWS_IDENTIFIED_BUT_V2_STATE_CLOSURE_NOT_IMPLEMENTED
+backend,material_class,temperature_K,seed,target_um,launch_status,classification

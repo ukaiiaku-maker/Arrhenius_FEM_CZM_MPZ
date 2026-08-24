@@ -1,0 +1,24 @@
+{
+  "FEMCZM_exact_production_barrier_wrapper_shadow": "UNAVAILABLE",
+  "FEMCZM_lower_level_source_object_shadow": "EXACT",
+  "Level3": "NATIVE_CLOSURE_UNQUALIFIED",
+  "PF_exact_production_wrapper_shadow": "BLOCKED_RELIABLE_2D_TENSOR_DRIVE_REQUIRED",
+  "PF_lower_level_source_object_shadow": "EXACT",
+  "baseline_prefixes_launched": 0,
+  "canonical_parameters_changed": false,
+  "long_baselines_launched": 0,
+  "map_inputs": "PINNED_REPRODUCIBLE",
+  "microtrajectories_launched": 0,
+  "new_2d_FEMCZM_runs_launched": 0,
+  "new_2d_PF_runs_launched": 0,
+  "next_required_work": [
+    "define a source-qualified reduction of the PF 2-D tensor emission drive; scalar native KJ is rejected by the exact wrapper",
+    "instantiate corrected FEM/CZM exact production barrier/front factory",
+    "repeat same fieldwise source shadow"
+  ],
+  "parameter_refit_justified": false,
+  "production_formulas_changed": false,
+  "production_trajectories_changed": false,
+  "required_field_unavailable": true,
+  "schema": "oneD_v2_native_closure_decision_v1"
+}

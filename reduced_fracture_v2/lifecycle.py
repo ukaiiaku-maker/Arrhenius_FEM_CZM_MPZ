@@ -38,6 +38,9 @@ class FEMCZMLifecyclePolicy:
  def restore(self,state,snapshot):return snapshot.copy()
  def no_event_update(self,state,dt,T,tip_stress,b):return state.evolve(dt,T,tip_stress,b)
  def advance_after_cleavage(self,state,distance_m):return state.advance(distance_m)
+ def step_engine(self,engine,K,T,dt):
+  b=float(engine.B);a=float(engine.a_adv);before=int(engine.n_adv);out=engine.step_drives(K,K,T,dt)
+  return BackendEventResult(self.backend,bool(out["fired"]),int(engine.n_adv-before),b,float(engine.B),float(engine.a_adv-a),False)
 
 # Backward-compatible names used by the lifecycle qualification artifacts.
 PFEventLifecyclePolicy=PFLifecyclePolicy

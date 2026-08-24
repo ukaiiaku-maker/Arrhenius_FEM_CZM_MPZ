@@ -1,0 +1,10 @@
+{
+  "oneD_v2_native_baseline_results.csv": "554ba7e84b8fd32e4a67b08582e7c5860134f647a1b80a5446acd34b97ad0c25",
+  "oneD_v2_native_closure_audit.json": "7f14a96fa4da65040891c01b58a638947eb29cfd03eaff9bc8fd167202aa081e",
+  "oneD_v2_native_closure_decision.json": "c29bec8f5dbd2c1e36bc4bcf597fdea9b618fc72bb134748b5f5617fd7f3b22a",
+  "oneD_v2_native_event_transactions.csv": "0c8b36401574708b520ee685aed33ec803ce5ec127e8e8867b111bc9badf4735",
+  "oneD_v2_native_map_inputs_manifest.json": "00075ba24b3328ec0bf56766a0faf6b8430ec26e4245ca9791f372363aadea67",
+  "oneD_v2_native_microtrajectory_results.csv": "bf51828c752e752eaffc20c18a912c1513ce8aa4ce59c14e86062a1087e5cf47",
+  "oneD_v2_native_onset_candidates.csv": "963d0e98b3449c6d311866a617460bcb0cc82d671db498f4920fade93a70135f",
+  "oneD_v2_native_physical_avalanches.csv": "f5e8d8024cd438962b7b299f4bd20aa27c1a91d2e3770618f7f602a12ba9311f"
+}

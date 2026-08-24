@@ -1,0 +1,3 @@
+# PF native closure qualification
+
+The closure is exact against `UnifiedMPZFrontEngine` for all four rows at 300, 1000, and 1200 K in the controlled five-interval fixture. The exact persistent-site, state-resolved signed production wrapper was also instantiated with the pinned physical kernel family. It rejects scalar-KJ stepping because persistent signed emission requires a reliable 2-D tensor drive. This is a substantive missing reduction variable, not an adapter arithmetic mismatch. Required emission, multiplicity, and rate parity therefore remain **UNAVAILABLE** and PF closure status is **NATIVE_CLOSURE_UNQUALIFIED**.
