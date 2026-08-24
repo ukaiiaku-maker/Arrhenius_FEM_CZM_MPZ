@@ -1,8 +1,23 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
+from enum import Enum
 
 FINAL_POST_EVENT_RIGHT_CENSORED="FINAL_POST_EVENT_RIGHT_CENSORED"
+
+class PFLateGeometryVetoPolicy(str,Enum):
+ FAIL_CLOSED_TERMINATE="FAIL_CLOSED_TERMINATE"
+
+@dataclass(frozen=True)
+class PFTerminalVeto:
+ terminal_class:str="NUMERICAL_BACKEND_FAIL_CLOSED_VETO"
+ rollback_and_continue_supported:bool=False
+ tentative_geometry_published:bool=False
+ physical_arrest:bool=False
+ successful_target_completion:bool=False
+
+def pf_fail_closed_veto(last_authoritative_state, tentative_path_fingerprint, message):
+ return {"policy":PFLateGeometryVetoPolicy.FAIL_CLOSED_TERMINATE.value,"last_authoritative_state":last_authoritative_state,"tentative_path_fingerprint":tentative_path_fingerprint,"terminal":PFTerminalVeto(),"exception_message":str(message)}
 
 @dataclass(frozen=True)
 class BackendEventResult:
