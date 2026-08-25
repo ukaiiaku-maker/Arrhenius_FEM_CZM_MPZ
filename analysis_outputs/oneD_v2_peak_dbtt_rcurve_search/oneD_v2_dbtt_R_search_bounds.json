@@ -1,0 +1,71 @@
+{
+  "candidate_count": 204,
+  "control_id": "v913_zeroD_sobol_0202500",
+  "excluded_common_physics": [
+    "persistent_backstress_scale",
+    "mpz_length_m",
+    "source_zone_length_m",
+    "shielding_orientation_factors"
+  ],
+  "exclusion_reason": "qualified common physics or inactive zero coordinate; not a class material row",
+  "fixed_active_fields": [
+    "Tref_K",
+    "cleave_floor_frac",
+    "emit_floor_frac",
+    "peierls_exp_a",
+    "peierls_exp_n",
+    "peierls_nu0_s",
+    "taylor_exp_a",
+    "taylor_exp_n",
+    "taylor_nu0_s"
+  ],
+  "log_span_decades": {
+    "c_blunt": 0.4,
+    "cleave_G00_eV": 0.24,
+    "cleave_exp_a": 0.18,
+    "cleave_exp_n": 0.18,
+    "cleave_sigc0_GPa": 0.22,
+    "emit_G00_eV": 0.28,
+    "emit_exp_a": 0.22,
+    "emit_exp_n": 0.22,
+    "emit_sigc0_GPa": 0.34,
+    "peierls_H0_eV": 0.22,
+    "rho_source0_m2": 0.55,
+    "taylor_H0_eV": 0.22,
+    "taylor_corr_rho_c_m2": 0.5,
+    "taylor_corr_scale": 0.32
+  },
+  "material": "DBTT",
+  "schema": "oneD_v2_peak_dbtt_R_search_bounds_v1",
+  "searched_fields": [
+    "cleave_G00_eV",
+    "cleave_gT_eV_per_K",
+    "cleave_sigc0_GPa",
+    "cleave_sT_GPa_per_K",
+    "cleave_exp_a",
+    "cleave_exp_n",
+    "emit_G00_eV",
+    "emit_gT_eV_per_K",
+    "emit_sigc0_GPa",
+    "emit_sT_GPa_per_K",
+    "emit_exp_a",
+    "emit_exp_n",
+    "peierls_H0_eV",
+    "peierls_activation_entropy_kB",
+    "taylor_H0_eV",
+    "taylor_activation_entropy_kB",
+    "rho_source0_m2",
+    "taylor_corr_rho_c_m2",
+    "taylor_corr_scale",
+    "c_blunt"
+  ],
+  "signed_additive_half_spans": {
+    "cleave_gT_eV_per_K": 0.0033651078270748196,
+    "cleave_sT_GPa_per_K": 0.0012926971115637402,
+    "emit_gT_eV_per_K": 0.0037000874781980995,
+    "emit_sT_GPa_per_K": 0.00313398446068164,
+    "peierls_activation_entropy_kB": 21.803597174584866,
+    "taylor_activation_entropy_kB": 18.819560788571835
+  },
+  "sobol_power": 7
+}
