@@ -1,0 +1,16 @@
+{
+  "activation_normalization_modified": false,
+  "active_kernel_modified": false,
+  "compatibility_applied": true,
+  "interpolation_states_modified": false,
+  "normalized_representation_path": "/private/tmp/oneD-v2-common-kernel/analysis_outputs/oneD_v2_native_state_closure/fem_kernel_compatibility/active_only_kernel_family_compatibility_input_v10_0_5_18_4_0.json",
+  "normalized_representation_sha256": "db31a60af2cc5398c1fe087c0c2e38b9591e5efe1072e348eb24d1b918837f0c",
+  "normalized_source_wake_grid_points": 1,
+  "normalized_source_wake_value": 0.0,
+  "physics_modified": false,
+  "runtime_wake_shielding_enabled": false,
+  "schema": "active_only_empty_wake_schema_compatibility_v10_0_5_18_4_0",
+  "source_path": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude/reference_inputs/pf_final_v10_2_30/rate1x/v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/family.json",
+  "source_sha256": "d41b08f69ae773009f65f4c0094ef5436ba7f0f290a94172e5b894d09a41f7c3",
+  "source_wake_grid_was_empty": true
+}

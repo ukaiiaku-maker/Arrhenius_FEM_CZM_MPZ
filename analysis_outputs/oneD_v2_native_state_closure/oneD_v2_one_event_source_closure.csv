@@ -1,0 +1,5 @@
+backend,barrier_rate_state_exact,event_geometry_exact,event_length_m,event_time_exact,future_state_imports,initial_state_exact,lifecycle_status_exact,local_tensor_drive_exact,material_class,mechanics_input_exact,post_event_state_exact,source_fired,status,temperature_K,v2_fired
+PF,True,True,5e-06,True,0,True,True,True,Peak,True,True,True,ONE_EVENT_SOURCE_CLOSURE_PASS,1000.0,True
+PF,True,True,5e-06,True,0,True,True,True,DBTT,True,True,True,ONE_EVENT_SOURCE_CLOSURE_PASS,1000.0,True
+FEMCZM,True,True,3.939081633829308e-06,True,0,True,True,True,Peak,True,True,True,ONE_EVENT_SOURCE_CLOSURE_PASS,1000.0,True
+FEMCZM,True,True,2.2973400956248734e-06,True,0,True,True,True,DBTT,True,True,True,ONE_EVENT_SOURCE_CLOSURE_PASS,1000.0,True

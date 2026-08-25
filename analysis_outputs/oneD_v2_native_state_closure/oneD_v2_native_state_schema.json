@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "dual_lane_contract": {
+    "future_state_imports": 0,
+    "initial_clone_count": 1
+  },
+  "required": [
+    "backend",
+    "schema",
+    "source_engine_type",
+    "source_owned_fields",
+    "fingerprint"
+  ],
+  "source_owned_fields": {
+    "arrays": "dtype_shape_and_values",
+    "barriers": true,
+    "complete_transaction_capture": true,
+    "front_config": true,
+    "process_zone": true,
+    "rng": "complete_bit_generator_state"
+  },
+  "title": "oneD V2 native source state",
+  "type": "object"
+}

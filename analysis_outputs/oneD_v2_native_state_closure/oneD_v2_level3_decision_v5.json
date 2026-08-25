@@ -1,0 +1,20 @@
+{
+  "FEMCZM_exact_field_probe": "PARTIALLY_QUALIFIED_STRAIGHT_TRACTION_FREE",
+  "Level1": "PASS_EXACT",
+  "Level2": "PASS_EXACT",
+  "Level3": "CONTROLLED_SOURCE_COMPOSITION_QUALIFIED",
+  "PF_exact_field_probe": "QUALIFIED",
+  "canonical_parameters_changed": false,
+  "forward_baselines_authorized": false,
+  "microtrajectories_launched": 4,
+  "microtrajectory_gate_reason": null,
+  "native_state_factory": "PASS",
+  "new_FEMCZM_runs": 0,
+  "new_PF_runs": 0,
+  "new_stochastic_2D_runs": 0,
+  "one_event_gate": "PASS",
+  "path_model": "STANDARDIZED_STRAIGHT_REDUCED_PATH",
+  "schema": "oneD_v2_level3_decision_v5",
+  "scientific_fingerprints_deterministic": true,
+  "surrogate_authorized": false
+}
