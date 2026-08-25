@@ -79,6 +79,41 @@ def scientific_fingerprint(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def compact_runtime_state(engine: Any) -> Mapping[str, Any]:
+    """Bounded exact-comparison view for long predictive trajectories.
+
+    Append-only diagnostic histories are represented by length and terminal
+    value; immutable source configuration was already checked by the lossless
+    factory export.  All evolving scalars, arrays, process-zone fields, RNG
+    states, thresholds, and transaction counters remain value-preserving.
+    """
+    def compact(value: Any, key: str = "", seen: set[int] | None = None) -> Any:
+        if seen is None: seen=set()
+        low=key.lower()
+        if isinstance(value,(list,tuple)) and ("history" in low or "records" in low):
+            return {"length":len(value),"last":None if not value else compact(value[-1],key+".last",seen)}
+        if value is None or isinstance(value,(str,bool,int,float,np.integer,np.floating,np.ndarray,np.random.Generator,Path)):
+            return canonical_source_value(value)
+        if isinstance(value,Mapping):
+            return {str(k):compact(v,str(k),seen) for k,v in sorted(value.items(),key=lambda x:str(x[0]))}
+        if isinstance(value,(list,tuple)): return [compact(v,key,seen) for v in value]
+        ident=id(value)
+        if ident in seen: return {"__cycle__":_qualified_name(value)}
+        if hasattr(value,"state_dict") and callable(value.state_dict):
+            return compact(value.state_dict(),key,seen)
+        if hasattr(value,"__dict__"):
+            seen.add(ident)
+            try:
+                return {"__source_type__":_qualified_name(value),"fields":{
+                    str(k):compact(v,str(k),seen) for k,v in sorted(vars(value).items())
+                    if not callable(v)}}
+            finally: seen.remove(ident)
+        return canonical_source_value(value)
+    excluded={"cb","eb","f","manifest","mpz_config"}
+    return {str(k):compact(v,str(k)) for k,v in sorted(vars(engine).items())
+            if k not in excluded and not callable(v)}
+
+
 def _source_capture(engine: Any) -> Mapping[str, Any]:
     capture = getattr(engine, "_capture_state", None)
     transaction = capture() if callable(capture) else copy.deepcopy(vars(engine))
@@ -164,14 +199,20 @@ class ExactSourceDualLane:
         self.source = product.production_object; self.v2 = product.v2_object
         self.future_state_imports = 0
         self.lifecycle = PFLifecyclePolicy() if self.backend == "PF" else FEMCZMLifecyclePolicy()
-    def advance(self, K_cleave: float, K_emit: float, temperature_K: float, dt_s: float) -> DualLaneStep:
+    def advance(self, K_cleave: float, K_emit: float, temperature_K: float,
+                dt_s: float, *, full_state: bool = True) -> DualLaneStep:
         if self.backend == "PF":
             source_result = self.source.step(K_cleave, temperature_K, dt_s)
             v2_result = asdict(self.lifecycle.step(self.v2, K_cleave, temperature_K, dt_s))
         else:
             source_result = self.source.step_drives(K_cleave, K_emit, temperature_K, dt_s)
             v2_result = asdict(self.lifecycle.step_engine(self.v2, K_cleave, temperature_K, dt_s))
-        a = TypedNativeState.export(self.backend, self.source); b = TypedNativeState.export(self.backend, self.v2)
+        if full_state:
+            a = TypedNativeState.export(self.backend, self.source); b = TypedNativeState.export(self.backend, self.v2)
+        else:
+            av=compact_runtime_state(self.source);bv=compact_runtime_state(self.v2)
+            a=TypedNativeState(self.backend,"oneD_v2_compact_runtime_state_v1",_qualified_name(self.source),av,scientific_fingerprint(av))
+            b=TypedNativeState(self.backend,"oneD_v2_compact_runtime_state_v1",_qualified_name(self.v2),bv,scientific_fingerprint(bv))
         exact = a.source_owned_fields == b.source_owned_fields
         return DualLaneStep(canonical_source_value(source_result), canonical_source_value(v2_result), a, b,
                             exact, _maximum_numeric_error(a.source_owned_fields, b.source_owned_fields),

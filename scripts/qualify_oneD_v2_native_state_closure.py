@@ -82,17 +82,33 @@ def _pz_metrics(engine: Any) -> dict[str, Any]:
         except TypeError:
             diag = state.diagnostics(engine.G, engine.nu, engine.b, engine.f.r0)
     radius = float(engine.r_eff())
-    width = float(diag.get("persistent_front_width_m",
-                           diag.get("front_width_m", engine.f.L_pz)))
-    mobile = float(diag.get("mobile_count", np.sum(getattr(state, "mobile", 0.0))))
-    retained = float(diag.get("retained_count", np.sum(getattr(state, "retained", 0.0))))
-    area = float(diag.get("persistent_source_area_m2", max(radius * width, 1e-30)))
-    multiplicity = float(diag.get("persistent_site_multiplicity_total",
-                                  diag.get("source_multiplicity", 1.0)))
+    width = float(diag.get(
+        "persistent_site_front_width_m",
+        diag.get("persistent_front_width_m", diag.get("front_width_m", engine.f.L_pz)),
+    ))
+    mobile = float(diag.get(
+        "mpz_mobile_count",
+        diag.get("mobile_count", np.sum(getattr(state, "mobile", 0.0))),
+    ))
+    retained = float(diag.get(
+        "mpz_retained_count",
+        diag.get("retained_count", np.sum(getattr(state, "retained", 0.0))),
+    ))
+    area = float(diag.get(
+        "persistent_site_source_area_m2",
+        diag.get("persistent_source_area_m2", max(radius * width, 1e-30)),
+    ))
+    multiplicity = float(diag.get(
+        "persistent_site_multiplicity_per_system",
+        diag.get("persistent_site_multiplicity_total", diag.get("source_multiplicity", 1.0)),
+    ))
     return {"tip_radius_m": radius, "front_width_m": width,
             "source_area_m2": area, "mobile_count": mobile,
             "retained_count": retained, "source_multiplicity": multiplicity,
-            "backstress_Pa": float(engine.sigma_back()) if hasattr(engine, "sigma_back") else 0.0,
+            "backstress_Pa": float(diag.get(
+                "persistent_sigma_back_mean_Pa",
+                engine.sigma_back() if hasattr(engine, "sigma_back") else 0.0,
+            )),
             "signed_shielding_Pa_sqrt_m": float(engine.K_shield()) if hasattr(engine, "K_shield") else 0.0,
             "crystal_theta_deg": 0.0, "source_geometry_fingerprint": "SOURCE_OWNED_DYNAMIC"}
 
@@ -117,17 +133,28 @@ def _install_fem(engine: Any, raw: dict[str, Any]) -> None:
 def _pf_constructor(row: dict[str, str]):
     sys.path[:0] = [str(PF_SOURCE), str(ROOT / "scripts")]
     from run_oneD_v2_native_source_shadow import pf_engine
+    # Importing the shared fixture adds this repository root to the front of
+    # sys.path.  Move the explicitly qualified PF source back to the front
+    # before the delayed source-package import.  Otherwise a PEP-660 editable
+    # installation can silently supply missing PF submodules from a different
+    # checkout while retaining the local package __init__.
+    source = str(PF_SOURCE)
+    sys.path[:] = [entry for entry in sys.path if entry != source]
+    sys.path.insert(0, source)
     return lambda: pf_engine(PF_DATA, row, exact=True)
 
 
-def _fem_constructor(row: dict[str, str]):
+def _fem_constructor(row: dict[str, str], *, aggregate_emission: bool = False):
     root = str(FEM_SOURCE)
     if root not in sys.path: sys.path.insert(0, root)
     from arrhenius_fracture.active_only_kernel_family_compat_v10051840 import load_active_only_kernel_family_compat
     from arrhenius_fracture.four_class_parameter_bridge_v100518 import load_four_class_parameter_option
     from arrhenius_fracture.mode_i_first_passage_v10_0_5_14_persistent_site import PersistentSiteOptionAdapterV100514
     from arrhenius_fracture.mode_i_first_passage_v10_0_5_18_four_class_stochastic_emission import DEFAULT_PARAMETER_SOURCE_ROOT
-    from arrhenius_fracture.mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission import ProductionJointKRampStochasticEmissionFrontEngineV10051832 as Engine
+    if aggregate_emission:
+        from arrhenius_fracture.persistent_site_stochastic_tip_v100516 import PersistentSitePFStochasticMovingTipFrontEngineV100516 as Engine
+    else:
+        from arrhenius_fracture.mode_i_first_passage_v10_0_5_18_3_2_four_class_joint_K_ramp_stochastic_emission import ProductionJointKRampStochasticEmissionFrontEngineV10051832 as Engine
     from arrhenius_fracture.mpz_parameterization_v911 import apply_exact_barrier_args, build_mpz_config
     from arrhenius_fracture.sharp_front import (FrontConfig, apply_cleavage_barrier_args,
         apply_emission_barrier_args, default_cleavage_barrier, default_emission_barrier)
