@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "cache_contract": {
+    "field_key": [
+      "backend_source_hash",
+      "mechanics_factory_hash",
+      "geometry_fingerprint",
+      "mesh_topology_fingerprint",
+      "crack_basis_fingerprint",
+      "reference_opening_m"
+    ],
+    "probe_key": [
+      "field_snapshot_hash",
+      "tip_radius_m",
+      "front_width_m",
+      "source_area_m2",
+      "source_geometry_fingerprint",
+      "source_positions_fingerprint",
+      "slip_system_identity",
+      "probe_convention"
+    ]
+  },
+  "candidate_specific_state_forbidden": true,
+  "required": [
+    "backend",
+    "source_repository",
+    "source_commit",
+    "factory_wrapper_identity",
+    "mechanics_factory_hash",
+    "bulk_constraint",
+    "crack_representation",
+    "failed_region_state",
+    "geometry_fingerprint",
+    "mesh_fingerprint",
+    "topology_wake_fingerprint",
+    "crack_tip_xy_m",
+    "crack_tangent",
+    "crack_normal",
+    "nodes_m",
+    "elements",
+    "element_centroids_m",
+    "element_areas_m2",
+    "stress_per_opening_Pa_per_m",
+    "reaction_per_opening_N_per_m2",
+    "elastic_energy_per_opening2_J_per_m3",
+    "native_J_per_opening2_J_per_m4",
+    "native_KJ_per_opening_Pa_sqrt_m_per_m",
+    "native_J_domain_metadata",
+    "validity_flags"
+  ],
+  "scaling": {
+    "elastic_energy": "opening_squared",
+    "native_J": "opening_squared",
+    "qualified_G": "opening_squared",
+    "reaction": "opening",
+    "stress": "opening"
+  },
+  "title": "NormalizedElasticFieldSnapshot",
+  "type": "object"
+}

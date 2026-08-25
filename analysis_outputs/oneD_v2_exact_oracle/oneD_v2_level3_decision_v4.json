@@ -1,0 +1,26 @@
+{
+  "FEMCZM_corrected_factory_construction": "RESOLVED",
+  "FEMCZM_corrected_runtime_kernel_identity": "RESOLVED_D41B08",
+  "FEMCZM_dynamic_local_tensor_provider": "PARTIALLY_QUALIFIED_EXACT_FIELD_AND_SOURCE_PROBE",
+  "FEMCZM_full_factory_state_shadow": "NATIVE_CLOSURE_PARTIALLY_QUALIFIED",
+  "Level1": "PASS_EXACT",
+  "Level2": "PASS_EXACT",
+  "Level3": "NATIVE_CLOSURE_PARTIALLY_QUALIFIED",
+  "PF_exact_source_node_tensor_evaluation": "QUALIFIED",
+  "PF_exact_wrapper_shadow": "PASS_EXACT_AT_ONE_QUALIFIED_SOURCE_STATE",
+  "PF_extension_only_interpolation": "UNQUALIFIED",
+  "PF_full_dynamic_state_domain_closure": "NATIVE_CLOSURE_PARTIALLY_QUALIFIED_TENSOR_DOMAIN_ONLY",
+  "PF_observer_tensor_projection_replay": "PASS_ALL_463_CONDITIONAL_ON_INFERRED_OPENING",
+  "PF_regime_aware_exact_query_contract": "QUALIFIED",
+  "blockers": [
+    "PF observer omitted opening, barriers, rates, hazard increments and full process-zone states",
+    "FEM/CZM lacks a complete physical state fixture spanning barriers/rates/threshold renewal; stochastic stepping was prohibited"
+  ],
+  "canonical_parameters_changed": false,
+  "common_tensor_parity": "PASS_EXACT_ARCHITECTURAL_COMMON_MODE",
+  "forward_baselines_authorized": false,
+  "native_microtrajectories_launched": 0,
+  "parameter_status": "INSUFFICIENT_EVIDENCE_FOR_V2_PARAMETER_DECISION",
+  "schema": "oneD_v2_level3_decision_v4",
+  "surrogate_authorized": false
+}

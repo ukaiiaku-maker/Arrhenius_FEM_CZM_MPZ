@@ -7,7 +7,7 @@ contract.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -109,6 +109,12 @@ class NativeDriveBundle:
     map_sha256: str
     extension_bounds_m: tuple[float, float]
     sampling_bounds_m: tuple[float, float, float, float]
+    selected_emission_system: str | None = None
+    probe_support: Mapping[str, tuple[int, ...]] | None = None
+    probe_weights: Mapping[str, tuple[float, ...]] | None = None
+    process_zone_metadata: Mapping[str, Any] | None = None
+    field_snapshot_hash: str = ""
+    probe_query_hash: str = ""
 
     def require_pf_signed_emission(self) -> EmissionDrive:
         if self.emission is None:

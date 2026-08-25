@@ -1,0 +1,103 @@
+{
+  "FEM_field_solves": 2,
+  "FEM_probe_queries": 6,
+  "PF_field_solves": 7,
+  "PF_probe_queries": 471,
+  "candidate_independent": true,
+  "environment": "arrhenius-fem-czm-claude/arrhenius-sharp-front-v10-codex Python 3.12",
+  "field_cache_entries": [
+    {
+      "backend": "PF",
+      "cache_file": "pf_peak_00_4f53cda18c2b.npz",
+      "cache_file_sha256": "5d56912936d9ec46eb245c479a80822ff54e223b28b466b2286c4879837a03f1",
+      "geometry_event_count": 0,
+      "geometry_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "material_path": "Peak",
+      "snapshot_hash": "68d955e47461ff394c7ff1187a2f3db5660547b58f3af651a95af2c79a0f74a3",
+      "topology_fingerprint": "9a73ac2dedb244ae21bd0570908201e341e20845473ed145a11912c35b1d4dac"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_peak_01_6b7d612af444.npz",
+      "cache_file_sha256": "30cb5f96afcde272d5dbcd3b864d531bcb4ef6377f1094e1d3f6b2cab32cb943",
+      "geometry_event_count": 1,
+      "geometry_fingerprint": "6b7d612af444188ac9e6026127a72e7d13c9d5238b3599797cc30034d6c2211b",
+      "material_path": "Peak",
+      "snapshot_hash": "f1494c69fc19c55da18c59760564dd2ed3bbfedc3fc59326a2997f008211a28b",
+      "topology_fingerprint": "b8c8612fe6a9c29217578b2d003c1d13742ea3c2caf6f64bbff747d7b0b967e0"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_peak_02_2e9f0bd9b8e4.npz",
+      "cache_file_sha256": "3334fbdb3365ceee6cf59e3e6ecb86d71d1bf85a33990e5c1647bf9f3a4e68e2",
+      "geometry_event_count": 2,
+      "geometry_fingerprint": "2e9f0bd9b8e4dde70466722c469b188ff5bdf31bb24868a1faa883aba54579bc",
+      "material_path": "Peak",
+      "snapshot_hash": "0617e9fce73ac338cbfa63f018deb34c94e7ea6c6e5c1f8949daea049d2d506c",
+      "topology_fingerprint": "dc3a3c7a3d4f0fcdaa3234034aa3fc219ac75459eeda6a974fc92ac6e9158cc7"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_peak_03_af027e426c21.npz",
+      "cache_file_sha256": "f86f0b017e32d72d025c420de8f0a728424806bebe328c07b0397676b64fd885",
+      "geometry_event_count": 3,
+      "geometry_fingerprint": "af027e426c21840f223943761344e3996e304576a2aa45c2715b05c2bdb93398",
+      "material_path": "Peak",
+      "snapshot_hash": "9dbe6358d01af2570246b4d09b3bcf3a152dd93a153dd539f1cd9b22255a25a8",
+      "topology_fingerprint": "a2aa3caa5ecca823a084d425017c321f3666db46d39ba10db31ab3fb51a5a1f5"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_peak_04_8328680b2cb2.npz",
+      "cache_file_sha256": "4abf932a0084e6aa16a1a5524160e10ffd818998d3b5bffc169e7cf99de23af5",
+      "geometry_event_count": 4,
+      "geometry_fingerprint": "8328680b2cb2d687389fdeca8298b4248856bd3850d977faa0913c60029f0953",
+      "material_path": "Peak",
+      "snapshot_hash": "208e37a225228221f0ed234d9f7bac2ee375ca99fa921b69f9e867e18aea0908",
+      "topology_fingerprint": "a54bd18acf23ed3aca5221756971242f6e734c32ce63e6175922e2eb70977a76"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_dbtt_01_c93f37753ec4.npz",
+      "cache_file_sha256": "30cb5f96afcde272d5dbcd3b864d531bcb4ef6377f1094e1d3f6b2cab32cb943",
+      "geometry_event_count": 1,
+      "geometry_fingerprint": "c93f37753ec407638c50b16a464369c416cb365b99e0eb818b644b6979501423",
+      "material_path": "DBTT",
+      "snapshot_hash": "f868afb55c8f32cb1eb90b8b2d03cec16e629082f54f8ab84db12a57c43ddcf7",
+      "topology_fingerprint": "b8c8612fe6a9c29217578b2d003c1d13742ea3c2caf6f64bbff747d7b0b967e0"
+    },
+    {
+      "backend": "PF",
+      "cache_file": "pf_dbtt_02_2e1952514d6b.npz",
+      "cache_file_sha256": "f86f0b017e32d72d025c420de8f0a728424806bebe328c07b0397676b64fd885",
+      "geometry_event_count": 2,
+      "geometry_fingerprint": "2e1952514d6b91734c059c09148f6127450fdd8e46c78f5ae0f4d1536cc20d84",
+      "material_path": "DBTT",
+      "snapshot_hash": "3acd7d6c1664b90bfd30bcd51f202d18f565b30a363ab7225dbf3c5b8adc7f40",
+      "topology_fingerprint": "a2aa3caa5ecca823a084d425017c321f3666db46d39ba10db31ab3fb51a5a1f5"
+    },
+    {
+      "backend": "FEMCZM",
+      "cache_file": "fem_0000_2f9617d7e5d7.npz",
+      "cache_file_sha256": "04f0bb3c70d4c5b1a403dd008ae216029cdc755bfe572b9d76376316358dfb4b",
+      "extension_um": 0,
+      "geometry_fingerprint": "2f9617d7e5d71b7128addb406afac9ee9f6e5a172bc78ebaa903772f4b9e1b86",
+      "snapshot_hash": "dac0fd5e4df0c08676b79342826f327bfe0a957d3e1472d5bcd61eda1dc85b74",
+      "topology_fingerprint": "045fc5d195b145ab152e2cc5a09121203daef5dd7eed6614f51f9af24239f3de"
+    },
+    {
+      "backend": "FEMCZM",
+      "cache_file": "fem_0100_cd73e4740298.npz",
+      "cache_file_sha256": "ce3f4ad45d383ee833b2d061dd9667ba494b19daeadf01128911f9f33c9353fb",
+      "extension_um": 100,
+      "geometry_fingerprint": "cd73e474029820d66d0d468017baa2790dc996194a18a832b756aeb816749bd7",
+      "snapshot_hash": "b518108270fc974b9a590ae5b63860d0488bd41bcabf2108472587e37dce020c",
+      "topology_fingerprint": "a053dddb1f8df3b5d7e2044678eb23c6000c678af15e8a4b4028b3ff789d130e"
+    }
+  ],
+  "field_cache_entry_count": 9,
+  "new_stochastic_FEMCZM_runs": 0,
+  "new_stochastic_PF_runs": 0,
+  "schema": "oneD_v2_exact_oracle_cache_manifest_v1",
+  "separate_probe_cache_contract": true
+}

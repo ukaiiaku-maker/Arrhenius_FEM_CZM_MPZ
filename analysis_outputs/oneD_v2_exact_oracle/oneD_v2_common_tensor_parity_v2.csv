@@ -1,0 +1,5 @@
+material_class,temperature_K,synthetic_field_ingestion_exact,tensor_transformation_exact,resolved_system_input_transport_exact,shared_barriers_rates_exact,state_updates_exact,event_transaction_exact,physical_avalanche_grouping_exact,terminal_state_exact,native_probe_identity_required,status
+Peak,1000,True,True,True,True,True,True,True,True,False,PASS_EXACT_ARCHITECTURAL_COMMON_MODE
+DBTT,1000,True,True,True,True,True,True,True,True,False,PASS_EXACT_ARCHITECTURAL_COMMON_MODE
+weak-T,1000,True,True,True,True,True,True,True,True,False,PASS_EXACT_ARCHITECTURAL_COMMON_MODE
+ceramic-like,1000,True,True,True,True,True,True,True,True,False,PASS_EXACT_ARCHITECTURAL_COMMON_MODE
