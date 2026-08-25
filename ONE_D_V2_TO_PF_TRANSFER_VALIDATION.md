@@ -1,14 +1,12 @@
 # One-dimensional V2 to PF transfer validation
 
-## Evidence used
+Six new tip-only, theta=0, 100-µm PF calculations validate the new weak-T and ceramic-like rows at 300, 1000, and 1200 K. Peak and DBTT use existing source-compatible authoritative trajectories. At most two PF workers ran concurrently. Canonical PF results were not overwritten.
 
-The final rows are unchanged, so the authoritative existing rate-1×, theta=0 direct PF trajectories at 300, 1000, and 1200 K are the strongest transfer evidence. No fresh PF run was scientifically justified after the replacement search produced zero eligible rows.
+| material_class | cases | max_abs_onset_error | topology_matches | new_runs |
+| --- | --- | --- | --- | --- |
+| DBTT | 3 | 0.131 | 2 | 0 |
+| Peak | 3 | 0.0687 | 3 | 0 |
+| ceramic-like | 3 | 0.0424 | 3 | 3 |
+| weak-T | 3 | 0.116 | 3 | 3 |
 
-| material_class | max_abs_initial_error | topology_matches | cases | new_runs |
-|---|---|---|---|---|
-| DBTT | 0.121816 | 0 | 3 | 0 |
-| Peak | 0.066175 | 2 | 3 | 0 |
-| ceramic-like | 0.026537 | 2 | 3 | 0 |
-| weak-T | 0.0499214 | 0 | 3 | 0 |
-
-Direct PF itself preserves the four intended trends: Peak rises strongly toward 1000 K then weakens; DBTT rises from 23.36 to 56.19 MPa√m and retains two physical avalanches; weak-T stays near 19–21 MPa√m with one avalanche; ceramic-like declines from 13.64 to 10.13 MPa√m and becomes single-avalanche. Reduced PF transfer is good for Peak/weak-T/ceramic trend, but DBTT topology/state is not transferred.
+Weak-T direct-PF onset errors are −6.5%, +11.6%, and +7.1%; ceramic-like errors are +0.1%, −4.2%, and −3.8%. Both new finalists give one physical avalanche in all six direct PF cases. The only 12-case topology mismatch is retained DBTT at 300 K (1-D merges two direct-PF avalanches).

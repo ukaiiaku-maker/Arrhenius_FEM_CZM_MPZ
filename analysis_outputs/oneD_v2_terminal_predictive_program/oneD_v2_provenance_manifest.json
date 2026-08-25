@@ -1,0 +1,116 @@
+{
+  "PF_source_commit": "9e884fb0b0845da621d2612bdf1042e481b8df49",
+  "PF_source_repository": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1",
+  "PF_transfer_runner_commit": "7cd31da6ade931ecd4dfab98639148c0b58603a4",
+  "PF_transfer_source_steps": [
+    {
+      "material_class": "Peak",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_peak01_0242980_persistent_sites/T300K_th0_seed3621/steps_0300K.csv",
+      "source_steps_sha256": "7d5cf8a53b3f1c08025f33c79cc4ec5ee39bc90c4d2189cafb80422adc72adfa",
+      "temperature_K": 300.0
+    },
+    {
+      "material_class": "Peak",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/steps_1000K.csv",
+      "source_steps_sha256": "50153f1b93dee23407ec7971658fc8da917629c14e4ff3290b7a7a0c88449faa",
+      "temperature_K": 1000.0
+    },
+    {
+      "material_class": "Peak",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_peak01_0242980_persistent_sites/T1200K_th0_seed12702/steps_1200K.csv",
+      "source_steps_sha256": "95ba19655a31bcbd559b331a349ebd44e6ed495345b8d7f10d2379b39961b6ce",
+      "temperature_K": 1200.0
+    },
+    {
+      "material_class": "DBTT",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_dbtt01_0202500_persistent_sites/T300K_th0_seed1003621/steps_0300K.csv",
+      "source_steps_sha256": "491d1a09bf958c97b1813ad73d3ca8feb523d52ba9ef3231ae97a7e228713059",
+      "temperature_K": 300.0
+    },
+    {
+      "material_class": "DBTT",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_dbtt01_0202500_persistent_sites/T1000K_th0_seed1008666/steps_1000K.csv",
+      "source_steps_sha256": "233824c0e7728ab05f9cf5aedb495e476c8c42696ecc14258bac4f065c326a5e",
+      "temperature_K": 1000.0
+    },
+    {
+      "material_class": "DBTT",
+      "source_steps_file": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_dbtt01_0202500_persistent_sites/T1200K_th0_seed1012702/steps_1200K.csv",
+      "source_steps_sha256": "b5337cd7621e08ab62f6f2bf070c007789321b59449c511514c8c1678df0aa01",
+      "temperature_K": 1200.0
+    },
+    {
+      "material_class": "weak-T",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/weak-T/T300K_seed2008666/steps_0300K.csv",
+      "source_steps_sha256": "71f2ea762128b62e53dea9dcab267335d0d1bc08ba0281998e405a426ac6ecc2",
+      "temperature_K": 300.0
+    },
+    {
+      "material_class": "weak-T",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/weak-T/T1000K_seed2008666/steps_1000K.csv",
+      "source_steps_sha256": "6c6169f29266f3abdf960dc61c9e9f0794562119812d65d27cf56059d78b65a6",
+      "temperature_K": 1000.0
+    },
+    {
+      "material_class": "weak-T",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/weak-T/T1200K_seed2008666/steps_1200K.csv",
+      "source_steps_sha256": "241577b1463d7ac8dca18865fe1c9da3dbc276bb0782e32a216b626d96cbee94",
+      "temperature_K": 1200.0
+    },
+    {
+      "material_class": "ceramic-like",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/ceramic-like/T300K_seed3008666/steps_0300K.csv",
+      "source_steps_sha256": "ed23da9a613c4bd5037abbfdf2cef0b457f5c7d22479aa7f23ed761b81ec8ee7",
+      "temperature_K": 300.0
+    },
+    {
+      "material_class": "ceramic-like",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/ceramic-like/T1000K_seed3008666/steps_1000K.csv",
+      "source_steps_sha256": "d3418acfbaec8145a113330c06956c75f89e320742a7cc1d985b326eb489c9a8",
+      "temperature_K": 1000.0
+    },
+    {
+      "material_class": "ceramic-like",
+      "source_steps_file": "/private/tmp/oneD-v2-terminal-pf-transfer-runs/ceramic-like/T1200K_seed3008666/steps_1200K.csv",
+      "source_steps_sha256": "6225f37d94fffd025904a6f00c57b6b3632119f3c37251c38fd604214d791a87",
+      "temperature_K": 1200.0
+    }
+  ],
+  "canonical_PF_registry_modified": false,
+  "canonical_PF_registry_sha256": "4ba723c80abcfdd7101cee0afaa9b4104eebf2a8e847892528128664829c7760",
+  "canonical_production_trajectories_changed": false,
+  "corrected_FEMCZM_repository": "/Volumes/Data/Data/Nanopillar_calculation/Arrhenius_FEM_CZM_MPZ_theta0_pf_parity_claude",
+  "diagnostic_baseline_commit": "e2ed84c",
+  "maximum_concurrent_PF_workers": 2,
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 6,
+  "new_bounded_PF_run_root": "/private/tmp/oneD-v2-terminal-pf-transfer-runs",
+  "producer_branch": "codex/oneD-v2-terminal-predictive-program",
+  "producer_code_commit": "cddc51605aee93d8ecbaa0dda76c12085e08f9de",
+  "producer_repository": "/private/tmp/oneD-v2-terminal-predictive-program",
+  "production_physical_formulas_changed": false,
+  "qualified_FEMCZM_source_commit": "931bed6",
+  "required_figure_sha256": {
+    "CURRENT_VS_NEW_CLASS_RESPONSES.png": "27f5ee7886bde0eb0960f5a85cbc52c1d618216cec7c5019c70376c33d070fb9",
+    "FEMCZM_REDUCED_VS_2D_BASELINES.png": "38f3f4de2f09a3aaf529a98f5d8483d75b34005bd5b2e7d6e69ed3acc1456f23",
+    "FINAL_FOUR_CLASS_SUMMARY.png": "01089967a3ef3f6f91cab9dfd9cc663eacd1a7a365768ed623f956c2dcf4b450",
+    "FOUR_CLASS_AVALANCHE_TOPOLOGY.png": "caeea4069c49d010dece7d9169f384a061fe0cb9e2d02a46623fbfbe6864343a",
+    "FOUR_CLASS_ONSET_ENVELOPES.png": "f08535944a688c9bc91bf54eeed6f7af816fc6946f2455195f0ccd7a11879de3",
+    "PARAMETER_SENSITIVITY_PARITY.png": "d35d66e9b5466755e010f4f2f97a369a63fbc64ed15f638b4bc86282597343f1",
+    "PF_REDUCED_VS_2D_BASELINES.png": "60f7a5281d1c817a2bca1595966524a609f6d592854ee1aa51b046a681b2a0d0",
+    "PF_TRANSFER_VALIDATION.png": "17c4f38378d7d2ac64f28899197e905eeffe4828e5dd31506fa5f96dc02d0b24"
+  },
+  "required_output_sha256": {
+    "oneD_v2_current_four_class_results.csv": "123ac9197aa08b924875846ff13dd97eaa8a34fef8354c4d756799225d4a6685",
+    "oneD_v2_domain_of_usefulness.json": "119e8906d3c8166ad7b64e741d4cb09fc56f7bf46a98d6164fddc7d65e23270b",
+    "oneD_v2_final_decision.json": "91fc14dd590eed1ddf799aa7c9e54f3ac0c30e8f7671390f109f96d46586f31e",
+    "oneD_v2_native_baseline_results.csv": "b999069d1cfb1143511fca201f1193be55d332d81958691fa02af5f5b61eeeb9",
+    "oneD_v2_new_four_class_registry.csv": "f920ec66384baa60b468842955dc1166df82be8d2457e4bbf807e1c150de926f",
+    "oneD_v2_parameter_sensitivity_results.parquet": "ac4a4eae234751740b5509603f350e358c2773d101fdf833208a6b58e64dd818",
+    "oneD_v2_pareto_candidates.csv": "a5e630fe7873c43ee72e60370a91d4e2056c30397e256402f2bcda151e676b96",
+    "oneD_v2_pf_transfer_results.csv": "470a5bb71a94b6e1c51cc12a7604d2abc658dbf1fe326b3f883755eaad7c3787",
+    "oneD_v2_search_population.parquet": "b4d5ac46c80a884e438b44355f248e1678003c921b7d55c2846bdbc0567ed286"
+  },
+  "schema": "oneD_v2_terminal_provenance_manifest_v1",
+  "unrelated_active_worktree_excluded": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_codex_v10_2_30"
+}

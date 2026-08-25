@@ -2,16 +2,10 @@
 
 ## Outcome
 
-The V2 implementation has exact controlled common-kernel parity and qualified candidate-independent PF and FEM/CZM mechanics/source-drive maps. The natural predictive lane is **partially qualified**, not universally predictive: PF Peak closes, while DBTT and absolute FEM/CZM onset do not.
+The PF-consistent and FEM/CZM-consistent reduced models are fit for 100-µm screening inside the declared domain. They share barrier, hazard, and material-row physics, while mechanics, tensor drive, event length, renewal, translation, reload grouping, and veto behavior remain backend-owned.
 
-## Runtime composition
+The fast FEM/CZM lane is an explicitly versioned event surrogate trained against exact joint-K microfixtures. Its hazard-progress correction, DBTT precursor threshold, six-source-zone retained-state coordinate, and low-density plateau are backend reductions—not material parameters. The rejected dense-regime packet and the former common lifecycle are not used.
 
-1. `SharedBarrierHazardCore` owns the common barrier/rate equations.
-2. Backend state adapters/factories construct production-source PF unified-MPZ and FEM/CZM moving-tip states.
-3. `ProviderMechanicsMap` supplies native PF or native/qualified FEM/CZM coefficients with fail-closed extension bounds.
-4. `SourceDriveMap` supplies exact tensor-probe normalized drive factors on extension/radius grids. The final grid spans 0–1000 µm extension and 1–100 µm radius; no clipping or extrapolation is permitted.
-5. `run_zero_d_predictive` is a versioned V9.13 zero-D state/lifecycle surrogate. It is not claimed to reproduce the full backend-specific production event transaction policy.
+Native PF J/KJ and native FEM/CZM J/KJ drive kinetics. Qualified FEM/CZM structural G/K_G is reported separately and is never substituted into the kinetic law. Source-drive maps span 0–1000 µm extension and 1–1000 µm radius and fail closed outside that box.
 
-The controlled composition result remains `CONTROLLED_SOURCE_COMPOSITION_QUALIFIED`. Natural prediction is assessed separately.
-
-No production equation, production trajectory, or canonical parameter registry was modified. New 2-D PF runs: **0**. New 2-D FEM/CZM runs: **0**.
+Production PF/FEM formulas and canonical trajectories were not altered. Six new bounded PF validation trajectories were written only under `/private/tmp/oneD-v2-terminal-pf-transfer-runs`; no 2-D FEM/CZM run was launched.
