@@ -17,7 +17,7 @@ import sys
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "analysis_outputs" / "oneD_v2_predictive_model"
+OUT = ROOT / "analysis_outputs" / "oneD_v2_terminal_predictive_program"
 MAPS = ROOT / "analysis_outputs" / "oneD_v2_mechanics_maps_and_baselines"
 sys.path.insert(0, str(ROOT))
 
@@ -28,7 +28,10 @@ from reduced_fracture_v2.production_oracles import (
     PFExactSourceProbeOperator,
 )
 
-RADII_UM = (1.0, 2.0, 4.0, 8.0, 12.0, 25.0, 50.0, 100.0)
+RADII_UM = (
+    1.0, 2.0, 4.0, 8.0, 12.0, 25.0, 50.0, 100.0, 150.0, 200.0,
+    300.0, 400.0, 600.0, 800.0, 1000.0,
+)
 EXTENSIONS_UM = (0.0, 25.0, 100.0, 300.0, 500.0, 700.0, 1000.0)
 
 

@@ -12,7 +12,9 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "analysis_outputs" / "oneD_v2_predictive_model"
+OUT = ROOT / "analysis_outputs" / "oneD_v2_terminal_predictive_program"
+DIAGNOSTIC = ROOT / "analysis_outputs" / "oneD_v2_predictive_model"
+SOURCE_MAPS = OUT
 MAPS = ROOT / "analysis_outputs" / "oneD_v2_mechanics_maps_and_baselines"
 PF_DATA = Path("/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1")
 REGISTRY = PF_DATA / "arrhenius_fracture/data/materials/v10_2_27_v913_four_class_paper_registry.csv"
@@ -23,8 +25,8 @@ from arrhenius_fracture.emergent_gnd_types_v913 import CommonPhysics
 from reduced_fracture_v2.predictive import (
     ProviderMechanicsMap,
     SourceDriveMap,
+    provider_loading_map,
     run_zero_d_predictive,
-    stochastic_loading_map,
 )
 
 IDS = {
@@ -56,14 +58,14 @@ def inputs():
     providers = {
         "PF": (
             ProviderMechanicsMap.from_csv("PF", MAPS / "oneD_v2_pf_mechanics_map.csv"),
-            SourceDriveMap.from_csv(OUT / "oneD_v2_pf_source_drive_map.csv"),
+            SourceDriveMap.from_csv(SOURCE_MAPS / "oneD_v2_pf_source_drive_map.csv"),
         ),
         "FEMCZM": (
             ProviderMechanicsMap.from_csv(
                 "FEMCZM", MAPS / "oneD_v2_fem_native_mechanics_map.csv",
                 MAPS / "oneD_v2_fem_qualified_G_map.csv",
             ),
-            SourceDriveMap.from_csv(OUT / "oneD_v2_fem_source_drive_map.csv"),
+            SourceDriveMap.from_csv(SOURCE_MAPS / "oneD_v2_fem_source_drive_map.csv"),
         ),
     }
     return physics, rows, providers
@@ -73,7 +75,7 @@ def run_case(
     row, material, temperature, backend, mechanics, drive, physics, target_um,
     *, seed=None,
 ):
-    loading = stochastic_loading_map(
+    loading = provider_loading_map(
         mechanics,
         seed=SEEDS[material] if seed is None else int(seed),
         target_extension_m=target_um * 1.0e-6,
@@ -175,7 +177,7 @@ def main() -> int:
         "new_2D_FEMCZM_runs": 0, "new_2D_PF_runs": 0,
         "physics_json_sha256": _sha(ROOT / "mpz_v9_13_v10222_transfer_common_physics.json"),
         "registry_sha256": _sha(REGISTRY),
-        "source_drive_maps": {b: _sha(OUT / f"oneD_v2_{b}_source_drive_map.csv") for b in ("pf", "fem")},
+        "source_drive_maps": {b: _sha(SOURCE_MAPS / f"oneD_v2_{b}_source_drive_map.csv") for b in ("pf", "fem")},
     }
     (OUT / "oneD_v2_predictive_campaign_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return 0

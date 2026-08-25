@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT/"analysis_outputs/oneD_v2_predictive_model"
+OUT=ROOT/"analysis_outputs/oneD_v2_terminal_predictive_program"
 sys.path[:0]=[str(ROOT),str(ROOT/"scripts")]
 
 from qualify_oneD_v2_native_state_closure import (
@@ -27,7 +27,7 @@ from qualify_oneD_v2_native_state_closure import (
     _pf_constructor, _pz_metrics, canonical_rows,
 )
 from reduced_fracture_v2.native_state_factory import (
-    ExactSourceDualLane, FEMCZMNativeStateFactory, PFNativeStateFactory,
+    FEMCZMNativeStateFactory, PFNativeStateFactory,
     canonical_source_value,
 )
 from reduced_fracture_v2.production_oracles import (
@@ -41,10 +41,30 @@ MAX_PREDICTED_CLOCK_INCREMENT=0.08
 TEMPERATURE_K=1000.0
 
 
-def _predict(engine:Any,backend:str,K:float,T:float,dt:float)->float:
-    if backend=="pf": return float(engine.predict_clock_increment(K,T,dt))
+def _predict(
+    engine: Any,
+    backend: str,
+    K_cleave: float,
+    K_emit: float,
+    T: float,
+    dt: float,
+) -> float:
+    """Return a non-mutating outer proposal bound.
+
+    PF exposes the inexpensive production predictor directly.  The qualified
+    FEM/CZM predictor replays every exact stochastic emission event on a trial
+    clone and is therefore as expensive as an accepted interval.  For the
+    reduced outer controller we use its current-state end-point cleavage rate
+    only to propose a smaller interval.  The accepted update still uses the
+    exact joint-K, event-localized stochastic-emission integrator, which owns
+    its internal action limits, event localization, state update, and unused
+    time.  Consequently this bound cannot force or suppress an event and is
+    not the rejected aggregate/mean-field constitutive update.
+    """
+    if backend == "pf":
+        return float(engine.predict_clock_increment(K_cleave, T, dt))
     threshold=max(float(getattr(engine,"hazard_threshold_action",1.)),1e-300)
-    lam=float(engine.lambda_cleave(engine.sigma_tip(K),T)[0])
+    lam=float(engine.lambda_cleave(engine.sigma_tip(K_cleave),T)[0])
     return max(lam,0.)/threshold*max(float(dt),0.)
 
 
@@ -92,6 +112,13 @@ def _geometry(backend:str,extension:float,events:list[dict[str,Any]]):
     return f"straight:{extension:.17e}",{"events":[],"extension_m":extension}
 
 
+def _step(engine: Any, backend: str, K_cleave: float, K_emit: float,
+          temperature_K: float, dt_s: float) -> dict[str, Any]:
+    if backend == "pf":
+        return dict(engine.step(K_cleave, temperature_K, dt_s))
+    return dict(engine.step_drives(K_cleave, K_emit, temperature_K, dt_s))
+
+
 def run(backend:str,target_um:float,classes:set[str]) -> None:
     OUT.mkdir(parents=True,exist_ok=True)
     label="PF" if backend=="pf" else "FEMCZM"
@@ -101,13 +128,23 @@ def run(backend:str,target_um:float,classes:set[str]) -> None:
     else:
         oracle=FEMCZMExactElasticFieldOracle();probe=FEMCZMExactSourceProbeOperator()
         factory_type=FEMCZMNativeStateFactory
-        constructor=lambda row: _fem_constructor(row,aggregate_emission=True)
+        # The qualified production composition is the exact joint-K,
+        # event-localized stochastic-emission engine.  The aggregate moving-tip
+        # implementation is retained only as historical diagnostic code and is
+        # not an admissible predictive closure.
+        constructor=_fem_constructor
         install=_install_fem
     cache={};hits=misses=0;all_intervals=[];all_events=[];summaries=[]
     for row in canonical_rows():
         material=IDS[row["candidate_id"]]
         if material not in classes: continue
-        product=factory_type(constructor(row)).instantiate();lanes=ExactSourceDualLane(product)
+        product=factory_type(constructor(row)).instantiate()
+        # Source/V2 exactness has already been established with independent
+        # dual-lane fixtures.  A predictive trajectory advances only the V2
+        # backend-native object.  Replaying the full production object beside
+        # it on every interval doubled exact stochastic-emission work without
+        # adding a new model check.
+        engine=product.v2_object
         opening=0.;extension=0.;events=[];interval=0;event_index=0
         dt_cap=MAX_OPENING_INCREMENT_M/OPENING_RATE_M_S
         full_reload=False;avalanche=0;last_event_opening=None;case_hits=case_misses=0
@@ -121,51 +158,37 @@ def run(backend:str,target_um:float,classes:set[str]) -> None:
             base_dt=MAX_OPENING_INCREMENT_M/OPENING_RATE_M_S
             dt=min(base_dt,dt_cap);retry=0
             while True:
-                source_backup=_capture(lanes.source);v2_backup=_capture(lanes.v2)
+                backup=_capture(engine)
                 trial_opening=opening+OPENING_RATE_M_S*dt
-                pza=_pz_metrics(lanes.source);pzb=_pz_metrics(lanes.v2)
-                if pza!=pzb: raise RuntimeError("source/V2 probe-state mismatch")
-                raw=probe.evaluate_raw(snapshot,pza,trial_opening)
-                raw_v2=copy.deepcopy(raw)
-                install(lanes.source,raw);install(lanes.v2,raw_v2)
+                pz=_pz_metrics(engine)
+                raw=probe.evaluate_raw(snapshot,pz,trial_opening)
+                install(engine,raw)
                 K=snapshot.native_KJ_per_opening_Pa_sqrt_m_per_m*trial_opening
-                predicted_a=_predict(lanes.source,backend,K,TEMPERATURE_K,dt)
-                predicted_b=_predict(lanes.v2,backend,K,TEMPERATURE_K,dt)
-                if not np.isclose(predicted_a,predicted_b,rtol=0.,atol=0.):
-                    raise RuntimeError(f"{label} {material}: predictor lanes differ")
-                if np.isfinite(predicted_a) and predicted_a>MAX_PREDICTED_CLOCK_INCREMENT:
-                    lanes.source=_restore(lanes.source,source_backup);lanes.v2=_restore(lanes.v2,v2_backup)
-                    dt*=MAX_PREDICTED_CLOCK_INCREMENT/predicted_a;retry+=1;continue
-                pre=_pz_metrics(lanes.source);pre_time=float(lanes.source.t);pre_a=float(lanes.source.a_adv)
+                predicted=_predict(engine,backend,K,K,TEMPERATURE_K,dt)
+                if np.isfinite(predicted) and predicted>MAX_PREDICTED_CLOCK_INCREMENT:
+                    engine=_restore(engine,backup)
+                    dt*=MAX_PREDICTED_CLOCK_INCREMENT/predicted;retry+=1;continue
+                pre=_pz_metrics(engine);pre_time=float(engine.t);pre_a=float(engine.a_adv)
                 try:
-                    if backend=="pf":
-                        source_result=lanes.source.step(K,TEMPERATURE_K,dt)
-                        v2_result=lanes.lifecycle.step(lanes.v2,K,TEMPERATURE_K,dt)
-                    else:
-                        source_result=lanes.source.step_drives(K,K,TEMPERATURE_K,dt)
-                        v2_result=lanes.lifecycle.step_engine(lanes.v2,K,TEMPERATURE_K,dt)
+                    result=_step(engine,backend,K,K,TEMPERATURE_K,dt)
                     break
                 except RuntimeError as exc:
                     if "failed to bracket persistent-site backstress root" not in str(exc) or retry>=30:
                         raise
-                    lanes.source=_restore(lanes.source,source_backup);lanes.v2=_restore(lanes.v2,v2_backup);dt*=.5;retry+=1
+                    engine=_restore(engine,backup);dt*=.5;retry+=1
             dt_cap=min(base_dt,dt*(1.25 if retry==0 else 1.0))
-            source_signature=_runtime_signature(lanes.source);v2_signature=_runtime_signature(lanes.v2)
-            state_exact=source_signature==v2_signature
-            if not state_exact:
-                raise RuntimeError(f"{label} {material}: natural source/V2 state mismatch")
-            consumed=float(source_result.get("dt_consumed",dt))
+            signature=_runtime_signature(engine)
+            consumed=float(result.get("dt_consumed",dt))
             consumed=min(max(consumed,0.),dt);opening+=OPENING_RATE_M_S*consumed
-            fired=bool(source_result.get("fired",False));post=_pz_metrics(lanes.source)
-            if fired!=bool(v2_result.fired): raise RuntimeError("source/V2 event decision mismatch")
-            event_length=float(lanes.source.a_adv-pre_a) if fired else 0.
+            fired=bool(result.get("fired",False));post=_pz_metrics(engine)
+            event_length=float(engine.a_adv-pre_a) if fired else 0.
             if fired and event_length<=0:
-                event_length=float(getattr(lanes.source,"stochastic_last_completed_advance_m",0.))
+                event_length=float(getattr(engine,"stochastic_last_completed_advance_m",0.))
             all_intervals.append({"backend":label,"material_class":material,"temperature_K":TEMPERATURE_K,
-              "target_um":target_um,"interval_index":interval,"time_s":float(lanes.source.t),
+              "target_um":target_um,"interval_index":interval,"time_s":float(engine.t),
               "dt_requested_s":dt,"dt_consumed_s":consumed,"opening_m":opening,"extension_m":extension,
-              "event_fired":fired,"predicted_clock_increment":predicted_a,"cleavage_action":float(lanes.source.B),
-              "cleavage_threshold":float(getattr(lanes.source,"hazard_threshold_action",1.)),
+              "event_fired":fired,"predicted_clock_increment":predicted,"cleavage_action":float(engine.B),
+              "cleavage_threshold":float(getattr(engine,"hazard_threshold_action",1.)),
               "native_J_J_m2":snapshot.native_J_per_opening2_J_per_m4*opening**2,
               "native_KJ_Pa_sqrt_m":snapshot.native_KJ_per_opening_Pa_sqrt_m_per_m*opening,
               "qualified_G_J_m2":None if snapshot.qualified_structural_G_per_opening2_J_per_m4 is None else snapshot.qualified_structural_G_per_opening2_J_per_m4*opening**2,
@@ -173,16 +196,16 @@ def run(backend:str,target_um:float,classes:set[str]) -> None:
               "mobile_count":post["mobile_count"],"retained_count":post["retained_count"],
               "source_multiplicity":post["source_multiplicity"],"backstress_Pa":post["backstress_Pa"],
               "shielding_Pa_sqrt_m":post["signed_shielding_Pa_sqrt_m"],
-              "lambda_c_s":source_result.get("lambda_c"),"lambda_e_s":source_result.get("lambda_e"),
+              "lambda_c_s":result.get("lambda_c"),"lambda_e_s":result.get("lambda_e"),
               "selected_source_system":int(np.argmax(raw["drive_factors"])),
-              "source_state_fingerprint":_fingerprint(source_signature),"v2_state_fingerprint":_fingerprint(v2_signature),
-              "state_status":"EXACT_SOURCE_MATCH","field_snapshot_hash":snapshot.snapshot_hash})
+              "v2_state_fingerprint":_fingerprint(signature),
+              "state_status":"BACKEND_NATIVE_POLICY_SOURCE_FIXTURE_QUALIFIED","field_snapshot_hash":snapshot.snapshot_hash})
             if fired:
                 if event_index>0 and full_reload: avalanche+=1
                 before=extension;extension+=event_length
                 all_events.append({"backend":label,"material_class":material,"temperature_K":TEMPERATURE_K,
                   "target_um":target_um,"event_index":event_index,"physical_avalanche_index":avalanche,
-                  "pre_event_time_s":pre_time,"event_time_s":float(lanes.source.t),"event_opening_m":opening,
+                  "pre_event_time_s":pre_time,"event_time_s":float(engine.t),"event_opening_m":opening,
                   "extension_before_m":before,"extension_after_m":extension,"event_length_m":event_length,
                   "reload_opening_since_prior_event_m":None if last_event_opening is None else opening-last_event_opening,
                   "reload_separated":bool(event_index>0 and full_reload),
@@ -192,11 +215,11 @@ def run(backend:str,target_um:float,classes:set[str]) -> None:
                   "mobile_count":pre["mobile_count"],"retained_count":pre["retained_count"],
                   "source_multiplicity":pre["source_multiplicity"],"backstress_Pa":pre["backstress_Pa"],
                   "shielding_Pa_sqrt_m":pre["signed_shielding_Pa_sqrt_m"],
-                  "lambda_c_s":source_result.get("lambda_c"),"lambda_e_s":source_result.get("lambda_e"),
+                  "lambda_c_s":result.get("lambda_c"),"lambda_e_s":result.get("lambda_e"),
                   "selected_source_system":int(np.argmax(raw["drive_factors"])),
                   "right_censored_at_target":extension>=target_um*1e-6,
-                  "source_state_fingerprint":_fingerprint(source_signature),"v2_state_fingerprint":_fingerprint(v2_signature),
-                  "state_status":"EXACT_SOURCE_MATCH"})
+                  "v2_state_fingerprint":_fingerprint(signature),
+                  "state_status":"BACKEND_NATIVE_POLICY_SOURCE_FIXTURE_QUALIFIED"})
                 if backend=="pf":
                     p0=np.asarray(events[-1]["p1_m"] if events else (5e-4,0.),float)
                     p1=p0+np.asarray((event_length,0.));events.append({"p0_m":p0.tolist(),"p1_m":p1.tolist(),"front_id":0})
@@ -224,7 +247,8 @@ def run(backend:str,target_um:float,classes:set[str]) -> None:
           "first_event_native_KJ_Pa_sqrt_m":case_events[0]["native_KJ_Pa_sqrt_m"],
           "terminal_extension_m":extension,"target_right_censored":True,"interval_count":interval,
           "field_cache_hits":case_hits,"field_cache_misses":case_misses,"probe_queries":probe.query_count,
-          "source_v2_exact":True,"status":"NATURAL_FORWARD_CLOSURE_PASS"})
+          "source_v2_exact":None,"lifecycle_source_qualification":"QUALIFIED_BY_DUAL_LANE_FIXTURES",
+          "status":"NATURAL_FORWARD_CLOSURE_PASS"})
         print(f"{label} {material}: complete {target_um:g} um in {interval} intervals",flush=True)
     payload={"schema":"oneD_v2_natural_forward_v1","backend":label,"target_um":target_um,
       "FEMCZM_reduced_emission_contract":None if backend=="pf" else "SOURCE_MEAN_FIELD_SIGNED_MPZ_WITH_STOCHASTIC_CLEAVAGE_V2",

@@ -1,0 +1,13 @@
+{
+  "canonical_parameters_changed": false,
+  "mode": "all",
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "physics_json_sha256": "bd356ce6d9d17c5aa7be1f6d975577d6484706daa7e39a19eb52f006b7ee6beb",
+  "registry_sha256": "4ba723c80abcfdd7101cee0afaa9b4104eebf2a8e847892528128664829c7760",
+  "schema": "oneD_v2_predictive_campaign_manifest_v1",
+  "source_drive_maps": {
+    "fem": "c39c16c51d4d045c8f206faa859af3d3577fea5448d026491a7ccc10ad4f1f8f",
+    "pf": "48bacefcc7d800bac97d41e45686fc82ce2cf4b7b868474c2b741024b254549e"
+  }
+}
