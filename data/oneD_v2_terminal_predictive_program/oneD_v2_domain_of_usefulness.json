@@ -1,45 +1,102 @@
 {
   "FEMCZM": {
-    "backstress_GPa_observed": [0.0, 38.64223985740065],
+    "backstress_GPa_observed": [
+      0.0,
+      38.64223985740065
+    ],
     "exact_fallback": "corrected deterministic elastic/source-probe oracle; exact transactional engine reserved for bounded microfixtures",
     "excluded_rate_evidence": "100x reaches the 500-um opening numerical bound before 100-um crack extension",
-    "front_width_um_observed": [0.0310999212561678, 10.0],
-    "loading_rate_factor": [0.01, 1.0],
+    "front_width_um_observed": [
+      0.0310999212561678,
+      10.0
+    ],
+    "loading_rate_factor": [
+      0.01,
+      1.0
+    ],
     "long_extension": {
       "DBTT_um_before_opening_bound": 448.394948,
       "Peak_weakT_ceramic_um": 1000.0
     },
     "native_kinetic_metric": "native J/KJ only",
-    "nominal_opening_rate_m_s": [2.380952380952381e-10, 2.3809523809523807e-08],
-    "opening_um_observed_100um_and_sensitivity": [5.619449315298871, 162.53416848592403],
+    "nominal_opening_rate_m_s": [
+      2.380952380952381e-10,
+      2.3809523809523807e-08
+    ],
+    "opening_um_observed_100um_and_sensitivity": [
+      5.619449315298871,
+      162.53416848592403
+    ],
     "qualified_interpretation_metric": "structural G/K_G retained separately",
-    "source_multiplicity_observed": [8188.878083959811, 1542860.4606806166],
-    "tip_radius_um_observed": [1.0, 156.50859306252713]
+    "source_multiplicity_observed": [
+      8188.878083959811,
+      1542860.4606806166
+    ],
+    "tip_radius_um_observed": [
+      1.0,
+      156.50859306252713
+    ]
   },
   "PF": {
-    "backstress_GPa_observed": [0.0, 25.638840657132853],
+    "backstress_GPa_observed": [
+      0.0,
+      25.638840657132853
+    ],
     "exact_fallback": "PF exact elastic-field and exact source-probe oracle",
-    "front_width_um_observed": [0.040713505687868815, 10.0],
-    "loading_rate_factor": [0.01, 100.0],
+    "front_width_um_observed": [
+      0.040713505687868815,
+      10.0
+    ],
+    "loading_rate_factor": [
+      0.01,
+      100.0
+    ],
     "long_extension": {
       "DBTT_high_temperature_um_before_radius_bound": 825.0,
       "Peak_weakT_ceramic_um": 1000.0
     },
-    "nominal_opening_rate_m_s": [2.380952380952381e-10, 2.3809523809523808e-06],
-    "opening_um_observed_100um_and_sensitivity": [6.954967042978007, 98.19482818761637],
-    "source_multiplicity_observed": [8619.657242490366, 1542860.460686938],
+    "nominal_opening_rate_m_s": [
+      2.380952380952381e-10,
+      2.3809523809523808e-06
+    ],
+    "opening_um_observed_100um_and_sensitivity": [
+      6.954967042978007,
+      98.19482818761637
+    ],
+    "source_multiplicity_observed": [
+      8619.657242490366,
+      1542860.460686938
+    ],
     "terminal_veto": "production late-geometry veto terminates fail closed; rollback-and-continue unsupported",
-    "tip_radius_um_observed": [1.0, 83.80656548074042]
+    "tip_radius_um_observed": [
+      1.0,
+      83.80656548074042
+    ]
   },
   "common": {
     "material_parameter_variation": "qualified locally at +/-10% and +/-25%; finalists additionally inside recorded Sobol/interpolation hulls",
-    "mechanics_extension_map_um": [0.0, 1000.0],
+    "mechanics_extension_map_um": [
+      0.0,
+      1000.0
+    ],
     "outside_domain_policy": "exact deterministic oracle enrichment or fail closed; no clipping or extrapolation",
-    "screening_extension_um": [0.0, 100.0],
+    "screening_extension_um": [
+      0.0,
+      100.0
+    ],
     "target_termination": "RIGHT_CENSORED_NOT_PHYSICAL_ARREST",
-    "temperature_K": [300.0, 1200.0],
-    "tensor_profile_extension_map_um": [0.0, 1000.0],
-    "tensor_profile_tip_radius_map_um": [1.0, 1000.0]
+    "temperature_K": [
+      300.0,
+      1200.0
+    ],
+    "tensor_profile_extension_map_um": [
+      0.0,
+      1000.0
+    ],
+    "tensor_profile_tip_radius_map_um": [
+      1.0,
+      1000.0
+    ]
   },
   "long_case_status_counts": {
     "RIGHT_CENSORED_DRIVE_MAP_BOUND": 2,
