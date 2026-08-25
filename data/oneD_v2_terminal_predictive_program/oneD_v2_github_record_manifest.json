@@ -1,0 +1,26 @@
+{
+  "schema": "oneD_v2_terminal_github_record_v1",
+  "record_branch": "codex/oneD-v2-terminal-results-record",
+  "record_base": "v9.13-long-extension-aligned-peak-campaign",
+  "record_base_commit": "559425321b9a8739f32788322d8a1c2af8abad73",
+  "local_source_branch": "codex/oneD-v2-terminal-predictive-program",
+  "local_reported_head": "5045fee",
+  "producer_code_commit_from_local_manifest": "cddc51605aee93d8ecbaa0dda76c12085e08f9de",
+  "diagnostic_baseline_commit": "e2ed84c",
+  "PF_source_commit": "9e884fb0b0845da621d2612bdf1042e481b8df49",
+  "PF_transfer_runner_commit": "7cd31da6ade931ecd4dfab98639148c0b58603a4",
+  "qualified_FEMCZM_source_commit": "931bed6",
+  "full_local_implementation_commit_objects_present_on_github": false,
+  "note": "This branch records final reports and compact scientific outputs. The local Codex worktree must separately push the full implementation branch for code review or merge.",
+  "scientific_output_sha256": {
+    "oneD_v2_new_four_class_registry.csv": "f920ec66384baa60b468842955dc1166df82be8d2457e4bbf807e1c150de926f",
+    "oneD_v2_final_decision.json": "91fc14dd590eed1ddf799aa7c9e54f3ac0c30e8f7671390f109f96d46586f31e",
+    "oneD_v2_domain_of_usefulness.json": "119e8906d3c8166ad7b64e741d4cb09fc56f7bf46a98d6164fddc7d65e23270b",
+    "oneD_v2_native_baseline_results.csv": "b999069d1cfb1143511fca201f1193be55d332d81958691fa02af5f5b61eeeb9",
+    "oneD_v2_pf_transfer_results.csv": "470a5bb71a94b6e1c51cc12a7604d2abc658dbf1fe326b3f883755eaad7c3787"
+  },
+  "mission_status": "COMPLETE",
+  "new_2D_FEMCZM_runs": 0,
+  "production_physical_formulas_changed": false,
+  "canonical_production_trajectories_changed": false
+}
