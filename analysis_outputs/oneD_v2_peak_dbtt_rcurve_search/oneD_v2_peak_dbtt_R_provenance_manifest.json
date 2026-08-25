@@ -1,0 +1,23 @@
+{
+  "analysis_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "bank_membership_fingerprint": "c9b85f76c689a3bee5dcf1de73ab3b81642f86450a591dc4758b86b9419b6c38",
+  "direct_pf_manifest_sha256": "cab6ce08e65ab444c44afdac9707e2e52fe6bda7c8ae0cf645e203b00255254e",
+  "focused_branch": "codex/oneD-v2-peak-dbtt-rcurve-search",
+  "immutable_input_artifacts": {
+    "analysis_outputs/oneD_v2_peak_dbtt_rcurve_search/oneD_v2_peak_dbtt_R_pf_transfer_registry.csv": "af3b0620f5899d91c0dbed45055e241a8eca5f9d3cd9be4ebaf11495b7ad373a",
+    "analysis_outputs/oneD_v2_terminal_predictive_program/oneD_v2_new_four_class_registry.csv": "f920ec66384baa60b468842955dc1166df82be8d2457e4bbf807e1c150de926f",
+    "candidates/v9_13_persistent_sites_top5_registry.csv": "309c7372c0e543c7b7cd057a38a3d7aae9bb3d9c8884562f4d836eecabb2d85c"
+  },
+  "material_identity_fingerprint": "3914653aeb0c1ec1ac19ad710ffb599c2fdcd43c9d0c3bdf384349881006dd8e",
+  "new_FEMCZM_runs": 0,
+  "new_PF_runs": 6,
+  "pf_branch": "codex/oneD-v2-peak-dbtt-R-pf-transfer",
+  "pf_runner_commit": "130b305",
+  "producer_code_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "qualified_domain_path": "analysis_outputs/oneD_v2_terminal_predictive_program/oneD_v2_domain_of_usefulness.json",
+  "qualified_domain_sha256": "119e8906d3c8166ad7b64e741d4cb09fc56f7bf46a98d6164fddc7d65e23270b",
+  "registry_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "schema": "oneD_v2_peak_dbtt_R_provenance_manifest_v1",
+  "scientific_fingerprint": "01bf6ea5c214467407a9395156ef76c00796d17bf6ac74cc7b227f7f46f6aa19",
+  "source_commit": "5045feed8c87440676c580fe7f74989be4c4a995"
+}
