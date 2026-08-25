@@ -7,7 +7,7 @@
   "registry_sha256": "4ba723c80abcfdd7101cee0afaa9b4104eebf2a8e847892528128664829c7760",
   "schema": "oneD_v2_predictive_campaign_manifest_v1",
   "source_drive_maps": {
-    "fem": "c4bb3c952afae6bb9787d23605c3786a4a0cdc8447bca49a806e7066f09475c1",
-    "pf": "00d7ea545c4e2aab5e91d57b9f1267fef4168c2ce8016eb0efd7efc5af063de9"
+    "fem": "59b9a04006bf92ea2dfc69ed6720698d68bc276f56e057d1d115bfdff3a3e247",
+    "pf": "cdd5760511ff782f55333f7492ed3b1b01ebc2fea5eb239a254896217b589eb8"
   }
 }

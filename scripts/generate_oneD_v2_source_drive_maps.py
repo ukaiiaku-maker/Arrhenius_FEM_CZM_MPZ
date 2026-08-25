@@ -103,7 +103,11 @@ def generate(backend: str) -> Path:
             })
     path = OUT / f"oneD_v2_{backend}_source_drive_map.csv"
     with path.open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(
+            stream,
+            fieldnames=list(rows[0]),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
     manifest = {
