@@ -169,6 +169,7 @@ class EmergentGNDState(_EnergyState):
         self.last_rate_initial_s = np.zeros(self.c.n_systems)
         self.last_rate_final_s = np.zeros(self.c.n_systems)
         self._emission_geometry_extension_override_m: float | None = None
+        self._external_emission_drive_factors: np.ndarray | None = None
         self.last_tip_radius_before_advance_m = self.tip_radius_m()
         self.last_tip_radius_after_advance_m = self.last_tip_radius_before_advance_m
         self.cumulative_source_activations = np.zeros(self.c.n_systems)
@@ -303,6 +304,8 @@ class EmergentGNDState(_EnergyState):
 
     def emission_drive_factors(self) -> np.ndarray:
         """Return the constant or extension-resolved reduced 2-D projection."""
+        if self._external_emission_drive_factors is not None:
+            return np.asarray(self._external_emission_drive_factors, dtype=float).copy()
         breakpoints = np.asarray(
             self.c.emission_geometry_extension_m,
             dtype=float,
@@ -331,6 +334,27 @@ class EmergentGNDState(_EnergyState):
         )
         index = min(max(index, 0), breakpoints.size - 1)
         return factors[index].copy()
+
+    def set_external_emission_drive_factors(
+        self, factors: np.ndarray | tuple[float, ...] | list[float] | None
+    ) -> None:
+        """Install a provider-owned source-drive factor for the next interval.
+
+        The production PF and FEM/CZM source engines multiply their normalized
+        two-channel drive factors by the opening stress.  This explicit
+        interval override lets the V2 state surrogate preserve that source
+        convention while mechanics remains owned by the selected provider.
+        ``None`` restores the immutable candidate-independent schedule.
+        """
+        if factors is None:
+            self._external_emission_drive_factors = None
+            return
+        value = np.asarray(factors, dtype=float).reshape(-1)
+        if value.shape != (self.c.n_systems,):
+            raise ValueError("external emission drive must have one value per system")
+        if np.any(~np.isfinite(value)) or np.any(value < 0.0):
+            raise ValueError("external emission drive must be finite and nonnegative")
+        self._external_emission_drive_factors = value.copy()
 
     def unsigned_tip_density_by_system_m2(self) -> np.ndarray:
         weights, norm = self._tip_weights()

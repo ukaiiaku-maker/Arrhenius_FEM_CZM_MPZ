@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 from dataclasses import asdict, dataclass, field
 import math
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 
@@ -302,6 +302,7 @@ def run_autonomous_rcurve(
     minimum_resolved_source_activations: float = 1.0e-4,
     translation_mode: str = "hazard_coupled",
     translation_action_exponent: float = 1.0,
+    emission_drive_provider: Callable[[float, EmergentGNDState], Sequence[float]] | None = None,
 ) -> RCurveResult:
     """Predict one R-curve without supplying a 2-D K/dt/da history.
 
@@ -344,6 +345,7 @@ def run_autonomous_rcurve(
             "translation_mode": translation_mode,
             "translation_action_exponent": float(translation_action_exponent),
             "candidate_parameters_modified_by_driver": False,
+            "external_provider_emission_drive": emission_drive_provider is not None,
         },
     )
     _update_extrema(result, state)
@@ -381,6 +383,10 @@ def run_autonomous_rcurve(
                 result.final_elapsed_time_s = elapsed
                 return result
 
+            if emission_drive_provider is not None:
+                state.set_external_emission_drive_factors(
+                    emission_drive_provider(event_geometry_extension, state)
+                )
             K0 = geometry_factor * displacement
             rate0 = state.cleavage_rate_s(K0, temperature_K)
             dU = _adaptive_displacement_increment(

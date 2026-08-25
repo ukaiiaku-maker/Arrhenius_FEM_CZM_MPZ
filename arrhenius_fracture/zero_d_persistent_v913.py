@@ -345,6 +345,7 @@ def _advance_state(
     duration_s: float,
     K_MPa_sqrt_m: float,
     temperature_K: float,
+    drive_factors_override: Sequence[float] | None = None,
 ) -> float:
     dt = max(float(duration_s), 0.0)
     if dt <= 0.0:
@@ -359,7 +360,13 @@ def _advance_state(
     sigma_applied = max(float(K_MPa_sqrt_m), 0.0) * 1.0e6 / math.sqrt(
         2.0 * math.pi * max(radius, physics.b_m)
     )
-    factors = np.abs(_emission_factors(physics, state.extension_m))
+    factors = np.abs(
+        _emission_factors(physics, state.extension_m)
+        if drive_factors_override is None
+        else np.asarray(drive_factors_override, dtype=float)
+    )
+    if factors.shape != (int(physics.n_systems),) or np.any(~np.isfinite(factors)):
+        raise ValueError("drive_factors_override must be finite with one value per system")
     drive = factors * sigma_applied
     rho0 = np.asarray(geometry["rho_by_system_m2"], dtype=float)
     sigma_back0 = np.asarray(geometry["sigma_back_by_system_Pa"], dtype=float)
