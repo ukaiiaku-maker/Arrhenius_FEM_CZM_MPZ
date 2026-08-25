@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import hashlib
+import json
 
 import numpy as np
 import pandas as pd
@@ -98,3 +100,37 @@ def test_source_map_out_of_domain_fails_closed():
         pass
     else:
         raise AssertionError("source-drive map silently extrapolated")
+
+
+def test_terminal_sensitivity_and_search_artifacts_are_deterministic_and_shared():
+    out = ROOT / "analysis_outputs/oneD_v2_terminal_predictive_program"
+    sensitivity = out / "oneD_v2_parameter_sensitivity_results.parquet"
+    manifest = json.loads((out / "oneD_v2_parameter_sensitivity_manifest.json").read_text())
+    assert hashlib.sha256(sensitivity.read_bytes()).hexdigest() == manifest["results_sha256"]
+    frame = pd.read_parquet(sensitivity)
+    assert len(frame) == 972
+    assert frame.status.eq("TARGET_RIGHT_CENSORED").all()
+    registry = pd.read_csv(out / "oneD_v2_new_four_class_registry.csv")
+    assert len(registry) == 4
+    assert registry.same_material_row_both_providers.astype(bool).all()
+    assert registry.candidate_id.is_unique
+    pareto = pd.read_csv(out / "oneD_v2_pareto_candidates.csv")
+    eligible = pareto[pareto.full_class_contract_pass]
+    assert eligible[["search_class", "candidate_id"]].to_dict("records") == [{
+        "search_class": "weak-T",
+        "candidate_id": "oneD_v2_focused_weak_T_0016",
+    }]
+
+
+def test_terminal_pf_transfer_and_final_matrix_are_bounded():
+    out = ROOT / "analysis_outputs/oneD_v2_terminal_predictive_program"
+    transfer = pd.read_csv(out / "oneD_v2_pf_transfer_results.csv")
+    assert len(transfer) == 12
+    assert int(transfer.new_PF_run_launched.sum()) == 6
+    assert not transfer.new_FEMCZM_run_launched.any()
+    assert transfer.pf_2D_target_right_censored.astype(bool).all()
+    assert (transfer.pf_2D_event_count > transfer.pf_2D_physical_avalanche_count).all()
+    assert int(transfer.topology_match.sum()) == 11
+    final = pd.read_csv(out / "oneD_v2_final_four_class_results.csv")
+    assert len(final) == 40
+    assert final.status.eq("TARGET_RIGHT_CENSORED").all()

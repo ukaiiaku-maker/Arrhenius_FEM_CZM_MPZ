@@ -1,0 +1,32 @@
+{
+  "new_2D_FEMCZM_runs": 0,
+  "same_material_row_both_providers": true,
+  "schema": "oneD_v2_terminal_final_matrix_v1",
+  "targets_um": {
+    "100": {
+      "case_count": 40,
+      "sha256": "1b25f4887908ab97de4f539113c6ceca0d990a4ff65c03fda8b77c7e46f35a61",
+      "status_counts": {
+        "TARGET_RIGHT_CENSORED": 40
+      },
+      "target_complete": 40
+    },
+    "1000": {
+      "case_count": 40,
+      "sha256": "1810dc064e92fc7de6b7a9f50667bab54caab3dc1c6ee316765e44782c687737",
+      "status_counts": {
+        "RIGHT_CENSORED_DRIVE_MAP_BOUND": 2,
+        "RIGHT_CENSORED_NUMERICAL_BOUND": 5,
+        "TARGET_RIGHT_CENSORED": 33
+      },
+      "target_complete": 33
+    }
+  },
+  "temperatures_K": [
+    300.0,
+    600.0,
+    900.0,
+    1100.0,
+    1200.0
+  ]
+}

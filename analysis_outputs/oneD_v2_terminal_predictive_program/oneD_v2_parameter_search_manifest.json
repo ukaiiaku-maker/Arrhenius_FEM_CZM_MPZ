@@ -1,0 +1,63 @@
+{
+  "eligible_rows": [
+    {
+      "candidate_id": "oneD_v2_focused_weak_T_0016",
+      "search_class": "weak-T"
+    }
+  ],
+  "focused_anchors": {
+    "ceramic-like": [
+      "v913_zeroD_sobol_0134035",
+      "v913_zeroD_sobol_0077080"
+    ],
+    "weak-T": [
+      "v913_zeroD_sobol_0116955",
+      "v913_zeroD_sobol_0129902"
+    ]
+  },
+  "focused_candidate_count": 128,
+  "focused_refinement": true,
+  "focused_validation_candidate_count": 14,
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "objective_policy": "PARETO_PLUS_LEXICOGRAPHIC_NO_OPAQUE_WEIGHTED_SCALAR",
+  "objectives": [
+    "completion_objective",
+    "class_trend_objective",
+    "physical_topology_objective",
+    "precursor_objective",
+    "avalanche_size_objective",
+    "onset_scale_objective",
+    "provider_robustness_objective",
+    "state_realism_objective"
+  ],
+  "pareto_sha256": "ef0a0987bd22a7d82cced3c6eb45593dd0a8ef700261f40d8104623219043770",
+  "population_sha256": "1270778b494734d5d1477ae9fe8d466c02237479994140abb3da1d671ead5369",
+  "retained_without_search": [
+    "Peak",
+    "DBTT"
+  ],
+  "schema": "oneD_v2_terminal_shared_four_class_search_v1",
+  "screen_case_count": 864,
+  "screen_temperatures_K": [
+    300.0,
+    600.0,
+    1000.0,
+    1200.0
+  ],
+  "searched_classes": [
+    "weak-T",
+    "ceramic-like"
+  ],
+  "total_case_count": 2824,
+  "validation_case_count": 432,
+  "validation_seed_count": 3,
+  "validation_temperatures_K": [
+    300.0,
+    600.0,
+    900.0,
+    1000.0,
+    1100.0,
+    1200.0
+  ]
+}

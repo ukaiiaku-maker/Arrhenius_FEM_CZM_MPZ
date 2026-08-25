@@ -73,16 +73,22 @@ def inputs():
 
 def run_case(
     row, material, temperature, backend, mechanics, drive, physics, target_um,
-    *, seed=None,
+    *, seed=None, lifecycle=None, maximum_intervals=500_000,
+    maximum_opening_m=500.0e-6, nominal_dt_s=8.4,
 ):
     loading = provider_loading_map(
         mechanics,
         seed=SEEDS[material] if seed is None else int(seed),
         target_extension_m=target_um * 1.0e-6,
+        lifecycle=lifecycle,
+        nominal_dt_s=float(nominal_dt_s),
     )
     result = run_zero_d_predictive(
         candidate_from_registry_row(row), physics, mechanics, drive, loading,
         temperature, target_extension_m=target_um * 1.0e-6,
+        lifecycle=lifecycle,
+        maximum_intervals=int(maximum_intervals),
+        maximum_opening_m=float(maximum_opening_m),
     )
     result.update({"material_class": material, "provider": backend, "target_um": target_um})
     return result
