@@ -1,0 +1,21 @@
+{
+  "FEM_factory_composition": "RESOLVED_CORRECTED_RUNTIME",
+  "FEM_kernel_provenance": "RESOLVED_CORRECTED_RUNTIME_D41B08_HISTORICAL_A85_MISSING",
+  "FEM_local_drive_provider": "UNQUALIFIED_DYNAMIC_TENSOR_MAP_MISSING",
+  "Level1": "PASS_EXACT",
+  "Level2": "PASS_EXACT",
+  "Level3": "NATIVE_CLOSURE_UNQUALIFIED",
+  "PF_exact_wrapper_full_domain": "UNQUALIFIED_INCOMPLETE_STATE_DOMAIN",
+  "PF_exact_wrapper_source_node": "PASS_EXACT_ONE_NODE_STATIC_STATE",
+  "PF_regime_provider": "QUALIFIED_EXACT_QUERY_HYBRID",
+  "PF_source_nodes": "QUALIFIED",
+  "PF_sparse_interpolation": "UNQUALIFIED",
+  "campaign_authorized": false,
+  "canonical_parameters_changed": false,
+  "common_tensor_parity": "NOT_RUN_PREREQUISITE_FAILED",
+  "forward_baselines_authorized": false,
+  "new_stochastic_FEM_runs": 0,
+  "new_stochastic_PF_runs": 0,
+  "parameter_status": "INSUFFICIENT_EVIDENCE_FOR_V2_PARAMETER_DECISION",
+  "schema": "oneD_v2_level3_decision_v3"
+}

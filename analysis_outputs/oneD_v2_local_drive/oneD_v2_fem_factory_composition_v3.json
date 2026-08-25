@@ -1,0 +1,29 @@
+{
+  "authoritative_run_kernel_classification": "AUTHORITATIVE_RUN_USED_D41B08",
+  "candidate_fingerprint_peak": "ce47ec844b3d7a9812aa0b077351fc6d022c292b39b84bd4056871395f7f4f52",
+  "configured_exact_engine_instance_constructed": true,
+  "corrected_run_kernel_sha256": "d41b08f69ae773009f65f4c0094ef5436ba7f0f290a94172e5b894d09a41f7c3",
+  "corrected_run_launch_heads": {
+    "DBTT_bulk_pt_on": "a691deafe4a4fe0488175da92abcabeba795f13c",
+    "DBTT_tip_only": "931bed66913afc970117bce900805ecc9b6225f8",
+    "Peak_bulk_pt_on": "eee33dfcaaac3ab33172d56994fb0b184b0c452c",
+    "Peak_tip_only": "931bed66913afc970117bce900805ecc9b6225f8"
+  },
+  "corrected_source_commit": "17f8bf67c0138b453eadff4b509afa80ebaa2c04",
+  "engine_class": "ProductionJointKRampStochasticEmissionFrontEngineV10051832",
+  "engine_state_class": "PersistentSiteSignedMPZStateV100514",
+  "historical_pf_hash_contract": "a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a",
+  "historical_pin_modified": false,
+  "kernel_blocker": "CLOSED_FOR_CORRECTED_FEM_RUNTIME_NOT_FOR_HISTORICAL_PF_BYTE_IDENTITY",
+  "new_stochastic_fem_runs": 0,
+  "runtime_composition": [
+    "native-rate launcher records supplied d41b08 kernel",
+    "process-local REFERENCE_KERNEL_SHA256 override",
+    "audited empty-wake representation adapter",
+    "unchanged active kernel/interpolation states",
+    "v10.0.5.18.4.0 wrapper chain",
+    "ProductionJointKRampStochasticEmissionFrontEngineV10051832"
+  ],
+  "schema": "oneD_v2_fem_factory_composition_v3",
+  "silent_substitution": false
+}

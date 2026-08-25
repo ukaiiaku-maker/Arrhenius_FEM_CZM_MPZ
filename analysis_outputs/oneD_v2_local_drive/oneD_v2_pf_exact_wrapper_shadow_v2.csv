@@ -1,0 +1,13 @@
+material_class,temperature_K,extension_um,selected_emission_system_source,selected_emission_system_provider,selected_system_exact,tau_sign_exact,reliability_exact,maximum_rate_relative_error,maximum_barrier_absolute_error_J,maximum_probability_absolute_error,aggregate_hazard_relative_error,all_continuous_fields_exact,status
+Peak,300.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+Peak,1000.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+Peak,1200.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+DBTT,300.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+DBTT,1000.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+DBTT,1200.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+weak-T,300.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+weak-T,1000.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+weak-T,1200.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+ceramic-like,300.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+ceramic-like,1000.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE
+ceramic-like,1200.0,100.0,0,0,True,True,True,0.0,0.0,0.0,0.0,True,PASS_EXACT_SOURCE_NODE

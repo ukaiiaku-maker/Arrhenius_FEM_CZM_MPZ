@@ -1,0 +1,17 @@
+left_extension_um,right_extension_um,wake_fingerprint_changed,front_basis_fingerprint_changed,probe_support_fingerprint_changed,probe_weight_fingerprint_changed,selected_system_signature_changed,resolved_sign_signature_changed,reliable_changed,interpolation_allowed,policy
+0.0,5.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+5.0,10.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+10.0,25.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+25.0,50.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+50.0,75.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+75.0,100.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+100.0,150.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+150.0,200.0,True,True,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+200.0,300.0,False,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+300.0,400.0,True,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+400.0,500.0,False,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+500.0,600.0,True,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+600.0,700.0,True,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+700.0,800.0,True,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+800.0,900.0,False,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
+900.0,1000.0,True,False,True,True,False,False,False,False,EXACT_DETERMINISTIC_QUERY_AND_CACHE
