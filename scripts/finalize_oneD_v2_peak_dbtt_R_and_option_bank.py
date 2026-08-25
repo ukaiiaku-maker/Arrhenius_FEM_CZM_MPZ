@@ -724,7 +724,7 @@ def write_reports(bank: pd.DataFrame, pareto: pd.DataFrame, decision: dict, mani
 
     direct_columns = [
         "candidate_role", "temperature_K", "hazard_seed", "physical_avalanche_count",
-        "reload_separated_reinitiation_count", "initial_onset_native_KJ_MPa_sqrt_m",
+        "N_reinit", "initial_onset_native_KJ_MPa_sqrt_m",
         "signed_max_reinitiation_minus_initial_K_MPa_sqrt_m", "target_right_censored",
     ]
     option_columns = [
