@@ -1,0 +1,48 @@
+{
+  "artifacts": {
+    "pareto_sha256": "874ea2c290bf0b73f78103d29a9ef9b92db599b6ca0463366dfe270b688b2d8c",
+    "registry_sha256": "36ac52ae8e78c3da388b08b620716d97c50d0c4a9597cac0ae2b06959f2e93de",
+    "search_population_sha256": "c33eb252fcabdf0b45f160427748fcf0490fa4d6b392218e15e262294f22069f",
+    "transfer_sha256": "6436ab7e499100738321abcbd06b0b91dee7ae69392a843ddbfae64aa83b46a6"
+  },
+  "controlled_common_kernel_parity": "PASS_EXACT",
+  "current_row_classifications": {
+    "DBTT": "PARAMETER_RESEARCH_REQUIRED",
+    "Peak": "QUALITATIVELY_VALID_BUT_PROVIDER_SENSITIVE",
+    "ceramic-like": "ROBUST_ACROSS_BOTH_PROVIDERS",
+    "weak-T": "QUALITATIVELY_VALID_BUT_PROVIDER_SENSITIVE"
+  },
+  "dbtt_search": {
+    "eligible_candidates": 0,
+    "repeated_validation_candidates": 16,
+    "screen_candidates": 187
+  },
+  "direct_PF_transfer": "EXISTING_AUTHORITATIVE_300_1000_1200K",
+  "final_candidate_ids": {
+    "DBTT": "v913_zeroD_sobol_0202500",
+    "Peak": "v913_zeroD_sobol_0242980",
+    "ceramic-like": "v913_zeroD_sobol_0077080",
+    "weak-T": "v913_zeroD_sobol_0129902"
+  },
+  "minimum_later_FEMCZM_matrix": [
+    "Peak, 1000 K, theta=0, tip-only",
+    "DBTT, 1000 K, theta=0, tip-only"
+  ],
+  "natural_predictive_models": {
+    "FEMCZM_DBTT": "FAIL_ONSET_TOPOLOGY_AND_DRIVE_MAP_BOUND",
+    "FEMCZM_Peak": "FAIL_ABSOLUTE_ONSET_SCALE_TOPOLOGY_MATCHES",
+    "PF_DBTT": "FAIL_TOPOLOGY_AND_DRIVE_MAP_BOUND",
+    "PF_Peak": "QUALIFIED_FOR_REDUCED_USE"
+  },
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "new_parameter_rows_promoted": 0,
+  "overall_status": "PARTIALLY_QUALIFIED_NO_NEW_ROW_PROMOTED",
+  "pending_2D_FEMCZM_classes": [
+    "weak-T",
+    "ceramic-like"
+  ],
+  "physical_formulas_altered": false,
+  "production_trajectories_altered": false,
+  "schema": "oneD_v2_final_decision_v1"
+}

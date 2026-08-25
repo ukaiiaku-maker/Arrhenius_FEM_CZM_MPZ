@@ -1,0 +1,45 @@
+{
+  "eligible_shared_dbtt_rows": [],
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "objectives": [
+    "status_objective",
+    "class_topology_objective",
+    "onset_envelope_objective",
+    "precursor_count_objective",
+    "avalanche_topology_objective",
+    "event_size_objective",
+    "provider_robustness_objective",
+    "state_realism_objective"
+  ],
+  "schema": "oneD_v2_provider_robust_search_v1",
+  "screen_candidate_count": 187,
+  "screen_case_count": 1496,
+  "screen_temperatures_K": [
+    300.0,
+    600.0,
+    1000.0,
+    1200.0
+  ],
+  "source_registry_hashes": {
+    "v10_2_23_v913_top10_persistent_site_registry.csv": "1a91c0e36b0c1e108ebec8e188d932a23618ae2fb43944c758e0a61395a7cdb0",
+    "v10_2_24_v913_top10_upper_shelf_registry.csv": "756125ee37cf5c64faf44b3f133afc8ad10e40f8b13cbfe4a6d1b6c306f6457a",
+    "v10_2_25_v913_paper_campaign_registry.csv": "d2a427a5d78047fef652ca87d769da8b41124bfc3f6f982472ceddb710371ffd",
+    "v10_2_27_v913_four_class_paper_registry.csv": "4ba723c80abcfdd7101cee0afaa9b4104eebf2a8e847892528128664829c7760"
+  },
+  "validation_candidate_count": 16,
+  "validation_case_count": 576,
+  "validation_seeds": [
+    1008666,
+    1008667,
+    1008668
+  ],
+  "validation_temperatures_K": [
+    300.0,
+    600.0,
+    900.0,
+    1000.0,
+    1100.0,
+    1200.0
+  ]
+}

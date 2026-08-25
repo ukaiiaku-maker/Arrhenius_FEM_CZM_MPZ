@@ -1,0 +1,33 @@
+{
+  "backend": "PF",
+  "csv": "/private/tmp/oneD-v2-common-kernel/analysis_outputs/oneD_v2_predictive_model/oneD_v2_pf_source_drive_map.csv",
+  "csv_sha256": "00d7ea545c4e2aab5e91d57b9f1267fef4168c2ce8016eb0efd7efc5af063de9",
+  "elastic_solve_count": 7,
+  "extensions_um": [
+    0.0,
+    25.0,
+    100.0,
+    300.0,
+    500.0,
+    700.0,
+    1000.0
+  ],
+  "factor_semantics": "production_normalized_drive_factor_times_opening_stress",
+  "mechanics_map": "/private/tmp/oneD-v2-common-kernel/analysis_outputs/oneD_v2_mechanics_maps_and_baselines/oneD_v2_pf_mechanics_map.csv",
+  "mechanics_map_sha256": "b508d5ba6a7562e53f5280ffecf015d3c6f8c801d0e03abe8bc9d7ddef8f0fc1",
+  "no_stochastic_evolution": true,
+  "probe_query_count": 56,
+  "schema": "oneD_v2_source_drive_map_v1",
+  "status": "QUALIFIED_DETERMINISTIC_SOURCE_PROBE_MAP",
+  "tau_over_opening_is_diagnostic_only": true,
+  "tip_radii_um": [
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    12.0,
+    25.0,
+    50.0,
+    100.0
+  ]
+}
