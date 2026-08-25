@@ -1,0 +1,17 @@
+{
+  "artifacts": {
+    "pf_2d_peak_dbtt_R_event_transactions.csv": "47109c1cbd4c19cf6709f0b44ab91da74b15252c2356d27da21f178ea1d34aeb",
+    "pf_2d_peak_dbtt_R_onset_candidates.csv": "7aae9ca0c02b987bec0babfaea9dd798860c5559341925c289e70693b1bb5845",
+    "pf_2d_peak_dbtt_R_physical_avalanches.csv": "cd67a807b65cefa3a3a6a1a73998a6723237147a406abcbd7559e30be71b5c93",
+    "pf_2d_peak_dbtt_R_transfer_summary.csv": "07cfd6c8518c948ff48cb53c8d3c61e2449bda86e23194d3dadeb826762b5cce"
+  },
+  "case_count": 12,
+  "control_pairing_qualification": "TEMPERATURE_MATCHED_AUTHORITATIVE_UNPAIRED_SEEDS",
+  "grouping_rule": "CONTIGUOUS_EVENTS_WITHOUT_INTERVENING_FULL_ACCEPTED_LOADING_INTERVAL",
+  "maximum_concurrent_heavy_PF_workers": 2,
+  "new_FEMCZM_run_count": 0,
+  "new_PF_run_count": 6,
+  "resistance_candidate_policy": "RELOAD_SEPARATED_PRE_EVENT_ONLY",
+  "schema": "pf_2d_peak_dbtt_R_transfer_analysis_v1",
+  "target_um": 100.0
+}
