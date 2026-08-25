@@ -78,7 +78,9 @@ def material_hash(row: pd.Series) -> str:
 def units() -> dict[str, str]:
     result = {}
     for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS:
-        if field.endswith("_eV"):
+        if field.endswith("_K"):
+            result[field] = "K"
+        elif field.endswith("_eV"):
             result[field] = "eV"
         elif field.endswith("_eV_per_K"):
             result[field] = "eV/K"
@@ -93,6 +95,82 @@ def units() -> dict[str, str]:
         else:
             result[field] = "dimensionless"
     return result
+
+
+def _provider_descriptors(records: pd.DataFrame) -> dict[str, object]:
+    usable = records.copy()
+    if "target_um" in usable and bool((usable.target_um == 100).any()):
+        usable = usable[usable.target_um == 100]
+    descriptions: dict[str, str] = {}
+    temperature_curves: dict[str, pd.Series] = {}
+    topology_curves: dict[str, pd.Series] = {}
+    for provider in ("PF", "FEMCZM"):
+        local = usable[usable.provider == provider]
+        if local.empty:
+            descriptions[provider] = "NO_REDUCED_RESPONSE_RECORD"
+            continue
+        avalanches = local.physical_avalanche_count.astype(float)
+        reinit = local.N_reinit.astype(float)
+        descriptions[provider] = (
+            f"OBSERVED_AVALANCHES_{int(avalanches.min())}_TO_{int(avalanches.max())};"
+            f"REINITIATIONS_{int(reinit.min())}_TO_{int(reinit.max())}"
+        )
+        temperature_curves[provider] = local.groupby("temperature_K")[
+            "initial_onset_native_KJ_MPa_sqrt_m"
+        ].mean()
+        topology_curves[provider] = local.groupby("temperature_K")[
+            "physical_avalanche_count"
+        ].mean()
+    normalized_onset_difference = np.nan
+    topology_agreement = "NOT_COMPARABLE"
+    sensitivity_agreement = "NOT_COMPARABLE"
+    if set(temperature_curves) == {"PF", "FEMCZM"}:
+        common = temperature_curves["PF"].index.intersection(temperature_curves["FEMCZM"].index)
+        if len(common):
+            pf = temperature_curves["PF"].loc[common].to_numpy(float)
+            fem = temperature_curves["FEMCZM"].loc[common].to_numpy(float)
+            normalized_onset_difference = float(
+                np.mean(np.abs(fem - pf) / np.maximum(np.abs(pf), 1.0e-12))
+            )
+            if len(common) >= 2 and np.std(pf) > 0.0 and np.std(fem) > 0.0:
+                correlation = float(np.corrcoef(pf, fem)[0, 1])
+                sensitivity_agreement = (
+                    "QUALITATIVE_TREND_AGREEMENT" if correlation >= 0.5
+                    else "PROVIDER_SENSITIVE_TREND"
+                )
+        common_topology = topology_curves["PF"].index.intersection(topology_curves["FEMCZM"].index)
+        if len(common_topology):
+            delta = np.abs(
+                topology_curves["PF"].loc[common_topology].to_numpy(float)
+                - topology_curves["FEMCZM"].loc[common_topology].to_numpy(float)
+            )
+            topology_agreement = (
+                "AGREE_ALL_COMMON_TEMPERATURES" if bool(np.all(delta < 0.5))
+                else "PROVIDER_SENSITIVE_TOPOLOGY"
+            )
+    return {
+        "PF_response_classification": descriptions.get("PF", "NO_REDUCED_RESPONSE_RECORD"),
+        "FEMCZM_response_classification": descriptions.get("FEMCZM", "NO_REDUCED_RESPONSE_RECORD"),
+        "normalized_provider_onset_difference": normalized_onset_difference,
+        "provider_topology_agreement": topology_agreement,
+        "provider_sensitivity_agreement": sensitivity_agreement,
+    }
+
+
+def _score_components(library_row: pd.DataFrame) -> tuple[str, str]:
+    if library_row.empty:
+        return "{}", "NO_PARETO_SCORE_ROW"
+    row = library_row.iloc[0]
+    names = [name for name in (*R_OBJECTIVES, *OLD_OBJECTIVES) if name in row.index]
+    payload = {
+        name: (None if pd.isna(row[name]) else float(row[name]))
+        for name in dict.fromkeys(names)
+    }
+    nonfinite = [name for name, value in payload.items() if value is None]
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        "NONE_RECORDED" if not nonfinite else "NONFINITE_OBJECTIVES:" + "|".join(nonfinite),
+    )
 
 
 def candidate_frames() -> dict[str, pd.DataFrame]:
@@ -424,6 +502,8 @@ def main() -> int:
                 direct_status = "PASSED_PRIOR_BOUNDED_PF_TRANSFER"
                 status.add("DIRECT_PF_VALIDATED")
                 artifact_json = json.dumps(q[["temperature_K", "pf_2D_seed", "source_steps_file", "source_steps_sha256"]].to_dict("records"), sort_keys=True)
+            score_components, topology_failures = _score_components(library_row)
+            provider_descriptors = _provider_descriptors(records)
             aggregate = {
                 "initial_onset_mean_MPa_sqrt_m": float(records.initial_onset_native_KJ_MPa_sqrt_m.mean()),
                 "initial_onset_min_MPa_sqrt_m": float(records.initial_onset_native_KJ_MPa_sqrt_m.min()),
@@ -456,6 +536,12 @@ def main() -> int:
                 "direct_PF_artifacts_json": artifact_json,
                 "fatigue_evaluated": False,
                 "fatigue_validation_status": "NOT_EVALUATED",
+                "assigned_response_class": material,
+                "alternate_plausible_class": "NOT_ASSIGNED_BY_THIS_FRACTURE_SCREEN",
+                "class_confidence_status": "TARGET_CLASS_CONDITIONAL_NOT_PROBABILISTIC",
+                "class_score_components_json": score_components,
+                "class_topology_failure_reasons": topology_failures,
+                **provider_descriptors,
                 **aggregate,
                 **{field: float(row[field]) for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS},
             })
@@ -465,6 +551,7 @@ def main() -> int:
         "search_campaign_id", "parent_or_anchor_id", "search_generation_method",
         "active_parameter_schema", "active_parameter_count", "canonical_parameter_json",
         "parameter_sha256", "source_commit", "analysis_commit", "registry_commit",
+        "qualified_domain_sha256",
         *ACTIVE_CANDIDATE_PARAMETER_FIELDS,
     ]
     material_registry = bank[material_columns].drop_duplicates("parameter_sha256")
@@ -474,11 +561,40 @@ def main() -> int:
     bank.assign(response_records_json=bank.parameter_sha256.map(
         complete.set_index("parameter_sha256").response_records_json
     )).to_parquet(OUT / "oneD_v2_fracture_option_bank.parquet", index=False)
-    pd.DataFrame([
-        {"candidate_id": row.candidate_id, "parameter_sha256": row.parameter_sha256,
-         "parameter_name": field, "value": float(row[field]), "units": units()[field]}
-        for _, row in bank.iterrows() for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS
-    ]).to_csv(OUT / "oneD_v2_fracture_option_bank_long_parameters.csv", index=False)
+    parameter_rows = []
+    for _, row in bank.iterrows():
+        source_candidates = candidates_by_class[row.target_response_class]
+        for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS:
+            values = source_candidates[field].astype(float)
+            if row.target_response_class in ("Peak", "DBTT"):
+                bounds = json.loads((OUT / f"oneD_v2_{row.target_response_class.lower()}_R_search_bounds.json").read_text())
+                if field in bounds["log_span_decades"]:
+                    transform = "LOG10_MULTIPLICATIVE_AROUND_CONTROL_PLUS_DIRECTED_AND_MORPH_ROWS"
+                elif field in bounds["signed_additive_half_spans"]:
+                    transform = "SIGNED_ADDITIVE_AROUND_CONTROL_PLUS_DIRECTED_AND_MORPH_ROWS"
+                else:
+                    transform = "FIXED_IN_FOCUSED_SEARCH"
+            else:
+                transform = (
+                    "FIXED_IN_RECOVERED_POPULATION" if values.min() == values.max()
+                    else "PRIOR_SEARCH_TRANSFORM_NOT_SERIALIZED;EMPIRICAL_RANGE_RECORDED"
+                )
+            parameter_rows.append({
+                "candidate_id": row.candidate_id,
+                "parameter_sha256": row.parameter_sha256,
+                "target_response_class": row.target_response_class,
+                "parameter_name": field,
+                "value": float(row[field]),
+                "units": units()[field],
+                "search_transform": transform,
+                "evaluated_population_lower_bound": float(values.min()),
+                "evaluated_population_upper_bound": float(values.max()),
+                "bound_semantics": "OBSERVED_EVALUATED_POPULATION_EXTREMA_NOT_EXTRAPOLATION_PERMISSION",
+                "coordinate_status": "FIXED" if values.min() == values.max() else "ACTIVE_SEARCHED_OR_ARCHIVED_MORPH",
+            })
+    pd.DataFrame(parameter_rows).to_csv(
+        OUT / "oneD_v2_fracture_option_bank_long_parameters.csv", index=False
+    )
     curated_ids = set(bank.candidate_id)
     response_features = response_all[response_all.candidate_id.isin(curated_ids)].copy()
     response_features.to_csv(OUT / "oneD_v2_fracture_option_bank_response_features.csv", index=False)
@@ -533,6 +649,7 @@ def main() -> int:
         "source_commit": source_commit,
         "analysis_commit": producer_commit,
         "registry_commit": producer_commit,
+        "producer_code_commit": producer_commit,
         "qualified_domain_path": str(domain_path.relative_to(ROOT)),
         "qualified_domain_sha256": domain_hash,
         "candidate_counts": {
@@ -559,6 +676,7 @@ def main() -> int:
         "schema": "oneD_v2_peak_dbtt_R_provenance_manifest_v1",
         **{key: manifest[key] for key in (
             "source_commit", "analysis_commit", "registry_commit",
+            "producer_code_commit",
             "qualified_domain_path", "qualified_domain_sha256",
             "new_FEMCZM_runs", "new_PF_runs",
         )},
@@ -585,15 +703,110 @@ def main() -> int:
 
 
 def write_reports(bank: pd.DataFrame, pareto: pd.DataFrame, decision: dict, manifest: dict) -> None:
+    reduced = pd.read_csv(OUT / "oneD_v2_peak_dbtt_R_multiseed_validation.csv")
+    exact = pd.read_csv(OUT / "oneD_v2_peak_dbtt_R_exact_finalists.csv")
+    direct = pd.read_csv(OUT / "pf_2d_peak_dbtt_R_transfer_summary.csv")
+    shortlist = pd.read_csv(OUT / "oneD_v2_future_joint_search_shortlist.csv")
+
+    def table(frame: pd.DataFrame, columns: list[str]) -> str:
+        local = frame[columns].copy()
+        labels = [name.replace("_", " ") for name in columns]
+        lines = ["| " + " | ".join(labels) + " |", "|" + "|".join(["---"] * len(columns)) + "|"]
+        for values in local.itertuples(index=False, name=None):
+            rendered = []
+            for value in values:
+                if isinstance(value, float):
+                    rendered.append(f"{value:.8g}" if np.isfinite(value) else "NA")
+                else:
+                    rendered.append(str(value).replace("|", "/"))
+            lines.append("| " + " | ".join(rendered) + " |")
+        return "\n".join(lines)
+
+    direct_columns = [
+        "candidate_role", "temperature_K", "hazard_seed", "physical_avalanche_count",
+        "reload_separated_reinitiation_count", "initial_onset_native_KJ_MPa_sqrt_m",
+        "signed_max_reinitiation_minus_initial_K_MPa_sqrt_m", "target_right_censored",
+    ]
+    option_columns = [
+        "target_response_class", "candidate_id", "parameter_sha256", "option_role",
+        "option_status", "direct_PF_validation_status",
+    ]
+    focused_options = bank[bank.candidate_id.isin(
+        [item for values in FOCUSED.values() for item in values]
+    )]
+    shortlist_counts = shortlist.target_response_class.value_counts().to_dict()
+    curated_counts = bank.target_response_class.value_counts().to_dict()
     reports = {
-        "ONE_D_V2_PEAK_R_SEARCH.md": """# Peak R-propensity search\n\nThe focused screen evaluated 204 shared material vectors under both providers. No candidate produced reload-separated reinitiation in PF near 900–1000 K. Apparent enrichment was FEM/CZM-only and therefore failed the shared-row provider gate. The control is retained; provider-sensitive alternatives are preserved in the option bank.\n""",
-        "ONE_D_V2_DBTT_R_SEARCH.md": """# DBTT R-propensity search\n\nThe screen found five strict canonical-seed candidates with a low-temperature shelf and upper-temperature reinitiation under both reduced providers. Three-seed validation showed residual low-temperature FEM/CZM seed sensitivity. The physically conservative finalist `oneD_v2_dbtt_R_9f5160f509e713e2` was advanced to direct PF.\n""",
-        "ONE_D_V2_PEAK_DBTT_R_FINALIST_VALIDATION.md": """# Peak/DBTT R finalist validation\n\nAll 510 reduced validation cases reached their 100 or 300 µm target without map fallback. Peak enrichment remained backend-specific. DBTT upper-temperature enrichment survived all three reduced seeds but retained provider-scale and low-temperature seed sensitivity. Exact PF onset mechanics matched the native map; the DBTT wake-transition tensor factor differed by about 15%, requiring direct PF. No new FEM/CZM solve was run.\n""",
-        "PF_2D_PEAK_R_TRANSFER_VALIDATION.md": """# Direct PF Peak-R transfer\n\nThe Peak-R finalist reached the 100 µm right-censor target at 600, 900, and 1200 K. Each case is one physical avalanche with no reload-separated reinitiation candidate. Event-wise PF native KJ variation is a model-native driving trajectory, not an R-curve. Transfer status: **failed for R enrichment**.\n""",
-        "PF_2D_DBTT_R_TRANSFER_VALIDATION.md": """# Direct PF DBTT-R transfer\n\nThe DBTT-R finalist reached the 100 µm right-censor target at 600, 1100, and 1200 K. Each case has two reload-separated physical avalanches, but the second onset is lower: −0.44 MPa√m at 600 K and approximately −9.35 MPa√m at 1100–1200 K. Transfer status: **failed for rising resistance**.\n""",
-        "ONE_D_V2_PEAK_DBTT_R_FINAL_DECISION.md": """# Final Peak/DBTT R decision\n\n**Peak: RETAIN_CONTROL; NO_CREDIBLE_R_ENRICHED_ROW.**\n\n**DBTT: RETAIN_CONTROL; NO_CREDIBLE_R_ENRICHED_ROW.**\n\nThe tested variants remain fracture-side diagnostic options, not promoted production rows. No FEM/CZM material row is changed; no new FEM/CZM simulation was run. Weak-T and ceramic-like selected rows remain unchanged. Fatigue was not evaluated.\n""",
-        "ONE_D_V2_FRACTURE_OPTION_BANK.md": f"""# V2 fracture material option bank\n\nVersion: `{BANK_VERSION}`. The bank contains {len(bank)} curated full-precision shared material vectors: {bank.target_response_class.value_counts().to_dict()}. It preserves controls, non-dominated/near-front tradeoffs, provider-sensitive diagnostic variants, and prior weak-T/ceramic alternatives. Selection uses maximin distance in normalized material-plus-fracture-response space.\n\nThis is a **fatigue-ready material option** library only: every row has `fatigue_evaluated=false` and `fatigue_validation_status=NOT_EVALUATED`. No fatigue code or cyclic response was used. Backend lifecycle constants are excluded from the material registry.\n""",
-        "ONE_D_V2_PEAK_DBTT_R_PROVENANCE.md": f"""# Peak/DBTT R provenance\n\nProducer/analysis/registry code commit: `{manifest['analysis_commit']}`. Predictive source baseline: `{manifest['source_commit']}`. Qualified domain SHA-256: `{manifest['qualified_domain_sha256']}`; the same hash is used in every bank row and manifest. Direct work comprised six PF finalist cases with at most two workers and zero new FEM/CZM runs.\n""",
+        "ONE_D_V2_PEAK_R_SEARCH.md": f"""# Peak R-propensity search
+
+The focused screen evaluated 204 shared material vectors at 600, 900, 1000, and 1200 K under both reduced providers ({len(pd.read_parquet(OUT / 'oneD_v2_peak_R_search_population.parquet'))} case records). Resistance candidates were restricted to initial and reload-separated pre-event states. No candidate produced reload-separated reinitiation in reduced PF near 900–1000 K; every apparent Peak enrichment was FEM/CZM-only.
+
+The Pareto/near-front archive retains {len(pareto[pareto.library_target_response_class == 'Peak'])} Peak rows. The diagnostic finalist `oneD_v2_peak_R_41f8789bcbc1f097` was carried through multi-seed, exact-oracle, and direct-PF checks rather than promoted from the screen alone. The search conclusion is provider sensitivity, not a quantitative Peak R-curve.
+
+Decision: **retain `v913_zeroD_sobol_0242980` and preserve the tested Peak-R candidates as diagnostic fracture options.**
+""",
+        "ONE_D_V2_DBTT_R_SEARCH.md": f"""# DBTT R-propensity search
+
+The focused screen evaluated 204 shared material vectors at 300, 600, 900, 1000, 1100, and 1200 K under both reduced providers ({len(pd.read_parquet(OUT / 'oneD_v2_dbtt_R_search_population.parquet'))} case records). Five strict canonical-seed candidates combined a low-temperature shelf with upper-temperature reinitiation in both reduced providers.
+
+Three-seed validation exposed residual low-temperature FEM/CZM seed sensitivity and large provider-scale differences. The conservative finalist `oneD_v2_dbtt_R_9f5160f509e713e2`—with the smaller reduced process-zone radius and a transition near 1100 K—was selected for bounded direct PF. The Pareto/near-front archive retains {len(pareto[pareto.library_target_response_class == 'DBTT'])} DBTT rows.
+
+Decision after the reduced stage: advance the finalist diagnostically, but require direct PF before any promotion.
+""",
+        "ONE_D_V2_PEAK_DBTT_R_FINALIST_VALIDATION.md": f"""# Peak/DBTT R finalist validation
+
+All {len(reduced)} reduced multi-seed validation cases reached their 100 or 300 µm target with zero mechanics-map/oracle fallback. The matrix covers two providers, seven temperatures, three seeds, controls, focused candidates, and selected 300 µm continuations. Peak enrichment remained backend-specific. DBTT upper-temperature enrichment survived three reduced seeds but retained provider-scale and low-temperature seed sensitivity.
+
+The exact-oracle table contains {len(exact)} onset-state checks. PF initial-state field/native coefficients reproduce the production-discrete map; the DBTT reinitiation wake-transition tensor factor is approximately 15% above the interpolated-map factor. This is why the direct-PF transfer—not the map-only result—is decisive.
+
+No new FEM/CZM mechanics solve was run. FEM/CZM exact checks use only the already-qualified structural mechanics archive.
+""",
+        "PF_2D_PEAK_R_TRANSFER_VALIDATION.md": f"""# Direct PF Peak-R transfer
+
+The Peak-R finalist reached the 100 µm right-censor target at 600, 900, and 1200 K. Every case is one physical avalanche and has no reload-separated reinitiation candidate. Event-wise native PF J/KJ is retained only as the **PF model-native driving trajectory** and is not interpreted as resistance.
+
+{table(direct[(direct.material_class == 'Peak') & (direct.candidate_role == 'R_FINALIST')], direct_columns)}
+
+The archived control comparisons are temperature-matched but use their authoritative temperature-specific seeds rather than paired finalist seeds. They are qualified contextual controls, not a paired stochastic estimate. Transfer status: **failed for R enrichment**.
+""",
+        "PF_2D_DBTT_R_TRANSFER_VALIDATION.md": f"""# Direct PF DBTT-R transfer
+
+The DBTT-R finalist reached the 100 µm right-censor target at 600, 1100, and 1200 K. Each case has two reload-separated physical avalanches, but the second onset is lower rather than higher. The signed changes are −0.4438 MPa√m at 600 K, −9.3491 MPa√m at 1100 K, and −9.3631 MPa√m at 1200 K.
+
+{table(direct[(direct.material_class == 'DBTT') & (direct.candidate_role == 'R_FINALIST')], direct_columns)}
+
+The in-avalanche native-drive history is not relabeled as an R-curve. Transfer status: **failed for positive reload-separated resistance development**.
+""",
+        "ONE_D_V2_PEAK_DBTT_R_FINAL_DECISION.md": f"""# Final Peak/DBTT R decision
+
+**Peak: RETAIN_CONTROL; NO_CREDIBLE_R_ENRICHED_ROW.** The retained row is `v913_zeroD_sobol_0242980`.
+
+**DBTT: RETAIN_CONTROL; NO_CREDIBLE_R_ENRICHED_ROW.** The retained row is `v913_zeroD_sobol_0202500`.
+
+The reduced Peak signal is FEMCZM-only, while direct PF turns the DBTT finalist's apparent upper-temperature toughening into a negative reload-separated onset increment. Consequently neither finalist is a shared-provider replacement or qualified optional R-curve row. The tested variants remain fracture-side diagnostic options in the separately versioned bank:
+
+{table(focused_options, ['target_response_class', 'candidate_id', 'parameter_sha256', 'direct_PF_validation_status'])}
+
+No FEM/CZM material row is changed; no new FEM/CZM simulation was run. Weak-T and ceramic-like selected rows remain unchanged. Fatigue was not evaluated.
+""",
+        "ONE_D_V2_FRACTURE_OPTION_BANK.md": f"""# V2 fracture material option bank
+
+Version: `{BANK_VERSION}`. The three output levels contain {manifest['candidate_counts']['complete_unique_materials']} unique material identities, {manifest['candidate_counts']['pareto_and_near']} non-dominated/near-front class entries, and {len(bank)} curated options. Curated counts are {curated_counts}; shortlist counts are {shortlist_counts}. Selection uses maximin distance in normalized active-material-plus-fracture-response space after forcing preservation of the four current controls and the focused diagnostic variants.
+
+The `option_role` values below are the machine-readable reason each row was retained. Provider-sensitive and direct-PF-rejected rows are intentionally preserved as scientifically informative tradeoffs, not promoted production rows.
+
+{table(bank, option_columns)}
+
+The compact future joint-search shortlist is a diverse subset, not a lowest-score ranking. The pure material registry collapses identical material vectors to one `parameter_sha256`; the response table remains keyed by candidate ID and that hash. Per-coordinate units, transformations, evaluated-population extrema, and fixed/active status are in `oneD_v2_fracture_option_bank_long_parameters.csv`.
+
+This is a **fatigue-ready material option** library only: every row has `fatigue_evaluated=false` and `fatigue_validation_status=NOT_EVALUATED`. No fatigue code, cyclic response, Paris-law quantity, or fatigue registry was used. Backend lifecycle constants are excluded from the pure material registry.
+""",
+        "ONE_D_V2_PEAK_DBTT_R_PROVENANCE.md": f"""# Peak/DBTT R provenance
+
+Producer/analysis/registry code commit: `{manifest['analysis_commit']}`. Predictive source baseline: `{manifest['source_commit']}`. Qualified domain source: `{manifest['qualified_domain_path']}` with SHA-256 `{manifest['qualified_domain_sha256']}`. That one domain hash is used in every curated-bank row, the pure material registry, the option-bank manifest, and the focused provenance manifest.
+
+Direct work comprised exactly six PF finalist cases, executed with at most two heavy workers. Existing authoritative control trajectories were reused. No new FEM/CZM simulation was run, no canonical historical registry was overwritten, and fatigue was not invoked. Artifact hashes are fail-closed in the manifests and direct-PF reference records.
+""",
     }
     for name, text in reports.items():
         (ROOT / name).write_text(text)
