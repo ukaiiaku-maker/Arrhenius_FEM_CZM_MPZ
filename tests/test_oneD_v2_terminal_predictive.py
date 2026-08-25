@@ -134,3 +134,56 @@ def test_terminal_pf_transfer_and_final_matrix_are_bounded():
     final = pd.read_csv(out / "oneD_v2_final_four_class_results.csv")
     assert len(final) == 40
     assert final.status.eq("TARGET_RIGHT_CENSORED").all()
+
+
+def test_terminal_reports_and_predecessor_audits_are_preserved():
+    required = [
+        "ONE_D_V2_FINAL_MODEL_ARCHITECTURE.md",
+        "ONE_D_V2_NATIVE_BASELINE_VALIDATION.md",
+        "ONE_D_V2_PARAMETER_SENSITIVITY_VALIDATION.md",
+        "ONE_D_V2_DOMAIN_OF_USEFULNESS.md",
+        "ONE_D_V2_CURRENT_PARAMETER_DIAGNOSTIC.md",
+        "ONE_D_V2_PARAMETER_SEARCH.md",
+        "ONE_D_V2_NEW_FOUR_CLASS_SELECTION.md",
+        "ONE_D_V2_TO_PF_TRANSFER_VALIDATION.md",
+        "ONE_D_V2_FINAL_PARAMETER_AND_2D_DECISION.md",
+    ]
+    assert all((ROOT / name).is_file() for name in required)
+    predecessor = ROOT / "analysis_outputs/oneD_v2_predictive_model/earlier_audit_reports"
+    assert predecessor.is_dir()
+    assert len(list(predecessor.glob("*.md"))) >= 7
+
+
+def test_terminal_decision_and_domain_are_fail_closed():
+    out = ROOT / "analysis_outputs/oneD_v2_terminal_predictive_program"
+    decision = json.loads((out / "oneD_v2_final_decision.json").read_text())
+    domain = json.loads((out / "oneD_v2_domain_of_usefulness.json").read_text())
+    assert decision["mission_status"] == "COMPLETE"
+    assert decision["new_bounded_PF_case_count"] == 6
+    assert decision["new_2D_FEMCZM_runs"] == 0
+    assert decision["production_physical_formulas_changed"] is False
+    assert decision["canonical_production_trajectories_changed"] is False
+    assert domain["common"]["outside_domain_policy"].endswith(
+        "fail closed; no clipping or extrapolation"
+    )
+    assert domain["common"]["target_termination"] == "RIGHT_CENSORED_NOT_PHYSICAL_ARREST"
+
+
+def test_terminal_provenance_hashes_and_figure_contract():
+    out = ROOT / "analysis_outputs/oneD_v2_terminal_predictive_program"
+    manifest = json.loads((out / "oneD_v2_provenance_manifest.json").read_text())
+    assert manifest["producer_branch"] == "codex/oneD-v2-terminal-predictive-program"
+    assert manifest["maximum_concurrent_PF_workers"] <= 2
+    assert manifest["new_2D_PF_runs"] == 6
+    assert manifest["new_2D_FEMCZM_runs"] == 0
+    assert manifest["canonical_PF_registry_modified"] is False
+    assert manifest["canonical_production_trajectories_changed"] is False
+    assert manifest["production_physical_formulas_changed"] is False
+    for name, expected in manifest["required_output_sha256"].items():
+        assert hashlib.sha256((out / name).read_bytes()).hexdigest() == expected
+    png_signature = b"\x89PNG\r\n\x1a\n"
+    for name, expected in manifest["required_figure_sha256"].items():
+        data = (out / name).read_bytes()
+        assert data.startswith(png_signature)
+        assert len(data) > 10_000
+        assert hashlib.sha256(data).hexdigest() == expected
