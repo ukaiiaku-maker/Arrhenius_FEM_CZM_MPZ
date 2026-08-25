@@ -1,0 +1,12 @@
+{
+  "classification": "FULL_LOCAL_TENSOR_REQUIRED",
+  "cleavage": "SCALAR_K_TO_SIGMA_TIP",
+  "emission": "OPENING_STRESS_PLUS_TWO_SIGNED_TENSOR_CHANNELS",
+  "fail_closed_message": "persistent signed emission requires a reliable two-channel FEM tensor drive",
+  "map_status": "NOT_BUILT_NO_NEW_FEM_2D_RUN_AUTHORIZED",
+  "schema": "oneD_v2_fem_drive_requirement_v1",
+  "source": [
+    "anisotropic_two_channel_drive_v100514.augmented_j_wrapper_factory",
+    "persistent_site_front_engine_v100514._two_channel_drive"
+  ]
+}

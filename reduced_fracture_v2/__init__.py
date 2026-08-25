@@ -6,5 +6,8 @@ from .parameters import CanonicalParameters
 from .state import ReducedState
 from .analysis import SharedEventAvalancheAnalysis
 from .native_closure import PFNativeForwardState,FEMCZMNativeForwardState,PFNativeStateClosure,FEMCZMNativeStateClosure
+from .local_drive import (DriveQualificationError, EmissionDrive,
+                          GlobalStructuralDrive, LocalTensorSample,
+                          NativeDriveBundle, PFTensorDriveProvider)
 
-__all__ = ["CanonicalParameters", "KernelResult", "MechanicsState", "ObservableKind", "Qualification", "ReducedFractureKernel", "SharedBarrierHazardCore", "ReducedState", "SharedEventAvalancheAnalysis", "PFNativeForwardState", "FEMCZMNativeForwardState", "PFNativeStateClosure", "FEMCZMNativeStateClosure"]
+__all__ = ["CanonicalParameters", "KernelResult", "MechanicsState", "ObservableKind", "Qualification", "ReducedFractureKernel", "SharedBarrierHazardCore", "ReducedState", "SharedEventAvalancheAnalysis", "PFNativeForwardState", "FEMCZMNativeForwardState", "PFNativeStateClosure", "FEMCZMNativeStateClosure", "DriveQualificationError", "EmissionDrive", "GlobalStructuralDrive", "LocalTensorSample", "NativeDriveBundle", "PFTensorDriveProvider"]

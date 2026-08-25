@@ -1,0 +1,45 @@
+{
+  "artifacts": {
+    "oneD_v2_common_parity_results.csv": {
+      "bytes": 968,
+      "content_sha256": "c417879faf8abfdf082d4809d5967d3d1143905121ae986e7cb08231807aca42"
+    },
+    "oneD_v2_fem_native_mechanics_map.csv": {
+      "bytes": 12194,
+      "content_sha256": "21b13ca048482b560e2427dfd6beb359fcc406c421cafa488567c5fc27b4ffbd"
+    },
+    "oneD_v2_fem_qualified_G_map.csv": {
+      "bytes": 11524,
+      "content_sha256": "1e8a77a642d6c086582963f9eb576227ebb658b6a392910ce81f3c94186e0607"
+    },
+    "oneD_v2_pf_mechanics_map.csv": {
+      "bytes": 11011,
+      "content_sha256": "b508d5ba6a7562e53f5280ffecf015d3c6f8c801d0e03abe8bc9d7ddef8f0fc1"
+    },
+    "oneD_v2_source_shadow_results.csv": {
+      "bytes": 40836,
+      "content_sha256": "1410608e466f9c7fe35d7420e35ef962a81c75fe59809bbff26f0a2fa14edcb6"
+    }
+  },
+  "freeze_parent_commit": "8c7a4cb",
+  "generation_commits": {
+    "FEMCZM_NATIVE": "2f5889d",
+    "FEMCZM_STRUCTURAL_G": "2f5889d",
+    "PF": "bcd07dd"
+  },
+  "level1": "PASS_EXACT",
+  "level2": "PASS_EXACT",
+  "level3_scalar": "UNQUALIFIED_INSUFFICIENT_DRIVE_DIMENSION",
+  "map_manifest_sha256": "00075ba24b3328ec0bf56766a0faf6b8430ec26e4245ca9791f372363aadea67",
+  "qualification": "PASS_HASHED_IMMUTABLE_INPUTS",
+  "schema": "oneD_v2_scalar_map_and_parity_freeze_v1",
+  "source_commits": {
+    "FEMCZM_NATIVE": "931bed66913afc970117bce900805ecc9b6225f8",
+    "FEMCZM_STRUCTURAL_G": "931bed66913afc970117bce900805ecc9b6225f8",
+    "PF": "ab6279331d050919f78e2e7f278bc332466e34f8"
+  },
+  "valid_extension_interval_um": [
+    0,
+    1000
+  ]
+}

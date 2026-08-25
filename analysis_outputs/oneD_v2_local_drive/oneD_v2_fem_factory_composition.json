@@ -1,0 +1,27 @@
+{
+  "schema": "oneD_v2_fem_factory_composition_v2",
+  "source_commit": "17f8bf67c0138b453eadff4b509afa80ebaa2c04",
+  "exact_production_entry": "mode_i_first_passage_v10_0_5_18_4_0_theta0_pf_parity.main",
+  "factory_chain": [
+    "v10_0_5_18_4_0 theta0 parity guards",
+    "v10_0_5_18_3_9 atomic path corridor",
+    "v10_0_5_18_3_4 path-aware growth envelope",
+    "v10_0_5_18_3_2 joint-K event-driven stochastic emission",
+    "v10_0_5_18 exact four-class parameter bridge",
+    "v10_0_5_16 stochastic PF parity base"
+  ],
+  "exact_engine_class": "ProductionJointKRampStochasticEmissionFrontEngineV10051832",
+  "exact_engine_mro_imported_in_isolated_subprocess": true,
+  "canonical_four_class_rows_loaded_and_fingerprinted_in_isolated_subprocess": true,
+  "canonical_row_fingerprints": {
+    "Peak": "ce47ec844b3d7a9812aa0b077351fc6d022c292b39b84bd4056871395f7f4f52",
+    "DBTT": "779c0e8de6a7ef6a88214cfde630bd96cd23c0fb84cbc4b9d1b53136e2419ee5",
+    "weak-T": "45ca7c37c4947c67224cfc347e969f39099588ba941a8f17de17fb2e69be92c0",
+    "ceramic-like": "eb307dc8dbdd62757f8da7eea02aa3ac12276fb7cf28646929d03ae28d7b0d61"
+  },
+  "expected_kernel_sha256": "a85b57ad9eee8331ef34ea222760ce7d4064f48ddef668f1e28a666d14946f3a",
+  "available_named_kernel_sha256": "d41b08f69ae773009f65f4c0094ef5436ba7f0f290a94172e5b894d09a41f7c3",
+  "engine_instance_constructed": false,
+  "fieldwise_factory_shadow": "UNQUALIFIED_EXACT_PINNED_KERNEL_ARTIFACT_UNAVAILABLE",
+  "new_fem_2d_runs": 0
+}

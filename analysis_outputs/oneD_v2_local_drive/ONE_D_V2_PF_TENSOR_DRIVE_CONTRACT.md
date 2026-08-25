@@ -1,0 +1,5 @@
+# PF tensor-drive contract
+
+The exact source chain is `assemble_mechanics` → `build_front_drive` → `resolve_channel_drives` → `_persistent_emit`. The accepted plane-strain solve exposes Gauss-point `[sxx, syy, sxy]`; damage-filtered, area-weighted probes sample one opening tensor ahead of the inferred front and one tensor along each of the two theta=0 BCC traces. Signed shear is `t @ sigma @ n`. Magnitude factors are `abs(tau)/(0.5 sigma_amplitude)`; sign is retained separately. The persistent source also consumes opening stress, evolving radius/front width/source multiplicity, backstress, and signed MPZ state.
+
+Minimum runtime closure is reliable + two factors + two signed shears. Minimum **qualification** additionally requires the raw tensors, basis, tip and source selection/weight metadata. Archive audit: Peak 1639 reliable derived rows; DBTT 1554; neither archive contains the raw qualification fields. The bounded observer diagnostics supplied those missing raw fields with OFF/ON physical byte identity. Fallback remains fail-closed in production.

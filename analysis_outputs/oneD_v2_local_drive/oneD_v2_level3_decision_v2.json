@@ -1,0 +1,23 @@
+{
+  "Level1": "PASS_EXACT",
+  "Level2": "PASS_EXACT",
+  "Level3": "NATIVE_CLOSURE_UNQUALIFIED",
+  "blockers": [
+    "PF sparse tensor interpolation failed sign-sensitive LOO qualification (23 mismatches)",
+    "PF exact tensor shadow gated by unqualified forward interpolation",
+    "FEM exact factory instance blocked by unavailable pinned kernel SHA a85b57...",
+    "FEM tensor map unavailable"
+  ],
+  "canonical_parameters_changed": false,
+  "common_mode_tensor_parity": "NOT_RUN_PREREQUISITES_FAILED",
+  "forward_baselines_authorized": false,
+  "native_microtrajectories_launched": 0,
+  "new_2d_FEMCZM_runs_launched": 0,
+  "new_2d_PF_diagnostics_launched": 2,
+  "new_2d_PF_diagnostic_invocations_including_OFF_ON_pairs": 4,
+  "PF_tensor_diagnostic_neutrality": "PASS_OFF_ON_PHYSICAL_BYTE_IDENTITY",
+  "PF_raw_tensor_source_nodes": "QUALIFIED",
+  "PF_tensor_forward_interpolation": "UNQUALIFIED_23_LOO_SIGN_MISMATCHES",
+  "parameter_status": "INSUFFICIENT_EVIDENCE_FOR_V2_PARAMETER_DECISION",
+  "schema": "oneD_v2_level3_decision_v2"
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "model_kind": "ONE_D_FRONT_MODEL_WITH_LOCAL_TENSOR_DRIVE",
+  "properties": {
+    "crack_geometry": {
+      "required": [
+        "tip_xy_m",
+        "tangent",
+        "normal",
+        "tip_radius_m",
+        "front_width_m"
+      ]
+    },
+    "emission_drive": {
+      "required": [
+        "opening_tensor_Pa",
+        "channel_tensors_Pa",
+        "resolved_tau_signed_Pa",
+        "drive_factors",
+        "reliable"
+      ]
+    },
+    "global_structural": {
+      "required": [
+        "opening_m",
+        "reaction_N",
+        "native_J_J_m2",
+        "native_KJ_Pa_sqrt_m"
+      ]
+    },
+    "local_profile": {
+      "required": [
+        "coordinates_crack_local_m",
+        "stress_tensor_Pa"
+      ],
+      "symmetry_required": true
+    },
+    "qualification": {
+      "extrapolation": "FORBIDDEN",
+      "required": [
+        "source_commit",
+        "map_sha256",
+        "bounds",
+        "topology_fingerprint"
+      ]
+    }
+  },
+  "required": [
+    "global_structural",
+    "crack_geometry",
+    "local_profile",
+    "emission_drive",
+    "qualification"
+  ],
+  "title": "NativeDriveBundle",
+  "type": "object"
+}

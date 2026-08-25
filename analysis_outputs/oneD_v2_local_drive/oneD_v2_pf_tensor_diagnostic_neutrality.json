@@ -1,0 +1,261 @@
+{
+  "cases": {
+    "DBTT": {
+      "accepted_geometry_events": 3,
+      "all_physical_artifacts_identical": true,
+      "final_extension_um": 10.475434902500647,
+      "first_drive": {
+        "channel_tensors_Pa": [
+          [
+            [
+              -265712.1205017142,
+              352705.20609977
+            ],
+            [
+              352705.20609977,
+              39011875.146374635
+            ]
+          ],
+          [
+            [
+              -245588.03879094403,
+              -424773.1463436934
+            ],
+            [
+              -424773.1463436934,
+              38926827.49226553
+            ]
+          ]
+        ],
+        "drive_factors": [
+          1.0013120435352232,
+          0.998630877683553
+        ],
+        "front_direction": [
+          0.9999997960935573,
+          -0.0006386022580372147
+        ],
+        "front_normal": [
+          0.0006386022580372147,
+          0.9999997960935573
+        ],
+        "opening_tensor_Pa": [
+          [
+            -1262757.7425413008,
+            -57720.16425739362
+          ],
+          [
+            -57720.16425739362,
+            39226038.60380002
+          ]
+        ],
+        "reliable": true,
+        "tau_signed_Pa": [
+          19638793.633438174,
+          -19586207.765528236
+        ],
+        "tip_xy_m": [
+          0.0005,
+          0.0
+        ]
+      },
+      "physical_artifact_hashes": {
+        "anisotropic_emission_audit_v10174.json": {
+          "identical": true,
+          "off_sha256": "757f02609e4e78efc5db09b0affa4d244ee6792f747db66871eede5f8bbf0b48",
+          "on_sha256": "757f02609e4e78efc5db09b0affa4d244ee6792f747db66871eede5f8bbf0b48"
+        },
+        "branch_diagnostics_1000K.csv": {
+          "identical": true,
+          "off_sha256": "ef94d31b0cb95f4ccb77865df398093c4d465800f5625447dfa12eb5ae471e7f",
+          "on_sha256": "ef94d31b0cb95f4ccb77865df398093c4d465800f5625447dfa12eb5ae471e7f"
+        },
+        "crack_path_1000K.csv": {
+          "identical": true,
+          "off_sha256": "fb60dd58ea0136601dc37ef3b10b7417e66636791ec92c7df2ce558d13d53220",
+          "on_sha256": "fb60dd58ea0136601dc37ef3b10b7417e66636791ec92c7df2ce558d13d53220"
+        },
+        "crack_path_front0_1000K.csv": {
+          "identical": true,
+          "off_sha256": "fb60dd58ea0136601dc37ef3b10b7417e66636791ec92c7df2ce558d13d53220",
+          "on_sha256": "fb60dd58ea0136601dc37ef3b10b7417e66636791ec92c7df2ce558d13d53220"
+        },
+        "fronts_1000K.csv": {
+          "identical": true,
+          "off_sha256": "06ebf27a7a32ff069fdace19b75614edcd77369875fd0708a943a50465116308",
+          "on_sha256": "06ebf27a7a32ff069fdace19b75614edcd77369875fd0708a943a50465116308"
+        },
+        "kinetic_tip_cell_audit_v101.json": {
+          "identical": true,
+          "off_sha256": "7205b26d387e6abbb233b0f082c4e998f4a78afbffd6bdcb5bd89803917a1763",
+          "on_sha256": "7205b26d387e6abbb233b0f082c4e998f4a78afbffd6bdcb5bd89803917a1763"
+        },
+        "selected_material_manifest_v10_2_22.csv": {
+          "identical": true,
+          "off_sha256": "ed4b3d3ad82d0f24cb53113e1471f5ce93a3beaa54b62c485a5b4f2d06fa049e",
+          "on_sha256": "ed4b3d3ad82d0f24cb53113e1471f5ce93a3beaa54b62c485a5b4f2d06fa049e"
+        },
+        "sharp_wake_advance_log.csv": {
+          "identical": true,
+          "off_sha256": "9e0b23bbaa6cd7b373772ba95390d86950405c68e501fa322e2f929d55db77bd",
+          "on_sha256": "9e0b23bbaa6cd7b373772ba95390d86950405c68e501fa322e2f929d55db77bd"
+        },
+        "steps_1000K.csv": {
+          "identical": true,
+          "off_sha256": "6095dc9edc4b99d76dee0584aafef24868c119963466d9cf20b2de0e33159744",
+          "on_sha256": "6095dc9edc4b99d76dee0584aafef24868c119963466d9cf20b2de0e33159744"
+        },
+        "stochastic_avalanche_geometry_events.json": {
+          "identical": true,
+          "off_sha256": "222a1845bd75601a7712dd3f18da5ebd3e76d0bafb1d68db95e95e1dc4781c2c",
+          "on_sha256": "222a1845bd75601a7712dd3f18da5ebd3e76d0bafb1d68db95e95e1dc4781c2c"
+        },
+        "summary.json": {
+          "identical": true,
+          "off_sha256": "aaab7ffbaec2bf9d1fcae64758a470f8ba7fd926a23c0ea777620df6fd48d29f",
+          "on_sha256": "aaab7ffbaec2bf9d1fcae64758a470f8ba7fd926a23c0ea777620df6fd48d29f"
+        },
+        "v10_2_22_persistent_site_model.json": {
+          "identical": true,
+          "off_sha256": "cac5c1daf78105eead6e5402a25624a3d41970ebd3ff6d5b1634b81d8f5a0d99",
+          "on_sha256": "cac5c1daf78105eead6e5402a25624a3d41970ebd3ff6d5b1634b81d8f5a0d99"
+        }
+      },
+      "seed": 1008666,
+      "target_extension_um": 10,
+      "temperature_K": 1000,
+      "tensor_evaluation_count": 247,
+      "tensor_jsonl_sha256": "14164bb189f8d32586c222c2123ac11c09e842b3de73ba5057d2725aa7ab1857"
+    },
+    "Peak": {
+      "accepted_geometry_events": 5,
+      "all_physical_artifacts_identical": true,
+      "final_extension_um": 14.507867693188759,
+      "first_drive": {
+        "channel_tensors_Pa": [
+          [
+            [
+              -265712.1205017142,
+              352705.20609977
+            ],
+            [
+              352705.20609977,
+              39011875.146374635
+            ]
+          ],
+          [
+            [
+              -245588.03879094403,
+              -424773.1463436934
+            ],
+            [
+              -424773.1463436934,
+              38926827.49226553
+            ]
+          ]
+        ],
+        "drive_factors": [
+          1.0013120435352232,
+          0.998630877683553
+        ],
+        "front_direction": [
+          0.9999997960935573,
+          -0.0006386022580372147
+        ],
+        "front_normal": [
+          0.0006386022580372147,
+          0.9999997960935573
+        ],
+        "opening_tensor_Pa": [
+          [
+            -1262757.7425413008,
+            -57720.16425739362
+          ],
+          [
+            -57720.16425739362,
+            39226038.60380002
+          ]
+        ],
+        "reliable": true,
+        "tau_signed_Pa": [
+          19638793.633438174,
+          -19586207.765528236
+        ],
+        "tip_xy_m": [
+          0.0005,
+          0.0
+        ]
+      },
+      "physical_artifact_hashes": {
+        "anisotropic_emission_audit_v10174.json": {
+          "identical": true,
+          "off_sha256": "649eed36475ca0462c8c15f6a565ae5994d47850c3a302b3a0c17c045213ebb1",
+          "on_sha256": "649eed36475ca0462c8c15f6a565ae5994d47850c3a302b3a0c17c045213ebb1"
+        },
+        "branch_diagnostics_1000K.csv": {
+          "identical": true,
+          "off_sha256": "a8b67acaaf2ae10935eb9aa53d4c710aa6a4faf9ebd3dff2ef6b7fcd4d0aec8c",
+          "on_sha256": "a8b67acaaf2ae10935eb9aa53d4c710aa6a4faf9ebd3dff2ef6b7fcd4d0aec8c"
+        },
+        "crack_path_1000K.csv": {
+          "identical": true,
+          "off_sha256": "afaee8ce5bf4473794642e8857f5f6f75c5006266e23ffd2a9544a01b5c46f0f",
+          "on_sha256": "afaee8ce5bf4473794642e8857f5f6f75c5006266e23ffd2a9544a01b5c46f0f"
+        },
+        "crack_path_front0_1000K.csv": {
+          "identical": true,
+          "off_sha256": "afaee8ce5bf4473794642e8857f5f6f75c5006266e23ffd2a9544a01b5c46f0f",
+          "on_sha256": "afaee8ce5bf4473794642e8857f5f6f75c5006266e23ffd2a9544a01b5c46f0f"
+        },
+        "fronts_1000K.csv": {
+          "identical": true,
+          "off_sha256": "66cca2208b2eb1d30830f3741d45a5d36e194acaacf2e2843951cafa3f7bc50f",
+          "on_sha256": "66cca2208b2eb1d30830f3741d45a5d36e194acaacf2e2843951cafa3f7bc50f"
+        },
+        "kinetic_tip_cell_audit_v101.json": {
+          "identical": true,
+          "off_sha256": "ffeba2fa8672715ba908919b0dc5379f53fca2ca0527fa9381ca626e9580ee2c",
+          "on_sha256": "ffeba2fa8672715ba908919b0dc5379f53fca2ca0527fa9381ca626e9580ee2c"
+        },
+        "selected_material_manifest_v10_2_22.csv": {
+          "identical": true,
+          "off_sha256": "6a55cac99e1fba3ecbd2e2e19277af301694452c02aaa5016b88ab2d04ea4161",
+          "on_sha256": "6a55cac99e1fba3ecbd2e2e19277af301694452c02aaa5016b88ab2d04ea4161"
+        },
+        "sharp_wake_advance_log.csv": {
+          "identical": true,
+          "off_sha256": "815ddf911263a88f7dcb2264304bd36dd0b01257a931a1f2236a23b5998477a5",
+          "on_sha256": "815ddf911263a88f7dcb2264304bd36dd0b01257a931a1f2236a23b5998477a5"
+        },
+        "steps_1000K.csv": {
+          "identical": true,
+          "off_sha256": "2b6a94540f175b03ce52a74b9d25c3ed62c432e09f975980513b3a02fa9f1323",
+          "on_sha256": "2b6a94540f175b03ce52a74b9d25c3ed62c432e09f975980513b3a02fa9f1323"
+        },
+        "stochastic_avalanche_geometry_events.json": {
+          "identical": true,
+          "off_sha256": "a733330de9f582d61b22e1f0142d5dcf7aa01e1e0f1a2d90ba2380020996f87c",
+          "on_sha256": "a733330de9f582d61b22e1f0142d5dcf7aa01e1e0f1a2d90ba2380020996f87c"
+        },
+        "summary.json": {
+          "identical": true,
+          "off_sha256": "92e4e77fc80201f7f469ab8272738d3b1c5575260dc9dbdc0341fb14f2cbcde2",
+          "on_sha256": "92e4e77fc80201f7f469ab8272738d3b1c5575260dc9dbdc0341fb14f2cbcde2"
+        },
+        "v10_2_22_persistent_site_model.json": {
+          "identical": true,
+          "off_sha256": "3e5cd14e70e79e72c11c116d57f1821ba96321eac95c63fe756704d65dc68a1a",
+          "on_sha256": "3e5cd14e70e79e72c11c116d57f1821ba96321eac95c63fe756704d65dc68a1a"
+        }
+      },
+      "seed": 8666,
+      "target_extension_um": 10,
+      "temperature_K": 1000,
+      "tensor_evaluation_count": 216,
+      "tensor_jsonl_sha256": "8d8af793116a4a217673ed2f05a2037820944aba9ae27c972c37e347ba55d41e"
+    }
+  },
+  "observer_default_off": true,
+  "qualification": "PASS_OFF_ON_PHYSICAL_BYTE_IDENTITY",
+  "schema": "oneD_v2_pf_tensor_diagnostic_neutrality_v1"
+}

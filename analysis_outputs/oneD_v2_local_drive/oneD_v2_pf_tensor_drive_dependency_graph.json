@@ -1,0 +1,152 @@
+{
+  "archive_audit": {
+    "DBTT": {
+      "derived_fields_archived": [
+        "anisotropic_tau_signed_Pa",
+        "anisotropic_drive_factors",
+        "anisotropic_drive_reliable",
+        "anisotropic_drive_serial",
+        "anisotropic_mechanics_serial"
+      ],
+      "first_drive_factors": [
+        1.0013120435352232,
+        0.998630877683553
+      ],
+      "first_tau_signed_Pa": [
+        19638793.633438174,
+        -19586207.765528236
+      ],
+      "last_drive_factors": [
+        0.7920441937801314,
+        0.7839234774067211
+      ],
+      "last_tau_signed_Pa": [
+        6385865202.909805,
+        -6320391835.995564
+      ],
+      "path": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_dbtt01_0202500_persistent_sites/T1000K_th0_seed1008666/anisotropic_emission_audit_v10174.json",
+      "raw_required_fields_missing": [
+        "opening_tensor_Pa",
+        "channel_tensors_Pa",
+        "probe_element_coordinates_m",
+        "probe_element_weights",
+        "front_direction",
+        "front_normal",
+        "tip_xy_m"
+      ],
+      "record_count": 1554,
+      "reliable_count": 1554,
+      "sha256": "8e7d0ce03ccba8db8b68c286a73569135a923c7f6e992c14c94c92fd3745c4a5"
+    },
+    "Peak": {
+      "derived_fields_archived": [
+        "anisotropic_tau_signed_Pa",
+        "anisotropic_drive_factors",
+        "anisotropic_drive_reliable",
+        "anisotropic_drive_serial",
+        "anisotropic_mechanics_serial"
+      ],
+      "first_drive_factors": [
+        1.0013120435352232,
+        0.998630877683553
+      ],
+      "first_tau_signed_Pa": [
+        19638793.633438174,
+        -19586207.765528236
+      ],
+      "last_drive_factors": [
+        0.7006571767483462,
+        0.7130078447813293
+      ],
+      "last_tau_signed_Pa": [
+        4426383811.457629,
+        -4504408841.181287
+      ],
+      "path": "/Volumes/Data/Data/Nanopillar_calculation/PF-fracture-fatigue_v10_2_21_persistent_sites_top1/runs/1_final_v10_2_30_theta0_rate_extremes_four_class_1000um_base3621_v1/rate1x/v913_paper_peak01_0242980_persistent_sites/T1000K_th0_seed8666/anisotropic_emission_audit_v10174.json",
+      "raw_required_fields_missing": [
+        "opening_tensor_Pa",
+        "channel_tensors_Pa",
+        "probe_element_coordinates_m",
+        "probe_element_weights",
+        "front_direction",
+        "front_normal",
+        "tip_xy_m"
+      ],
+      "record_count": 1639,
+      "reliable_count": 1639,
+      "sha256": "76114d4d36651b37f1e3e1af1542160d4091a46ad9b37823602e83e0c9af0da7"
+    }
+  },
+  "minimum_qualification_state": [
+    "opening_tensor_Pa[2,2]",
+    "channel_tensors_Pa[2,2,2]",
+    "crack-local basis",
+    "tip_xy_m",
+    "probe coordinates/weights or exact source selection metadata",
+    "resolved projections",
+    "quality metadata"
+  ],
+  "minimum_runtime_state": [
+    "reliable",
+    "drive_factors[2]",
+    "tau_signed_Pa[2]",
+    "opening_stress_Pa",
+    "persistent process-zone state"
+  ],
+  "nodes": [
+    {
+      "id": "accepted_2d_mechanics",
+      "owner": "assemble_mechanics",
+      "provides": [
+        "mesh",
+        "sigma_gp=[sxx,syy,sxy]",
+        "damage"
+      ]
+    },
+    {
+      "depends_on": [
+        "accepted_2d_mechanics",
+        "tip_xy",
+        "probe config"
+      ],
+      "id": "front_probe",
+      "owner": "anisotropic_emission_v10174.build_front_drive",
+      "provides": [
+        "opening_tensor",
+        "two channel tensors",
+        "basis",
+        "quality"
+      ]
+    },
+    {
+      "depends_on": [
+        "front_probe",
+        "bcc_slip_traces(theta=0)"
+      ],
+      "id": "projection",
+      "owner": "resolve_channel_drives",
+      "provides": [
+        "tau_signed[2]",
+        "drive_factors[2]"
+      ]
+    },
+    {
+      "depends_on": [
+        "projection",
+        "reliable",
+        "opening stress",
+        "dynamic source geometry",
+        "backstress",
+        "state"
+      ],
+      "id": "persistent_emission",
+      "owner": "persistent_site_source_v10221._persistent_emit",
+      "provides": [
+        "signed line content",
+        "emission rates"
+      ]
+    }
+  ],
+  "schema": "oneD_v2_pf_tensor_drive_dependency_graph_v1",
+  "source_commit_inspected": "9e884fb0b0845da621d2612bdf1042e481b8df49"
+}
