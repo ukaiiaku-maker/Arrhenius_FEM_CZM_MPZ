@@ -381,7 +381,7 @@ def main() -> int:
     bank_rows = []
     for material in CLASS_ORDER:
         candidates = candidates_by_class[material].drop_duplicates("candidate_id").set_index("candidate_id")
-        roles = _roles(material, selected_by_class[material], candidates.reset_index(drop=True), responses_by_class[material])
+        roles = _roles(material, selected_by_class[material], candidates.reset_index(), responses_by_class[material])
         for candidate_id in selected_by_class[material]:
             row = candidates.loc[candidate_id]
             digest = str(row.parameter_sha256)
