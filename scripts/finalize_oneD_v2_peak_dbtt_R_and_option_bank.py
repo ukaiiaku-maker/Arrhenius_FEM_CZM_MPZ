@@ -100,8 +100,18 @@ def candidate_frames() -> dict[str, pd.DataFrame]:
         "Peak": pd.read_csv(OUT / "oneD_v2_peak_R_candidates.csv"),
         "DBTT": pd.read_csv(OUT / "oneD_v2_dbtt_R_candidates.csv"),
     }
+    prior_registry = pd.read_csv(OLD / "oneD_v2_new_four_class_registry.csv")
     for material in ("weak-T", "ceramic-like"):
         frame = old_population(material).copy()
+        control = prior_registry[
+            (prior_registry.material_class == material)
+            & (prior_registry.candidate_id == CONTROLS[material])
+        ].copy()
+        if len(control) != 1:
+            raise RuntimeError(f"missing unique prior selected row for {material}")
+        control["search_anchor"] = "PRIOR_QUALIFIED_SELECTED_ROW"
+        control["search_source"] = "PRIOR_QUALIFIED_SELECTED_ROW"
+        frame = pd.concat([frame, control], ignore_index=True, sort=False)
         frame["target_response_class"] = material
         frame["search_campaign_id"] = "oneD_v2_terminal_shared_four_class_search_v1"
         frame["parent_or_anchor_id"] = frame.search_anchor
