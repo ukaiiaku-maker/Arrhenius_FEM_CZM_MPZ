@@ -1,0 +1,25 @@
+{
+  "FEMCZM_consistent_model_fit_for_100um_screening": true,
+  "PF_consistent_model_fit_for_100um_screening": true,
+  "PF_transfer_case_count": 12,
+  "PF_transfer_max_abs_initial_onset_error": 0.1313881120028047,
+  "PF_transfer_topology_matches": 11,
+  "canonical_production_trajectories_changed": false,
+  "later_FEMCZM_validation": [
+    "Peak, 1000 K, theta=0, tip-only",
+    "DBTT, 1000 K, theta=0, tip-only"
+  ],
+  "mission_status": "COMPLETE",
+  "new_2D_FEMCZM_runs": 0,
+  "new_bounded_PF_case_count": 6,
+  "parameter_sensitivity_fit_for_search": true,
+  "production_physical_formulas_changed": false,
+  "schema": "oneD_v2_final_decision_v2",
+  "shared_rows": {
+    "DBTT": "v913_zeroD_sobol_0202500",
+    "Peak": "v913_zeroD_sobol_0242980",
+    "ceramic-like": "oneD_v2_focused_ceramic_like_0018",
+    "weak-T": "oneD_v2_focused_weak_T_0016"
+  },
+  "weakT_ceramic_FEMCZM_validation": "SUBSEQUENT_AND_CONDITIONAL"
+}
