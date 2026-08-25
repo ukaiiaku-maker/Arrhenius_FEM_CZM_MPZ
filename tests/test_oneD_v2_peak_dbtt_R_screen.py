@@ -10,10 +10,12 @@ from scripts.run_oneD_v2_peak_dbtt_R_screen import (
     CONTROL_IDS,
     OBJECTIVES,
     SEARCH_FIELDS,
+    _valid,
     canonical_parameter_json,
     parameter_sha256,
     population,
 )
+from scripts.run_oneD_v2_predictive_campaign import inputs
 
 
 def test_candidate_identity_is_full_precision_and_stable():
@@ -33,6 +35,13 @@ def test_population_contains_control_and_one_material_identity_per_hash():
         assert frame.parameter_sha256.is_unique
         assert frame.canonical_parameter_json.is_unique
         assert bounds["candidate_count"] == len(frame)
+
+
+def test_production_characteristic_stress_floor_does_not_reject_controls():
+    _, rows, _ = inputs()
+    controls = rows[rows.candidate_id.isin(CONTROL_IDS.values())]
+    assert len(controls) == 2
+    assert all(_valid(row) for _, row in controls.iterrows())
 
 
 def test_search_does_not_put_backend_reductions_or_common_physics_in_material_schema():

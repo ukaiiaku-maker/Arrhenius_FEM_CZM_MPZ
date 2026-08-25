@@ -98,13 +98,13 @@ def _valid(row: pd.Series) -> bool:
     try:
         candidate = candidate_from_registry_row(row)
         for temperature in (300.0, 1200.0):
-            if candidate.cleavage.zero_stress_eV(temperature) <= 1.0e-6:
+            if not np.isfinite(candidate.cleavage.zero_stress_eV(temperature)):
                 return False
-            if candidate.emission.zero_stress_eV(temperature) <= 1.0e-6:
+            if not np.isfinite(candidate.emission.zero_stress_eV(temperature)):
                 return False
-            if candidate.cleavage.characteristic_stress_Pa(temperature) <= 1.0e6:
+            if candidate.cleavage.characteristic_stress_Pa(temperature) <= 0.0:
                 return False
-            if candidate.emission.characteristic_stress_Pa(temperature) <= 1.0e6:
+            if candidate.emission.characteristic_stress_Pa(temperature) <= 0.0:
                 return False
     except (ValueError, OverflowError, FloatingPointError):
         return False
