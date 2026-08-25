@@ -75,6 +75,24 @@ def material_hash(row: pd.Series) -> str:
     return hashlib.sha256(canonical_json(row).encode()).hexdigest()
 
 
+def restore_canonical_coordinates(frame: pd.DataFrame) -> pd.DataFrame:
+    """Restore authoritative binary-float coordinates after a CSV round trip."""
+    result = frame.copy()
+    if "canonical_parameter_json" not in result:
+        return result
+    for index, payload in result.canonical_parameter_json.items():
+        values = json.loads(str(payload))
+        if set(values) != set(ACTIVE_CANDIDATE_PARAMETER_FIELDS):
+            raise RuntimeError(f"incomplete canonical parameter vector at row {index}")
+        for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS:
+            result.at[index, field] = float(values[field])
+        if "parameter_sha256" in result:
+            expected = hashlib.sha256(str(payload).encode()).hexdigest()
+            if str(result.at[index, "parameter_sha256"]) != expected:
+                raise RuntimeError(f"canonical material hash mismatch at row {index}")
+    return result
+
+
 def units() -> dict[str, str]:
     result = {}
     for field in ACTIVE_CANDIDATE_PARAMETER_FIELDS:
@@ -175,8 +193,8 @@ def _score_components(library_row: pd.DataFrame) -> tuple[str, str]:
 
 def candidate_frames() -> dict[str, pd.DataFrame]:
     frames = {
-        "Peak": pd.read_csv(OUT / "oneD_v2_peak_R_candidates.csv"),
-        "DBTT": pd.read_csv(OUT / "oneD_v2_dbtt_R_candidates.csv"),
+        "Peak": restore_canonical_coordinates(pd.read_csv(OUT / "oneD_v2_peak_R_candidates.csv")),
+        "DBTT": restore_canonical_coordinates(pd.read_csv(OUT / "oneD_v2_dbtt_R_candidates.csv")),
     }
     prior_registry = pd.read_csv(OLD / "oneD_v2_new_four_class_registry.csv")
     for material in ("weak-T", "ceramic-like"):
@@ -230,7 +248,7 @@ def _objective_library(material: str, candidates: pd.DataFrame,
                        responses: pd.DataFrame) -> pd.DataFrame:
     if material in ("Peak", "DBTT"):
         slug = material.lower()
-        return pd.read_csv(OUT / f"oneD_v2_{slug}_R_pareto.csv")
+        return restore_canonical_coordinates(pd.read_csv(OUT / f"oneD_v2_{slug}_R_pareto.csv"))
     by_id = candidates.set_index("candidate_id")
     rows = []
     for candidate_id, local in responses[responses.search_stage == "SCREEN"].groupby("candidate_id"):
