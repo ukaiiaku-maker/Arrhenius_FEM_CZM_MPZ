@@ -643,6 +643,17 @@ def main() -> int:
         OUT / "oneD_v2_peak_dbtt_rcurve_registry.csv",
         OUT / "oneD_v2_peak_dbtt_R_final_decision.json",
     ]
+    membership_payload = bank[[
+        "target_response_class", "candidate_id", "parameter_sha256"
+    ]].sort_values(["target_response_class", "candidate_id"]).to_dict("records")
+    material_identity_payload = material_registry[[
+        "candidate_id", "parameter_sha256", *ACTIVE_CANDIDATE_PARAMETER_FIELDS
+    ]].sort_values("parameter_sha256").to_dict("records")
+    immutable_inputs = [
+        ROOT / "candidates" / "v9_13_persistent_sites_top5_registry.csv",
+        OLD / "oneD_v2_new_four_class_registry.csv",
+        OUT / "oneD_v2_peak_dbtt_R_pf_transfer_registry.csv",
+    ]
     manifest = {
         "schema": "oneD_v2_fracture_option_bank_manifest_v1",
         "bank_version": BANK_VERSION,
@@ -668,6 +679,15 @@ def main() -> int:
         "fatigue_validation_status": "NOT_EVALUATED",
         "new_FEMCZM_runs": 0,
         "new_PF_runs": 6,
+        "bank_membership_fingerprint": hashlib.sha256(json.dumps(
+            membership_payload, sort_keys=True, separators=(",", ":")
+        ).encode()).hexdigest(),
+        "material_identity_fingerprint": hashlib.sha256(json.dumps(
+            material_identity_payload, sort_keys=True, separators=(",", ":")
+        ).encode()).hexdigest(),
+        "immutable_input_artifacts": {
+            str(path.relative_to(ROOT)): sha(path) for path in immutable_inputs
+        },
         "artifacts": {path.name: sha(path) for path in manifest_paths},
     }
     manifest_path = OUT / "oneD_v2_fracture_option_bank_manifest.json"
@@ -680,6 +700,9 @@ def main() -> int:
             "qualified_domain_path", "qualified_domain_sha256",
             "new_FEMCZM_runs", "new_PF_runs",
         )},
+        "bank_membership_fingerprint": manifest["bank_membership_fingerprint"],
+        "material_identity_fingerprint": manifest["material_identity_fingerprint"],
+        "immutable_input_artifacts": manifest["immutable_input_artifacts"],
         "focused_branch": "codex/oneD-v2-peak-dbtt-rcurve-search",
         "pf_branch": "codex/oneD-v2-peak-dbtt-R-pf-transfer",
         "pf_runner_commit": "130b305",
