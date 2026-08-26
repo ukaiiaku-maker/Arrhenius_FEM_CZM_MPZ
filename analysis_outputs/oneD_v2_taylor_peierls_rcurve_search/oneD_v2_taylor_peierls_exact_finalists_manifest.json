@@ -1,0 +1,28 @@
+{
+  "fem_source_map_sha256": "c39c16c51d4d045c8f206faa859af3d3577fea5448d026491a7ccc10ad4f1f8f",
+  "finalists": {
+    "DBTT": {
+      "candidate_ids": [
+        "v913_zeroD_sobol_0202500",
+        "oneD_v2_dbtt_TP_6ca03f05fbae34e9"
+      ],
+      "seed": 1008666,
+      "temperature_K": 1100.0
+    },
+    "Peak": {
+      "candidate_ids": [
+        "v913_zeroD_sobol_0242980",
+        "oneD_v2_peak_TP_6962e84b2eb78fbb"
+      ],
+      "seed": 8666,
+      "temperature_K": 1000.0
+    }
+  },
+  "new_FEMCZM_solve_count": 0,
+  "output_sha256": "bb7edf322d5c5924b6ee53a02f7fe3b7d492228d9a3fd80e073e91f07c8a7b45",
+  "pf_exact_field_solve_count": 2,
+  "pf_exact_probe_query_count": 6,
+  "pf_source_map_sha256": "48bacefcc7d800bac97d41e45686fc82ce2cf4b7b868474c2b741024b254549e",
+  "schema": "oneD_v2_taylor_peierls_exact_finalists_v1",
+  "validation_sha256": "d017e0f1464cd041fd6ff065c645bfc886bb0af9eb52d9aa0a586a796a34a147"
+}

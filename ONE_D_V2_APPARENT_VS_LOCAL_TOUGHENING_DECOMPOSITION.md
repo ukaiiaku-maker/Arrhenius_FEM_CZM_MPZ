@@ -1,0 +1,3 @@
+# Apparent Versus Local Toughening Decomposition
+
+Only reload-separated pre-event states are resistance points. Remote/common-reference K, native KJ, signed K-shield, fixed-radius local-equivalent K, source opening stress, radius, backstress, and retained/mobile state are kept separate. Peak supplies no second resistance point. DBTT's second remote/native onset is lower, not higher. Thus neither class can be classified as radius-dominated, shielding-dominated, mixed positive toughening, or local-critical-drive increase. Peak is `NO_TOUGHENING`; DBTT is `SOFTENING`. Rising values inside the final avalanche remain model-native trajectory drive and are not called an R-curve.

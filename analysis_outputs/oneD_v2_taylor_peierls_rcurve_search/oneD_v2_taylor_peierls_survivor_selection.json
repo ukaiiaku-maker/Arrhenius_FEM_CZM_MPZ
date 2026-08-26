@@ -1,0 +1,80 @@
+{
+  "classes": {
+    "DBTT": {
+      "stage1_case_count": 7182,
+      "stage1_positive_reinit_case_count": 5130,
+      "stage2_300um_candidates": [
+        "v913_zeroD_sobol_0202500",
+        "oneD_v2_dbtt_TP_6ca03f05fbae34e9",
+        "oneD_v2_dbtt_TP_d9075bbb41851d0e",
+        "oneD_v2_dbtt_TP_fce787a9ea826e10",
+        "oneD_v2_dbtt_TP_9d9cf96a333db212",
+        "oneD_v2_dbtt_TP_e063e08bdade4e14",
+        "oneD_v2_dbtt_TP_2677489447fc5cd0",
+        "oneD_v2_dbtt_TP_c9c33dbc01959598",
+        "oneD_v2_dbtt_TP_14b54bd9bc90d181",
+        "oneD_v2_dbtt_TP_aad20e7160a81ecb",
+        "oneD_v2_dbtt_TP_2541edf147d2fd05",
+        "oneD_v2_dbtt_TP_2aca55acc7844b78",
+        "oneD_v2_dbtt_TP_7fdb5f77b0da77b0",
+        "oneD_v2_dbtt_TP_6e28531f9ed61cfd",
+        "oneD_v2_dbtt_TP_e535e29236d96df6",
+        "oneD_v2_dbtt_TP_4f71a68276e22b73"
+      ],
+      "stage2_500um_candidates": [
+        "v913_zeroD_sobol_0202500",
+        "oneD_v2_dbtt_TP_6ca03f05fbae34e9",
+        "oneD_v2_dbtt_TP_d9075bbb41851d0e",
+        "oneD_v2_dbtt_TP_fce787a9ea826e10",
+        "oneD_v2_dbtt_TP_9d9cf96a333db212"
+      ],
+      "stage3_multiseed_candidates": [
+        "v913_zeroD_sobol_0202500",
+        "oneD_v2_dbtt_TP_6ca03f05fbae34e9",
+        "oneD_v2_dbtt_TP_d9075bbb41851d0e",
+        "oneD_v2_dbtt_TP_fce787a9ea826e10",
+        "oneD_v2_dbtt_TP_9d9cf96a333db212",
+        "oneD_v2_dbtt_TP_e063e08bdade4e14"
+      ]
+    },
+    "Peak": {
+      "stage1_case_count": 6156,
+      "stage1_positive_reinit_case_count": 0,
+      "stage2_300um_candidates": [
+        "v913_zeroD_sobol_0242980",
+        "oneD_v2_peak_TP_e4ec8154667ac3f2",
+        "oneD_v2_peak_TP_6962e84b2eb78fbb",
+        "oneD_v2_peak_TP_b939e94f9aeb3e70",
+        "oneD_v2_peak_TP_c512d61e19550715",
+        "oneD_v2_peak_TP_0db507b92e057487",
+        "oneD_v2_peak_TP_fd54262dfa5dcfc0",
+        "oneD_v2_peak_TP_3b628b5bc682c183",
+        "oneD_v2_peak_TP_01a2f8bf69bf77b5",
+        "oneD_v2_peak_TP_71e8b92cf7175d8d",
+        "oneD_v2_peak_TP_4585da848342a602",
+        "oneD_v2_peak_TP_a46e700eb110a4ef",
+        "oneD_v2_peak_TP_9f7b2122fdfaa109",
+        "oneD_v2_peak_TP_7a03896ca794e794",
+        "oneD_v2_peak_TP_6c016fecc91e4a91",
+        "oneD_v2_peak_TP_fb712b4db7f9cae4"
+      ],
+      "stage2_500um_candidates": [
+        "v913_zeroD_sobol_0242980",
+        "oneD_v2_peak_TP_e4ec8154667ac3f2",
+        "oneD_v2_peak_TP_6962e84b2eb78fbb",
+        "oneD_v2_peak_TP_b939e94f9aeb3e70",
+        "oneD_v2_peak_TP_c512d61e19550715"
+      ],
+      "stage3_multiseed_candidates": [
+        "v913_zeroD_sobol_0242980",
+        "oneD_v2_peak_TP_e4ec8154667ac3f2",
+        "oneD_v2_peak_TP_6962e84b2eb78fbb",
+        "oneD_v2_peak_TP_b939e94f9aeb3e70",
+        "oneD_v2_peak_TP_c512d61e19550715",
+        "oneD_v2_peak_TP_0db507b92e057487"
+      ]
+    }
+  },
+  "schema": "oneD_v2_taylor_peierls_survivor_selection_v1",
+  "selection_policy": "MAXIMIN_TAYLOR_PEIERLS_PLUS_SOURCE_KINETIC_FEATURES; CONTROL_FORCED; NO_100UM_REINIT_REQUIRED_FOR_SLOW_EVOLUTION_GATE"
+}

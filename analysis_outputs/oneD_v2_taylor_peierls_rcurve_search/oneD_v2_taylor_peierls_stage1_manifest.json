@@ -1,0 +1,43 @@
+{
+  "campaign_id": "oneD_v2_taylor_peierls_rcurve_search_v1",
+  "candidate_count": 1026,
+  "canonical_seeds": {
+    "DBTT": 1008666,
+    "Peak": 8666
+  },
+  "case_count": 13338,
+  "heavy_PF_worker_count": 0,
+  "new_FEMCZM_runs": 0,
+  "producer_commit": "7324064f60b062c0873d622bd231a3cb3336bf5b",
+  "providers": [
+    "PF",
+    "FEMCZM"
+  ],
+  "reduced_executor": "process",
+  "reduced_worker_count": 8,
+  "results_sha256": "b2d3c600b0b464364e148e633de99691ad683e246dd62c3467648f2111874adf",
+  "schema": "oneD_v2_taylor_peierls_stage1_100um_v1",
+  "status_counts": {
+    "TARGET_RIGHT_CENSORED": 13338
+  },
+  "target_um": 100.0,
+  "temperatures_K": {
+    "DBTT": [
+      300.0,
+      600.0,
+      800.0,
+      900.0,
+      1000.0,
+      1100.0,
+      1200.0
+    ],
+    "Peak": [
+      600.0,
+      800.0,
+      900.0,
+      1000.0,
+      1100.0,
+      1200.0
+    ]
+  }
+}

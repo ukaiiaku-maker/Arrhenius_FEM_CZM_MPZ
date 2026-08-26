@@ -1,0 +1,27 @@
+{
+  "bounds_sha256": "5f943f15a49adb4338726b459ea4a80ddf4ef4094ab1bf4418b7f816e921ad0a",
+  "campaign_id": "oneD_v2_taylor_peierls_rcurve_search_v1",
+  "control_rows_per_class": 1,
+  "diagnostics_sha256": "4228f836cba95b51c8eadfb15af28b5dccc8f471bbd511422078be242abeb200",
+  "new_FEMCZM_runs": 0,
+  "population_sha256": "c2eb0c2abb522d2d4f286371c85e04f1128c8d2a19b7c5f4e9bca6714d3f8005",
+  "producer_commit": "7324064f60b062c0873d622bd231a3cb3336bf5b",
+  "schema": "oneD_v2_taylor_peierls_stage0_v1",
+  "selected_sobol_rows_per_class": 512,
+  "selected_total_rows_per_class": 513,
+  "selection_sha256": "9408f1d4a5160530f580161fd814025677381555772403ceb2b5c42c1d55d7c8",
+  "sobol_power": 12,
+  "sobol_rows_per_class": 4096,
+  "whitelist": [
+    "peierls_H0_eV",
+    "peierls_activation_entropy_kB",
+    "peierls_exp_a",
+    "peierls_exp_n",
+    "taylor_H0_eV",
+    "taylor_activation_entropy_kB",
+    "taylor_exp_a",
+    "taylor_exp_n",
+    "taylor_corr_rho_c_m2",
+    "taylor_corr_scale"
+  ]
+}

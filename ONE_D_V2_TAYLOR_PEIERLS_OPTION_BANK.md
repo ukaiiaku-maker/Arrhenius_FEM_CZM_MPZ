@@ -1,0 +1,3 @@
+# Taylor/Peierls Option Bank
+
+The complete library contains 8194 identities; 1026 received full two-provider trajectory evaluation. Because their fracture objectives are numerically equivalent within each class, all fully evaluated rows are response-Pareto-equivalent rather than artificially ranked with a kinetic scalar score. A maximin kinetic/state selection retains 32 curated rows and 12 compact shortlist rows. Controls are present at every level. Finalists rejected by PF remain available as diagnostic kinetic extremes, explicitly labeled `DIRECT_PF_REJECTED_NO_POSITIVE_REINITIATION`; they are not promoted material rows.

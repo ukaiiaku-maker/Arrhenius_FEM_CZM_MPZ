@@ -1,0 +1,30 @@
+{
+  "case_count": 858,
+  "heavy_PF_worker_count": 0,
+  "long_results_sha256": "cf3c4541e4e4b411fff4f709a95ee2d18247e3059fb8a0add7db34fdc451d9a2",
+  "multiseed_case_count": 468,
+  "multiseed_results_sha256": "d017e0f1464cd041fd6ff065c645bfc886bb0af9eb52d9aa0a586a796a34a147",
+  "new_FEMCZM_runs": 0,
+  "producer_commit": "26077154658a9924f3ea3b5becb59bc7af2d6f1c",
+  "providers": [
+    "PF",
+    "FEMCZM"
+  ],
+  "schema": "oneD_v2_taylor_peierls_long_multiseed_validation_v1",
+  "seeds": {
+    "DBTT": [
+      1008666,
+      1008667,
+      1008668
+    ],
+    "Peak": [
+      8666,
+      8667,
+      8668
+    ]
+  },
+  "status_counts": {
+    "TARGET_RIGHT_CENSORED": 858
+  },
+  "survivor_selection_sha256": "71b38e7605d99aec16a428c5dad204f3cff293dda6db3d82a7168a66aff36af8"
+}

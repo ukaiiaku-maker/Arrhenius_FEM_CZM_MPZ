@@ -1,0 +1,130 @@
+{
+  "fields": {
+    "peierls_H0_eV": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 2.222593032692459,
+      "observed_max": 13.978225439244895,
+      "observed_min": 0.1896856116048691,
+      "transform": "LOG10_POSITIVE",
+      "upper": 9.80541081089483
+    },
+    "peierls_activation_entropy_kB": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": -56.641600438079394,
+      "observed_max": 24.392096446132353,
+      "observed_min": -94.78213467448583,
+      "transform": "LINEAR_ADDITIVE",
+      "upper": 19.43596087352688
+    },
+    "peierls_exp_a": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 0.2264547564554959,
+      "observed_max": 1.9146125694736835,
+      "observed_min": 0.2264547564554959,
+      "transform": "LOG10_POSITIVE",
+      "upper": 1.9097672308795155
+    },
+    "peierls_exp_n": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 1.0056940987706184,
+      "observed_max": 2.5466286113951355,
+      "observed_min": 0.5681562009267509,
+      "transform": "LOG10_POSITIVE",
+      "upper": 1.9374389592558143
+    },
+    "taylor_H0_eV": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 0.6090008780360222,
+      "observed_max": 6.397265535295895,
+      "observed_min": 0.1275879848003387,
+      "transform": "LOG10_POSITIVE",
+      "upper": 2.7364036090848107
+    },
+    "taylor_activation_entropy_kB": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": -17.918517037389066,
+      "observed_max": 79.52362599363242,
+      "observed_min": -50.860998454221054,
+      "transform": "LINEAR_ADDITIVE",
+      "upper": 55.17233339706077
+    },
+    "taylor_corr_rho_c_m2": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 7927519195708.965,
+      "observed_max": 8.319121413916371e+17,
+      "observed_min": 112705259472.60164,
+      "transform": "LOG10_POSITIVE",
+      "upper": 5.451008813541711e+16
+    },
+    "taylor_corr_scale": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 0.1415319061337574,
+      "observed_max": 6.048544658291038,
+      "observed_min": 0.03842799657252147,
+      "transform": "LOG10_POSITIVE",
+      "upper": 2.5812979351887053
+    },
+    "taylor_exp_a": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 0.4561179580539465,
+      "observed_max": 1.055419295541942,
+      "observed_min": 0.0402470866590738,
+      "transform": "LOG10_POSITIVE",
+      "upper": 1.055419295541942
+    },
+    "taylor_exp_n": {
+      "empirical_quantiles": [
+        0.05,
+        0.95
+      ],
+      "lower": 0.5389550719410181,
+      "observed_max": 2.441455863416195,
+      "observed_min": 0.5389550719410181,
+      "transform": "LOG10_POSITIVE",
+      "upper": 1.4233212359249592
+    }
+  },
+  "policy": "POOLED_OBSERVED_P05_P95_EXPANDED_TO_INCLUDE_BOTH_CONTROLS_AND_NEVER_BEYOND_OBSERVED_EXTREMA",
+  "schema": "oneD_v2_taylor_peierls_empirical_bounds_v1",
+  "sources": [
+    {
+      "path": "candidates/v9_13_persistent_sites_top5_registry.csv",
+      "sha256": "309c7372c0e543c7b7cd057a38a3d7aae9bb3d9c8884562f4d836eecabb2d85c"
+    },
+    {
+      "path": "analysis_outputs/oneD_v2_peak_dbtt_rcurve_search/oneD_v2_complete_material_option_population.parquet",
+      "sha256": "7076c862475d41b52de9391eedb141f49059684e065e16f6f6063f451af116fd"
+    },
+    {
+      "candidate_count_after_identity_deduplication": 22,
+      "path": "PF authoritative V9.13 material registries via source_rows()"
+    }
+  ]
+}

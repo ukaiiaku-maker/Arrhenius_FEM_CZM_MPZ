@@ -1,0 +1,70 @@
+{
+  "analysis_only": true,
+  "canonical_PF_registry_modified": false,
+  "canonical_option_order": [
+    "oneD_v2_Peak_control",
+    "oneD_v2_Peak_TP",
+    "oneD_v2_DBTT_control",
+    "oneD_v2_DBTT_TP"
+  ],
+  "control_policy": "SAME_CANONICAL_SEED_NEW_PAIRED_CONTROL_AND_VARIANT_RUNS",
+  "maximum_concurrent_heavy_workers": 2,
+  "new_FEMCZM_runs": 0,
+  "primary_candidates": [
+    {
+      "candidate_id": "v913_zeroD_sobol_0242980",
+      "cleavage_barrier_sha256": "50ead03bdc1dc5240eb2fea00eda4bcd24535887379f356a3105f3405852ed76",
+      "emission_barrier_sha256": "8197ce770333504c47b05ecaeb7497cf66ae6399cd8524360e3146bf2a9cc1f6",
+      "full_material_sha256": "d004ea60768cfb90435d8d10f9badd180e614c0fc23950b24554b5a0b4bbe3a2",
+      "material_class": "Peak",
+      "option_key": "oneD_v2_Peak_control",
+      "taylor_peierls_subvector_sha256": "3e712899f824be784d5990b30f878bf1a1d0dda7790781f6398e43bad420901a"
+    },
+    {
+      "candidate_id": "oneD_v2_peak_TP_6962e84b2eb78fbb",
+      "cleavage_barrier_sha256": "50ead03bdc1dc5240eb2fea00eda4bcd24535887379f356a3105f3405852ed76",
+      "emission_barrier_sha256": "8197ce770333504c47b05ecaeb7497cf66ae6399cd8524360e3146bf2a9cc1f6",
+      "full_material_sha256": "6962e84b2eb78fbb12f8d4dc2539eac097f3686c98b0ac78b6d2e3627ffd4643",
+      "material_class": "Peak",
+      "option_key": "oneD_v2_Peak_TP",
+      "taylor_peierls_subvector_sha256": "94d6ff136130de8457ca5d4acdbe91167a8e4625b57b7e7f22a1b2b14f81485b"
+    },
+    {
+      "candidate_id": "v913_zeroD_sobol_0202500",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "54104a30a31aa19517810249cb3ea42a346b92670ce3bd4f007110ba3babb1c2",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_control",
+      "taylor_peierls_subvector_sha256": "bac6b3b793ca3ac8948d4edaae059dfa6c410218904ef1f2f482767f0b3ce247"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_6ca03f05fbae34e9",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "6ca03f05fbae34e95e7eca2e194633788631e38be9b56ff7be629ac3ba44b9e0",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_TP",
+      "taylor_peierls_subvector_sha256": "bffdd185a7bd9dda8bc47179936b5d123ff680fae4aa8f1604bcc6b7886a88e1"
+    }
+  ],
+  "producer_commit": "ad979740943c6753083c83d5a933c57bab4fedf2",
+  "schema": "oneD_v2_taylor_peierls_pf_transfer_selection_v1",
+  "seeds": {
+    "DBTT": 1008666,
+    "Peak": 8666
+  },
+  "target_extension_um": 100.0,
+  "temperatures_K": {
+    "DBTT": [
+      600.0,
+      1100.0,
+      1200.0
+    ],
+    "Peak": [
+      600.0,
+      1000.0,
+      1200.0
+    ]
+  }
+}
