@@ -303,6 +303,8 @@ def run_autonomous_rcurve(
     translation_mode: str = "hazard_coupled",
     translation_action_exponent: float = 1.0,
     emission_drive_provider: Callable[[float, EmergentGNDState], Sequence[float]] | None = None,
+    state_factory: Callable[[CandidateParameters, CommonPhysics], EmergentGNDState] = EmergentGNDState,
+    state_observer: Callable[[str, dict[str, Any], EmergentGNDState], None] | None = None,
 ) -> RCurveResult:
     """Predict one R-curve without supplying a 2-D K/dt/da history.
 
@@ -324,7 +326,9 @@ def run_autonomous_rcurve(
         or translation_action_exponent <= 0.0
     ):
         raise ValueError("translation_action_exponent must be positive and finite")
-    state = EmergentGNDState(candidate, physics)
+    state = state_factory(candidate, physics)
+    if not isinstance(state, EmergentGNDState):
+        raise TypeError("state_factory must return an EmergentGNDState")
     result = RCurveResult(
         candidate_id=candidate.candidate_id,
         temperature_K=float(temperature_K),
@@ -346,6 +350,8 @@ def run_autonomous_rcurve(
             "translation_action_exponent": float(translation_action_exponent),
             "candidate_parameters_modified_by_driver": False,
             "external_provider_emission_drive": emission_drive_provider is not None,
+            "neutral_state_observer_active": state_observer is not None,
+            "neutral_state_observer_feedback": False,
         },
     )
     _update_extrema(result, state)
@@ -356,6 +362,19 @@ def run_autonomous_rcurve(
     projected_extension = 0.0
     displacement_rate = loading_map.displacement_rate_m_s
     total_substeps = 0
+    if state_observer is not None:
+        state_observer(
+            "INITIAL",
+            {
+                "event_index": -1,
+                "projected_extension_m": 0.0,
+                "path_extension_m": 0.0,
+                "applied_displacement_m": 0.0,
+                "elapsed_time_s": 0.0,
+                "K_MPa_sqrt_m": 0.0,
+            },
+            state,
+        )
 
     for event_index in range(loading_map.n_events):
         if projected_extension >= target_projected_extension_m:
@@ -508,6 +527,21 @@ def run_autonomous_rcurve(
         projected_advance = float(loading_map.projected_advances_m[event_index])
         event_K = geometry_factor * displacement
 
+        if state_observer is not None:
+            state_observer(
+                "PRE_EVENT",
+                {
+                    "event_index": event_index,
+                    "projected_extension_m": projected_extension,
+                    "path_extension_m": path_extension,
+                    "applied_displacement_m": displacement,
+                    "elapsed_time_s": elapsed,
+                    "K_MPa_sqrt_m": event_K,
+                    "threshold_action": threshold,
+                },
+                state,
+            )
+
         if not event_translation_coupled:
             state.translate_tip(path_advance)
         elif path_advance_committed < path_advance:
@@ -541,6 +575,20 @@ def run_autonomous_rcurve(
                 integration_substeps=event_substeps,
             )
         )
+        if state_observer is not None:
+            state_observer(
+                "POST_EVENT",
+                {
+                    "event_index": event_index,
+                    "projected_extension_m": projected_extension,
+                    "path_extension_m": path_extension,
+                    "applied_displacement_m": displacement,
+                    "elapsed_time_s": elapsed,
+                    "K_MPa_sqrt_m": event_K,
+                    "threshold_action": threshold,
+                },
+                state,
+            )
 
     result.final_applied_displacement_m = displacement
     result.final_elapsed_time_s = elapsed
