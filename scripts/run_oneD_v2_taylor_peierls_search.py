@@ -445,6 +445,7 @@ def _case_task(task: tuple[dict[str, Any], str, str, float, float, int, str]) ->
         result = run_case(
             row, material, temperature, provider, mechanics, drive, physics,
             target_um, seed=seed, maximum_intervals=25_000,
+            maximum_opening_m=max(500.0e-6, 2.0 * float(target_um) * 1.0e-6),
         )
         base.update(summary(result))
         base.update(summarize_rcurve_propensity(result))
