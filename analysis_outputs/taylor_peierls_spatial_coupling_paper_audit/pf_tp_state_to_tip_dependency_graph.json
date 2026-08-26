@@ -1,0 +1,94 @@
+{
+  "schema": "pf_tp_state_to_tip_dependency_graph_v1",
+  "nodes": [
+    "PF structural solve",
+    "Peierls transport",
+    "Taylor completion/release",
+    "active accumulated slip",
+    "backstress",
+    "channel tensors/resolved shears",
+    "cleavage barrier/rate",
+    "cleavage first-passage action",
+    "emission barrier/rate",
+    "encounter retention",
+    "fracture event",
+    "front width",
+    "mobile population",
+    "native PF KJ",
+    "near-tip retained content",
+    "opening tensor",
+    "retained wake shielding",
+    "retained/tangled population",
+    "signed shielding",
+    "source multiplicity",
+    "tip radius",
+    "wake ledger"
+  ],
+  "edges": [
+    {
+      "from": "mobile population",
+      "to": "backstress",
+      "coupling": "unsigned exponential near-tip density"
+    },
+    {
+      "from": "retained/tangled population",
+      "to": "backstress",
+      "coupling": "unsigned exponential near-tip density"
+    },
+    {
+      "from": "retained/tangled population",
+      "to": "signed shielding",
+      "coupling": "signed active measured kernel"
+    },
+    {
+      "from": "retained wake shielding",
+      "to": "signed shielding",
+      "coupling": "disabled: zero kernel"
+    },
+    {
+      "from": "active accumulated slip",
+      "to": "tip radius",
+      "coupling": "exponential near-tip weight"
+    },
+    {
+      "from": "backstress",
+      "to": "emission barrier/rate",
+      "coupling": "subtracted from tensor-weighted opening"
+    },
+    {
+      "from": "tip radius",
+      "to": "emission barrier/rate",
+      "coupling": "K/sqrt(2*pi*r)"
+    },
+    {
+      "from": "tip radius",
+      "to": "cleavage barrier/rate",
+      "coupling": "(K-Kshield)/sqrt(2*pi*r)"
+    },
+    {
+      "from": "signed shielding",
+      "to": "cleavage barrier/rate",
+      "coupling": "K_native-Kshield"
+    },
+    {
+      "from": "cleavage barrier/rate",
+      "to": "cleavage first-passage action",
+      "coupling": "multihit rate integration"
+    },
+    {
+      "from": "cleavage first-passage action",
+      "to": "fracture event",
+      "coupling": "B reaches one"
+    },
+    {
+      "from": "fracture event",
+      "to": "wake ledger",
+      "coupling": "continuous moving-frame translation"
+    }
+  ],
+  "key_findings": {
+    "wake_feedback": "retained wake is persisted but wake shielding is identically zero; it does not enter backstress/radius/multiplicity",
+    "radius_structural_coupling": "tip radius is a local hazard/source scalar and is not passed into the sharp-wake structural PF solve or kernel interpolation",
+    "commit_reset": "outer fracture commit resets/subtracts first-passage action only; persistent sites and MPZ populations are not renewed"
+  }
+}
