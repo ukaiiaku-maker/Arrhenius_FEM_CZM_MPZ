@@ -1,0 +1,28 @@
+{
+  "artifacts": {
+    "oneD_v2_spatial_1d_candidate_summary.parquet": "ff1fda45a12e89c5ba29303dda584e9158dfc8dcd5f0c5f3d1758f8856f87434",
+    "oneD_v2_spatial_1d_pairwise_distances.parquet": "000b4d13ed2d4e0768622d5bd0049002fdf81e70851a163533dbdc36c3510a48",
+    "oneD_v2_spatial_1d_response_feature_vectors.parquet": "30623d0f9bb973111cd4443065a4f9e8abe23ad4e958109bc47f49e156fd69e4",
+    "oneD_v2_spatial_1d_selected_profiles.parquet": "73a964cd1b0f464432aaf9bb5aca9fcd5f271c4c2b489ad91ff1f5076f6d426e",
+    "oneD_v2_spatial_1d_selected_state_history.parquet": "ec7fb4de9c9e837aa1f4db10a222a9c7ccd1aec064bdb8629d5c04346e612d95",
+    "oneD_v2_spatial_1d_state_history.parquet": "6048e0e2a327b6900acd5ac8b40e81fedc3ddb78e72e107a692d31549a613c8c",
+    "oneD_v2_spatial_transfer_pf_registry.csv": "16ad5e36703b2bb0dc1df8eb04a2978fbc568b3e66a3ad2bb673cdcf83e54a5c",
+    "oneD_v2_spatial_transfer_pf_selection.json": "7cbfe55c4066aee7e743f81b6f47be62b0f388815a4bd507b24e5b48fadc6c2f",
+    "oneD_v2_spatial_transfer_selected_candidates.csv": "1e5df2171d14b1e8bf8e3b9d06102b0169777f7115ac1c31130132fc18758884",
+    "oneD_v2_spatial_transfer_selected_pairwise_distances.csv": "8ef374e048d095c0d67d7d0667cb9a92cc23ea7c30ada1cbea4a3b1edda8596d"
+  },
+  "barriers_changed": false,
+  "candidate_count": 513,
+  "eligible_candidate_count": 513,
+  "hazard_seed": 1008666,
+  "new_FEMCZM_runs": 0,
+  "non_taylor_peierls_fields_changed": false,
+  "observer_feedback": false,
+  "producer_commit": "cdb07924a7ef4091540c8c4758d83026dea42be2",
+  "schema": "oneD_v2_taylor_peierls_spatial_1d_screen_v1",
+  "selected_candidate_count": 8,
+  "source_population_sha256": "b254f511a71fc1eeaddc19328e1e2140536fec632f008e35b0b928fd3f116bea",
+  "state_model": "v9.13_persistent_site_backstress_blunting",
+  "target_um": 300.0,
+  "temperature_K": 1100.0
+}

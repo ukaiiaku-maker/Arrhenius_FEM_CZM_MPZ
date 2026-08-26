@@ -1,0 +1,18 @@
+{
+  "schema": "oneD_v2_taylor_peierls_spatial_transfer_decision_v1",
+  "material_class": "DBTT",
+  "temperature_K": 1100.0,
+  "hazard_seed": 1008666,
+  "target_extension_um": 300.0,
+  "selected_candidate_count": 8,
+  "oneD_pf_pairwise_distance_pearson": -0.16162368061047044,
+  "oneD_pf_pairwise_distance_spearman": -0.17952928297755882,
+  "oneD_pf_control_distance_rank_spearman": -0.07142857142857144,
+  "maximum_pf_pairwise_state_distance": 368.749676134551,
+  "strong_pf_spatial_state_diversity": true,
+  "positive_candidate_count": 0,
+  "conditional_local_multiseed_confirmation_launched": false,
+  "conditional_confirmation_reason": "NOT_TRIGGERED_NO_POSITIVE_RELOAD_SEPARATED_RESISTANCE",
+  "final_decision": "TAYLOR_PEIERLS_REDISTRIBUTION_ALONE_INSUFFICIENT_DESPITE_2D_STATE_DIVERSITY",
+  "scope": "FIXED_CLEAVAGE_EMISSION_AND_NON_TAYLOR_PEIERLS_FIELDS; NO_MEMORY; PF_ONLY"
+}

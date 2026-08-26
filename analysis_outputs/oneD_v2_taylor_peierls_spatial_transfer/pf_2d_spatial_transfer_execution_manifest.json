@@ -1,0 +1,82 @@
+{
+  "bulk_plasticity_mode": "tip_only",
+  "candidate_count": 8,
+  "cases": [
+    {
+      "candidate_id": "v913_zeroD_sobol_0202500",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-pf-runs-300um/oneD_v2_DBTT_control/T1100K_seed1008666",
+      "execution_status": "REUSED_COMPATIBLE_EXISTING_300UM_CASE",
+      "fresh_PF_run": false,
+      "option_key": "oneD_v2_DBTT_spatial_00_control",
+      "selection_role": "CONTROL"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_f07fe99faea93479",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_01_transport_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_01_transport_extreme",
+      "selection_role": "TRANSPORT_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_4895f9e5b44deea5",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_02_retention_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_02_retention_extreme",
+      "selection_role": "RETENTION_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_7e668ee637fc3ac5",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_03_near_tip_retention_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_03_near_tip_retention_extreme",
+      "selection_role": "NEAR_TIP_RETENTION_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_b60d78111740b058",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_04_persistent_wake_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_04_persistent_wake_extreme",
+      "selection_role": "PERSISTENT_WAKE_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_bd5be1610f6e1bce",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_05_mobile_transport_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_05_mobile_transport_extreme",
+      "selection_role": "MOBILE_TRANSPORT_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_9555ff54d637c974",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_06_backstress_shielding_extreme/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_06_backstress_shielding_extreme",
+      "selection_role": "BACKSTRESS_SHIELDING_EXTREME"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_f2817e7998cb7be6",
+      "case_path": "/private/tmp/oneD-v2-taylor-peierls-spatial-pf-runs/oneD_v2_DBTT_spatial_07_balanced_maximin_medoid/T1100K_seed1008666",
+      "execution_status": "FRESH_SPATIAL_TRANSFER_CASE_COMPLETE",
+      "fresh_PF_run": true,
+      "option_key": "oneD_v2_DBTT_spatial_07_balanced_maximin_medoid",
+      "selection_role": "BALANCED_MAXIMIN_MEDOID"
+    }
+  ],
+  "fresh_PF_run_count": 7,
+  "hazard_seed": 1008666,
+  "maximum_concurrent_heavy_workers": 2,
+  "new_FEMCZM_runs": 0,
+  "pf_runner_commit": "f8f76435a3509553197e8d28a0e8b3cd2b9ca7ce",
+  "registry_sha256": "16ad5e36703b2bb0dc1df8eb04a2978fbc568b3e66a3ad2bb673cdcf83e54a5c",
+  "reused_PF_run_count": 1,
+  "schema": "oneD_v2_taylor_peierls_spatial_pf_matrix_v1",
+  "selection_sha256": "7cbfe55c4066aee7e743f81b6f47be62b0f388815a4bd507b24e5b48fadc6c2f",
+  "target_extension_um": 300.0,
+  "temperature_K": 1100.0,
+  "theta_deg": 0.0
+}

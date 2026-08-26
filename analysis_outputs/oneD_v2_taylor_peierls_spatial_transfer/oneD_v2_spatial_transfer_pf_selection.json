@@ -1,0 +1,106 @@
+{
+  "analysis_only": true,
+  "bulk_plasticity_mode": "tip_only",
+  "canonical_PF_registry_modified": false,
+  "canonical_option_order": [
+    "oneD_v2_DBTT_spatial_00_control",
+    "oneD_v2_DBTT_spatial_01_transport_extreme",
+    "oneD_v2_DBTT_spatial_02_retention_extreme",
+    "oneD_v2_DBTT_spatial_03_near_tip_retention_extreme",
+    "oneD_v2_DBTT_spatial_04_persistent_wake_extreme",
+    "oneD_v2_DBTT_spatial_05_mobile_transport_extreme",
+    "oneD_v2_DBTT_spatial_06_backstress_shielding_extreme",
+    "oneD_v2_DBTT_spatial_07_balanced_maximin_medoid"
+  ],
+  "hazard_seed": 1008666,
+  "installed_registry_sha256": "16ad5e36703b2bb0dc1df8eb04a2978fbc568b3e66a3ad2bb673cdcf83e54a5c",
+  "maximum_concurrent_heavy_workers": 2,
+  "new_FEMCZM_runs": 0,
+  "primary_candidates": [
+    {
+      "candidate_id": "v913_zeroD_sobol_0202500",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "54104a30a31aa19517810249cb3ea42a346b92670ce3bd4f007110ba3babb1c2",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_00_control",
+      "selection_role": "CONTROL",
+      "taylor_peierls_subvector_sha256": "bac6b3b793ca3ac8948d4edaae059dfa6c410218904ef1f2f482767f0b3ce247"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_f07fe99faea93479",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "f07fe99faea9347946b3d0a0654a832b499e58a177961bd23460795f031e94a4",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_01_transport_extreme",
+      "selection_role": "TRANSPORT_EXTREME",
+      "taylor_peierls_subvector_sha256": "791539f7a0d2a9478cbfdb7070346ef241dfb2a48fa1fcc40952a0f291932f9d"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_4895f9e5b44deea5",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "4895f9e5b44deea5159552a62f09d3b4202fa7dcad5c8bf42c613d462291fea8",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_02_retention_extreme",
+      "selection_role": "RETENTION_EXTREME",
+      "taylor_peierls_subvector_sha256": "154b9e89fdfecf715e13b1fa5966a5bfa4b5edbc471e304a1e9d20d0c13fee8e"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_7e668ee637fc3ac5",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "7e668ee637fc3ac5e738096ac5cff871d2c8ddd7d46bcd61124847b962697633",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_03_near_tip_retention_extreme",
+      "selection_role": "NEAR_TIP_RETENTION_EXTREME",
+      "taylor_peierls_subvector_sha256": "7e47a59c917d231aab5edc974454a3d04cfd00663131f234b48e19fa5a66cbf7"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_b60d78111740b058",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "b60d78111740b058cdb185a74bf6299a6742bc11d502696c2706c2b374686c15",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_04_persistent_wake_extreme",
+      "selection_role": "PERSISTENT_WAKE_EXTREME",
+      "taylor_peierls_subvector_sha256": "e0db134fa6bdc3d1ddec36af5c60a8f613fd2bcd91b354a83d4ce950e735d94b"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_bd5be1610f6e1bce",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "bd5be1610f6e1bcee0a101caa7d9c0f7277607899bc40d91fc7a048faae66d32",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_05_mobile_transport_extreme",
+      "selection_role": "MOBILE_TRANSPORT_EXTREME",
+      "taylor_peierls_subvector_sha256": "375aafa9d5994744b0f28d2b6e22990f589979543da4b0155ea3e9e21d1be7da"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_9555ff54d637c974",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "9555ff54d637c974a9bf00097f876151bcda69b2376b23c0ca7a037b30410464",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_06_backstress_shielding_extreme",
+      "selection_role": "BACKSTRESS_SHIELDING_EXTREME",
+      "taylor_peierls_subvector_sha256": "a8982d54c2043f2f6d85c4ebc1e79ee33cbfc9e8d76a61fe45b728aa22d8ac51"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_TP_f2817e7998cb7be6",
+      "cleavage_barrier_sha256": "ca51dcc632ec9d96dcda209413dbf3b7a914ecb488433a281d6359ddf663c156",
+      "emission_barrier_sha256": "75bc5a555c5412dfb9c8337c0c0686a3fdc3e9f5a4774cfe4671664f61a40186",
+      "full_material_sha256": "f2817e7998cb7be633abbc08641f80cff2fac5a94b0bab0899bc343006abe9ce",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_spatial_07_balanced_maximin_medoid",
+      "selection_role": "BALANCED_MAXIMIN_MEDOID",
+      "taylor_peierls_subvector_sha256": "fd2fe8ce1ad5e68c923614af6dc3e5fe078d703ce85d0d94c88010e2776472d6"
+    }
+  ],
+  "producer_commit": "cdb07924a7ef4091540c8c4758d83026dea42be2",
+  "schema": "oneD_v2_taylor_peierls_spatial_transfer_selection_v1",
+  "target_extension_um": 300.0,
+  "temperature_K": 1100.0,
+  "theta_deg": 0.0
+}
