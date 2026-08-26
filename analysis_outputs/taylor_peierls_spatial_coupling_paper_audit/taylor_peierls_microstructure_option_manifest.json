@@ -1,0 +1,32 @@
+{
+  "schema": "Taylor_Peierls_Microstructure_Option_Bank_v1",
+  "producer_code_commit": "bc66667be9b8edb2ecaaf939d759cc48e0593b54",
+  "source_result_commit": "ff9e12f7c4c00e1171c1dead75f29920b089f935",
+  "source_pf_commit": "f8f76435a3509553197e8d28a0e8b3cd2b9ca7ce",
+  "complete_mechanism_set_candidate_ids": [
+    "v913_zeroD_sobol_0202500",
+    "oneD_v2_dbtt_TP_f07fe99faea93479",
+    "oneD_v2_dbtt_TP_4895f9e5b44deea5",
+    "oneD_v2_dbtt_TP_7e668ee637fc3ac5",
+    "oneD_v2_dbtt_TP_b60d78111740b058",
+    "oneD_v2_dbtt_TP_bd5be1610f6e1bce",
+    "oneD_v2_dbtt_TP_9555ff54d637c974",
+    "oneD_v2_dbtt_TP_f2817e7998cb7be6"
+  ],
+  "physically_interpretable_shortlist_candidate_ids": [],
+  "minimal_future_test_set_candidate_ids": [],
+  "selection_basis": "SOURCE_EVALUATED_BARRIER_RATE_PLAUSIBILITY_AND_ACTUAL_2D_PF_MICROSTRUCTURE_DIVERSITY",
+  "fatigue_evaluated": false,
+  "fatigue_validation_status": "NOT_EVALUATED",
+  "future_hypothesis": "Under monotonic crack growth, rapid crack advance and the current future-tip coupling make the fracture response insensitive to large variations in the mobile/retained dislocation partition. Under cyclic loading, repeated subcritical loading at a slowly advancing or temporarily stationary tip may allow those same transport and retention differences to accumulate into different cyclic blunting, shielding, return, or hazard histories.",
+  "future_hypothesis_status": "HYPOTHESIS_NOT_EVALUATED",
+  "forbidden_non_material_coordinates_absent": [
+    "PF lifecycle settings",
+    "PF mesh/wake settings",
+    "reduced-model event rules",
+    "observer settings",
+    "numerical tolerances",
+    "cache settings",
+    "avalanche grouping rules"
+  ]
+}
