@@ -415,7 +415,7 @@ def figures(complete, bank, stage1, pf_summary, onsets, profiles) -> None:
             local.log10_peierls_rate_s_median, local.log10_taylor_completion_rate_s_median,
             c=local.retained_equilibrium_fraction_median, s=10, cmap="viridis", alpha=0.7,
         )
-        ax.set(xlabel="log10 Peierls rate [s⁻¹]", ylabel="log10 Taylor completion rate [s⁻¹]",
+        ax.set(xlabel="log10 Peierls rate [s^-1]", ylabel="log10 Taylor completion rate [s^-1]",
                title=f"{material}: source kinetic regime map")
         fig.colorbar(scatter, ax=ax, label="retained equilibrium fraction")
         fig.tight_layout(); fig.savefig(OUT / filename, dpi=180); plt.close(fig)
@@ -425,7 +425,7 @@ def figures(complete, bank, stage1, pf_summary, onsets, profiles) -> None:
         local = complete[complete.target_class.eq(material)]
         ax.scatter(local.log10_peierls_rate_s_median, local.log10_chi_taylor_completion_median,
                    s=9, alpha=0.5, label=material, marker=marker)
-    ax.set(xlabel="log10 Peierls rate [s⁻¹]", ylabel="log10(transport time / Taylor completion time)",
+    ax.set(xlabel="log10 Peierls rate [s^-1]", ylabel="log10(transport time / Taylor completion time)",
            title="Transport–retention timescale map")
     ax.legend(); fig.tight_layout(); fig.savefig(OUT / "TRANSPORT_RETENTION_TIMESCALE_MAP.png", dpi=180); plt.close(fig)
 
@@ -518,6 +518,21 @@ def write_reports(complete, pareto, bank, shortlist, stage1, long, pf_summary, o
     dbtt_pf = pf_summary[(pf_summary.material_class.eq("DBTT")) & pf_summary.target_um.eq(300)]
     peak_variant = peak_pf[peak_pf.candidate_role.eq("KINETIC_FINALIST")].iloc[0]
     dbtt_variant = dbtt_pf[dbtt_pf.candidate_role.eq("KINETIC_FINALIST")].iloc[0]
+    recommended_rows = {}
+    for material, candidate_id in CONTROL_IDS.items():
+        row = complete[complete.candidate_id.eq(candidate_id)].iloc[0]
+        recommended_rows[material] = {
+            "candidate_id": candidate_id,
+            **{field: float(row[field]) for field in SEARCH_FIELDS},
+        }
+    recommended_table = "\n".join(
+        ["| Coordinate | Peak control | DBTT control |", "|---|---:|---:|"]
+        + [
+            f"| `{field}` | `{recommended_rows['Peak'][field]!r}` | "
+            f"`{recommended_rows['DBTT'][field]!r}` |"
+            for field in SEARCH_FIELDS
+        ]
+    )
     decision = {
         "schema": "oneD_v2_taylor_peierls_final_decision_v1",
         "Peak": {
@@ -543,7 +558,7 @@ def write_reports(complete, pareto, bank, shortlist, stage1, long, pf_summary, o
             "Within source-qualified bounds, Taylor/Peierls kinetics alone redistribute "
             "mobile and retained state but do not create positive reload-separated PF resistance."
         ),
-        "recommended_full_precision_rows": [CONTROL_IDS["Peak"], CONTROL_IDS["DBTT"]],
+        "recommended_full_precision_taylor_peierls_rows": recommended_rows,
     }
     decision_path = OUT / "oneD_v2_taylor_peierls_final_decision.json"
     decision_path.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n")
@@ -590,6 +605,10 @@ The complete library contains {len(complete)} identities; {len(pareto)} received
 ## Decision
 
 Retain both controls: Peak `{CONTROL_IDS['Peak']}` and DBTT `{CONTROL_IDS['DBTT']}`. Within the source-qualified bounds, the ten Taylor/Peierls coordinates alone do not create a credible positive reload-separated R-curve response with the existing Peak/DBTT cleavage and emission barriers.
+
+## Recommended full-precision Taylor/Peierls rows
+
+{recommended_table}
 
 The search changed only mobile/retained partition kinetics. In the reduced model, radius and backstress depend on total state, making fracture response structurally invariant to this partition. Direct PF allows spatial redistribution and shows modest onset changes, but Peak has no reload and DBTT softens on reload. There is no true positive model-form response to promote.
 
