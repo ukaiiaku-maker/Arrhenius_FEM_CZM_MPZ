@@ -395,7 +395,7 @@ def build_pf_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Dat
 
 
 def _pca_coordinates(frame: pd.DataFrame) -> np.ndarray:
-    values = frame.loc[:, SEARCH_FIELDS].to_numpy(float)
+    values = frame.loc[:, SEARCH_FIELDS].to_numpy(float).copy()
     for index, field in enumerate(SEARCH_FIELDS):
         if "entropy" not in field:
             values[:, index] = np.log10(values[:, index])
