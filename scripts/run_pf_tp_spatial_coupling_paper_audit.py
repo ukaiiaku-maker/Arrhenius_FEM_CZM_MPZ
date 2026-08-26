@@ -114,6 +114,15 @@ def git_head(path: Path) -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path, text=True).strip()
 
 
+def producer_code_commit() -> str:
+    """Commit that last changed this producer, independent of later data commits."""
+    relative = Path(__file__).resolve().relative_to(ROOT)
+    return subprocess.check_output(
+        ["git", "log", "-1", "--format=%H", "--", str(relative)],
+        cwd=ROOT, text=True,
+    ).strip()
+
+
 def canonical_hash(mapping: dict[str, Any]) -> str:
     raw = json.dumps(mapping, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     return hashlib.sha256(raw).hexdigest()
@@ -1341,7 +1350,7 @@ def build_option_bank(selection: pd.DataFrame, registry: pd.DataFrame, provenanc
     )
     manifest = {
         "schema": "Taylor_Peierls_Microstructure_Option_Bank_v1",
-        "producer_code_commit": git_head(ROOT), "source_result_commit": "ff9e12f7c4c00e1171c1dead75f29920b089f935",
+        "producer_code_commit": producer_code_commit(), "source_result_commit": "ff9e12f7c4c00e1171c1dead75f29920b089f935",
         "source_pf_commit": "f8f76435a3509553197e8d28a0e8b3cd2b9ca7ce",
         "complete_mechanism_set_candidate_ids": bank.candidate_id.tolist(),
         "physically_interpretable_shortlist_candidate_ids": shortlist_ids,
@@ -1783,7 +1792,7 @@ def final_provenance() -> None:
     ]
     payload = {
         "schema": "PF_TP_PAPER_AUDIT_PROVENANCE_v1",
-        "producer_code_commit": git_head(ROOT),
+        "producer_code_commit": producer_code_commit(),
         "source_result_commit": "ff9e12f7c4c00e1171c1dead75f29920b089f935",
         "source_pf_commit": "f8f76435a3509553197e8d28a0e8b3cd2b9ca7ce",
         "kernel_family_sha256": sha(KERNEL_PATH),

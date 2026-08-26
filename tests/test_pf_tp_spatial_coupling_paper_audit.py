@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -197,6 +198,15 @@ def test_20_scientific_fingerprint_matches_generated_bundle():
     assert digest.hexdigest() == payload["scientific_fingerprint_sha256"]
 
 
+def test_producer_commit_is_the_last_commit_that_changed_the_generator():
+    payload = json.loads((OUT / "PF_TP_PAPER_AUDIT_PROVENANCE.json").read_text())
+    expected = subprocess.check_output(
+        ["git", "log", "-1", "--format=%H", "--", "scripts/run_pf_tp_spatial_coupling_paper_audit.py"],
+        cwd=ROOT, text=True,
+    ).strip()
+    assert payload["producer_code_commit"] == expected
+
+
 def test_complete_factorial_has_all_pair_interactions_and_higher_residual():
     ablations = pd.read_csv(OUT / "pf_tp_component_ablation_matrix.csv")
     assert len(ablations[ablations.factorial_member.eq(True)]) == 8 * 2 * 16
@@ -211,4 +221,3 @@ def test_fail_closed_option_tiers_match_manifest():
     assert bank.complete_mechanism_set.all() and len(bank) == 8
     assert bank.physically_interpretable_shortlist.sum() == len(manifest["physically_interpretable_shortlist_candidate_ids"])
     assert bank.minimal_future_test_set.sum() == len(manifest["minimal_future_test_set_candidate_ids"])
-
