@@ -297,6 +297,138 @@ def _state_geometry(
     }
 
 
+def source_kinetic_diagnostics(
+    candidate: CandidateParameters,
+    physics: CommonPhysics,
+    reduced: ZeroDReductionGeometry,
+    state: ZeroDState,
+    *,
+    K_MPa_sqrt_m: float,
+    temperature_K: float,
+    drive_factors_override: Sequence[float] | None = None,
+    source_opening_stress_override_Pa: float | None = None,
+    resolved_emission_drive_override_Pa: Sequence[float] | None = None,
+) -> dict[str, Any]:
+    """Evaluate the exact source-owned Peierls/encounter/Taylor rates.
+
+    ``encounter_s`` is the forward rate that creates retained content in the
+    source exchange equation. ``taylor_completion_s`` is the competing
+    completion/release rate.  The diagnostics add no state or constitutive
+    term; they expose the quantities already consumed by ``_advance_state``.
+    """
+    geometry = _state_geometry(candidate, physics, reduced, state)
+    radius = float(geometry["tip_radius_m"])
+    sigma_applied = (
+        max(float(K_MPa_sqrt_m), 0.0) * 1.0e6
+        / math.sqrt(2.0 * math.pi * max(radius, physics.b_m))
+        if source_opening_stress_override_Pa is None
+        else float(source_opening_stress_override_Pa)
+    )
+    factors = np.abs(
+        _emission_factors(physics, state.extension_m)
+        if drive_factors_override is None
+        else np.asarray(drive_factors_override, dtype=float)
+    )
+    if factors.shape != (int(physics.n_systems),) or np.any(~np.isfinite(factors)):
+        raise ValueError("drive_factors_override must be finite with one value per system")
+    external = (
+        factors * sigma_applied
+        if resolved_emission_drive_override_Pa is None
+        else np.asarray(resolved_emission_drive_override_Pa, dtype=float)
+    )
+    if external.shape != (int(physics.n_systems),) or np.any(~np.isfinite(external)):
+        raise ValueError("resolved_emission_drive_override_Pa must be finite per system")
+    total_density = np.maximum(state.mobile_m2 + state.retained_m2, 0.0)
+    forest = max(
+        float(physics.rho_forest_floor_m2) + float(np.sum(total_density)),
+        1.0,
+    )
+    spacing = 1.0 / (2.0 * math.sqrt(forest))
+    jump = float(physics.jump_fraction_of_forest_spacing) * spacing
+
+    p_surface = candidate.peierls.surface(candidate.emission)
+    p_stress = candidate.peierls.stress_fraction * external
+    p_rate = np.asarray(
+        _arrhenius_rate(
+            p_surface,
+            np.maximum(p_stress, 0.0),
+            temperature_K,
+            candidate.peierls.nu0_s,
+        ),
+        dtype=float,
+    )
+    velocity = jump * p_rate
+    mfp = float(physics.mean_free_path_coefficient) / math.sqrt(forest)
+    encounter = (
+        max(float(physics.encounter_efficiency), 0.0)
+        * np.abs(velocity)
+        / max(mfp, 1.0e-30)
+    )
+
+    t_surface = candidate.taylor.surface(candidate.emission)
+    phi = spacing / max(float(physics.b_m), 1.0e-30)
+    if math.isfinite(float(physics.taylor_phi_max)):
+        phi = min(phi, float(physics.taylor_phi_max))
+    t_stress = candidate.taylor.stress_fraction * external * phi
+    t_single = np.asarray(
+        _arrhenius_rate(
+            t_surface,
+            np.maximum(t_stress, 0.0),
+            temperature_K,
+            candidate.taylor.nu0_s,
+        ),
+        dtype=float,
+    )
+    corr_length = candidate.taylor_corr_scale / (
+        2.0 * math.sqrt(max(candidate.taylor_corr_rho_c_m2, 1.0e-300))
+    )
+    correlation_order = 1.0 + 2.0 * corr_length * math.sqrt(forest)
+    taylor = t_single / max(correlation_order, 1.0)
+
+    distance = min(
+        float(physics.mpz_length_m),
+        max(
+            float(physics.source_zone_length_m),
+            radius,
+            float(geometry["front_width_m"]),
+            abs(float(physics.b_m)),
+        ),
+    )
+    transport_time = distance / np.maximum(np.abs(velocity), 1.0e-300)
+    encounter_time = 1.0 / np.maximum(encounter, 1.0e-300)
+    taylor_time = 1.0 / np.maximum(taylor, 1.0e-300)
+    exchange = encounter + taylor
+    retained_equilibrium_fraction = np.divide(
+        encounter,
+        exchange,
+        out=np.zeros_like(encounter),
+        where=exchange > 0.0,
+    )
+    return {
+        "source_opening_stress_Pa": sigma_applied,
+        "resolved_emission_drive_Pa_by_system": external,
+        "peierls_stress_Pa_by_system": p_stress,
+        "peierls_rate_s_by_system": p_rate,
+        "peierls_velocity_m_s_by_system": velocity,
+        "mean_free_path_m": mfp,
+        "encounter_rate_s_by_system": encounter,
+        "taylor_stress_Pa_by_system": t_stress,
+        "taylor_completion_rate_s_by_system": taylor,
+        "taylor_correlation_length_m": corr_length,
+        "taylor_correlation_order": correlation_order,
+        "transport_distance_m": distance,
+        "transport_time_s_by_system": transport_time,
+        "retention_encounter_time_s_by_system": encounter_time,
+        "taylor_completion_time_s_by_system": taylor_time,
+        "chi_ret_by_system": transport_time / encounter_time,
+        "chi_taylor_completion_by_system": transport_time / taylor_time,
+        "retained_equilibrium_fraction_by_system": retained_equilibrium_fraction,
+        "tip_radius_m": radius,
+        "front_width_m": float(geometry["front_width_m"]),
+        "forest_density_m2": forest,
+    }
+
+
 def _translation_retention_factor(
     distance_m: float,
     physics: CommonPhysics,
@@ -414,53 +546,19 @@ def _advance_state(
     state.local_slip_count_by_system += activations * slip_per
     state.cumulative_activations += activations
 
-    total_density = np.maximum(state.mobile_m2 + state.retained_m2, 0.0)
-    forest = max(
-        float(physics.rho_forest_floor_m2) + float(np.sum(total_density)),
-        1.0,
+    kinetics = source_kinetic_diagnostics(
+        candidate,
+        physics,
+        reduced,
+        state,
+        K_MPa_sqrt_m=K_MPa_sqrt_m,
+        temperature_K=temperature_K,
+        drive_factors_override=factors,
+        source_opening_stress_override_Pa=sigma_applied,
+        resolved_emission_drive_override_Pa=drive,
     )
-    spacing = 1.0 / (2.0 * math.sqrt(forest))
-    jump = float(physics.jump_fraction_of_forest_spacing) * spacing
-    external = factors * sigma_applied
-
-    p_surface = candidate.peierls.surface(candidate.emission)
-    p_stress = candidate.peierls.stress_fraction * external
-    p_rate = np.asarray(
-        _arrhenius_rate(
-            p_surface,
-            np.maximum(p_stress, 0.0),
-            temperature_K,
-            candidate.peierls.nu0_s,
-        ),
-        dtype=float,
-    )
-    peierls_velocity = jump * p_rate
-    mfp = float(physics.mean_free_path_coefficient) / math.sqrt(forest)
-    encounter = (
-        max(float(physics.encounter_efficiency), 0.0)
-        * np.abs(peierls_velocity)
-        / max(mfp, 1.0e-30)
-    )
-
-    t_surface = candidate.taylor.surface(candidate.emission)
-    phi = spacing / max(float(physics.b_m), 1.0e-30)
-    if math.isfinite(float(physics.taylor_phi_max)):
-        phi = min(phi, float(physics.taylor_phi_max))
-    t_stress = candidate.taylor.stress_fraction * external * phi
-    t_single = np.asarray(
-        _arrhenius_rate(
-            t_surface,
-            np.maximum(t_stress, 0.0),
-            temperature_K,
-            candidate.taylor.nu0_s,
-        ),
-        dtype=float,
-    )
-    corr_length = candidate.taylor_corr_scale / (
-        2.0 * math.sqrt(max(candidate.taylor_corr_rho_c_m2, 1.0e-300))
-    )
-    order = 1.0 + 2.0 * corr_length * math.sqrt(forest)
-    taylor = t_single / max(order, 1.0)
+    encounter = np.asarray(kinetics["encounter_rate_s_by_system"], dtype=float)
+    taylor = np.asarray(kinetics["taylor_completion_rate_s_by_system"], dtype=float)
 
     total = state.mobile_m2 + state.retained_m2
     exchange = encounter + taylor

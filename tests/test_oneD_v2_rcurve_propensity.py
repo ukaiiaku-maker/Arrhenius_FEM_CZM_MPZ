@@ -28,6 +28,25 @@ def _event(index, avalanche, opening_um, kj, *, reload=False, length_um=5.0):
         "retained_density_m2": 4.0,
         "source_multiplicity": 5.0,
         "backstress_Pa": 6.0,
+        "K_app_or_common_reference_MPa_sqrt_m": kj,
+        "K_native_MPa_sqrt_m": kj + 1.0,
+        "K_shield_MPa_sqrt_m": float("nan"),
+        "K_shield_status": "NOT_REPRESENTED",
+        "K_effective_local_equivalent_MPa_sqrt_m": kj - 1.0,
+        "source_opening_stress_Pa": 7.0,
+        "resolved_emission_drive_Pa_by_system": [8.0, 9.0],
+        "peierls_rate_s_by_system": [10.0, 11.0],
+        "peierls_velocity_m_s_by_system": [12.0, 13.0],
+        "taylor_completion_rate_s_by_system": [14.0, 15.0],
+        "encounter_rate_s_by_system": [16.0, 17.0],
+        "transport_distance_m": 18.0,
+        "transport_time_s_min": 19.0,
+        "retention_encounter_time_s_min": 20.0,
+        "taylor_completion_time_s_min": 21.0,
+        "chi_ret_max": 22.0,
+        "chi_taylor_completion_max": 23.0,
+        "retained_equilibrium_fraction_max": 0.5,
+        "timescale_source": "ZEROD_PERSISTENT_V913_SOURCE_OWNED_RATES",
     }
 
 
@@ -44,6 +63,9 @@ def test_only_reload_separated_pre_event_states_are_resistance_candidates():
     }
     onsets = reload_separated_onsets(result)
     assert [item["event_index"] for item in onsets] == [0, 2]
+    assert onsets[0]["peierls_rate_s_by_system"] == [10.0, 11.0]
+    assert onsets[0]["chi_ret_max"] == 22.0
+    assert onsets[0]["K_shield_status"] == "NOT_REPRESENTED"
     summary = summarize_rcurve_propensity(result)
     assert summary["deltaK_reinit_MPa_sqrt_m"] == pytest.approx(10.0)
     assert summary["N_reinit"] == 1

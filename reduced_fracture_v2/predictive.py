@@ -17,6 +17,7 @@ from arrhenius_fracture.zero_d_persistent_v913 import (
     _advance_state,
     _state_geometry,
     reduction_geometry,
+    source_kinetic_diagnostics,
 )
 
 
@@ -415,6 +416,24 @@ def run_zero_d_predictive(
                 "RIGHT_CENSORED_DRIVE_MAP_BOUND",
                 lifecycle=lifecycle,
             )
+        kinetics = source_kinetic_diagnostics(
+            candidate,
+            physics,
+            reduced,
+            state,
+            K_MPa_sqrt_m=float(metrics["native_KJ_MPa_sqrt_m"]),
+            temperature_K=temperature_K,
+            drive_factors_override=event_drive_factors,
+        )
+        transport_time = np.asarray(kinetics["transport_time_s_by_system"], dtype=float)
+        retention_time = np.asarray(kinetics["retention_encounter_time_s_by_system"], dtype=float)
+        taylor_time = np.asarray(kinetics["taylor_completion_time_s_by_system"], dtype=float)
+        chi_ret = np.asarray(kinetics["chi_ret_by_system"], dtype=float)
+        chi_taylor = np.asarray(kinetics["chi_taylor_completion_by_system"], dtype=float)
+        local_sigma = float(kinetics["source_opening_stress_Pa"])
+        radius_normalized_local_K = (
+            local_sigma * math.sqrt(2.0 * math.pi * float(physics.r0_m)) / 1.0e6
+        )
         events.append({
             "event_index": event_index, "physical_avalanche_index": avalanche,
             "event_time_s": time_s, "event_opening_m": opening,
@@ -430,6 +449,37 @@ def run_zero_d_predictive(
             "retained_density_m2": float(np.sum(state.retained_m2)),
             "cumulative_source_activations": float(np.sum(state.cumulative_activations)),
             "drive_factors": list(event_drive_factors),
+            "K_app_or_common_reference_MPa_sqrt_m": float(metrics["native_KJ_MPa_sqrt_m"]),
+            "K_native_MPa_sqrt_m": float(metrics["native_KJ_MPa_sqrt_m"]),
+            "K_shield_MPa_sqrt_m": float("nan"),
+            "K_shield_status": "NOT_REPRESENTED_IN_ZEROD_PREDICTIVE_STATE",
+            "K_effective_local_equivalent_MPa_sqrt_m": radius_normalized_local_K,
+            "source_opening_stress_Pa": local_sigma,
+            "resolved_emission_drive_Pa_by_system": np.asarray(
+                kinetics["resolved_emission_drive_Pa_by_system"], dtype=float
+            ).tolist(),
+            "peierls_rate_s_by_system": np.asarray(
+                kinetics["peierls_rate_s_by_system"], dtype=float
+            ).tolist(),
+            "peierls_velocity_m_s_by_system": np.asarray(
+                kinetics["peierls_velocity_m_s_by_system"], dtype=float
+            ).tolist(),
+            "taylor_completion_rate_s_by_system": np.asarray(
+                kinetics["taylor_completion_rate_s_by_system"], dtype=float
+            ).tolist(),
+            "encounter_rate_s_by_system": np.asarray(
+                kinetics["encounter_rate_s_by_system"], dtype=float
+            ).tolist(),
+            "transport_distance_m": float(kinetics["transport_distance_m"]),
+            "transport_time_s_min": float(np.min(transport_time)),
+            "retention_encounter_time_s_min": float(np.min(retention_time)),
+            "taylor_completion_time_s_min": float(np.min(taylor_time)),
+            "chi_ret_max": float(np.max(chi_ret)),
+            "chi_taylor_completion_max": float(np.max(chi_taylor)),
+            "retained_equilibrium_fraction_max": float(np.max(np.asarray(
+                kinetics["retained_equilibrium_fraction_by_system"], dtype=float
+            ))),
+            "timescale_source": "ZEROD_PERSISTENT_V913_SOURCE_OWNED_RATES",
             "right_censored_at_target": extension + committed >= target_extension_m - 1.0e-15,
         })
         keep = lifecycle.translation_retention(physics, committed)

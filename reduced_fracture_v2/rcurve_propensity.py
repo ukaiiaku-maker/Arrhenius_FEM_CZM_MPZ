@@ -24,7 +24,7 @@ def reload_separated_onsets(result: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
     output: list[dict[str, Any]] = []
     for ordinal, event in enumerate(selected):
-        output.append({
+        onset = {
             "onset_ordinal": ordinal,
             "event_index": int(event["event_index"]),
             "physical_avalanche_index": int(event["physical_avalanche_index"]),
@@ -46,7 +46,43 @@ def reload_separated_onsets(result: Mapping[str, Any]) -> list[dict[str, Any]]:
             "retained_density_m2": float(event["retained_density_m2"]),
             "source_multiplicity": float(event["source_multiplicity"]),
             "backstress_Pa": float(event["backstress_Pa"]),
-        })
+        }
+        # These are source-owned diagnostics added by the Taylor/Peierls audit.
+        # Keep the postprocessor backward compatible with archived events that
+        # predate them, while preserving the complete decomposition whenever
+        # the producer emitted it.
+        optional_scalars = (
+            "K_app_or_common_reference_MPa_sqrt_m",
+            "K_native_MPa_sqrt_m",
+            "K_shield_MPa_sqrt_m",
+            "K_effective_local_equivalent_MPa_sqrt_m",
+            "source_opening_stress_Pa",
+            "transport_distance_m",
+            "transport_time_s_min",
+            "retention_encounter_time_s_min",
+            "taylor_completion_time_s_min",
+            "chi_ret_max",
+            "chi_taylor_completion_max",
+            "retained_equilibrium_fraction_max",
+        )
+        optional_vectors = (
+            "resolved_emission_drive_Pa_by_system",
+            "peierls_rate_s_by_system",
+            "peierls_velocity_m_s_by_system",
+            "taylor_completion_rate_s_by_system",
+            "encounter_rate_s_by_system",
+        )
+        optional_labels = ("K_shield_status", "timescale_source")
+        for field in optional_scalars:
+            if field in event:
+                onset[field] = float(event[field])
+        for field in optional_vectors:
+            if field in event:
+                onset[field] = [float(value) for value in event[field]]
+        for field in optional_labels:
+            if field in event:
+                onset[field] = str(event[field])
+        output.append(onset)
     return output
 
 
