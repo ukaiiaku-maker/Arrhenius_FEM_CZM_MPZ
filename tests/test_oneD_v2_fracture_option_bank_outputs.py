@@ -70,6 +70,23 @@ def test_controls_fixed_rows_and_focused_variants_are_preserved():
     assert focused.option_status.str.contains("R_ENRICHED_OPTION").any()
 
 
+def test_focused_registry_retains_controls_and_diagnostic_variants_without_promotion():
+    registry = load_csv(OUT / "oneD_v2_peak_dbtt_rcurve_registry.csv")
+    control_ids = {CONTROLS["Peak"], CONTROLS["DBTT"]}
+    diagnostic_ids = {item for values in FOCUSED.values() for item in values}
+    assert set(registry.candidate_id) == control_ids | diagnostic_ids
+    assert len(registry) == 11
+    controls = registry[registry.candidate_id.isin(control_ids)]
+    diagnostics = registry[registry.candidate_id.isin(diagnostic_ids)]
+    assert set(controls.focused_registry_role) == {"CONTROL"}
+    assert set(controls.monotonic_fracture_decision) == {"RETAIN_CONTROL"}
+    assert set(diagnostics.focused_registry_role) == {"DIAGNOSTIC_OPTION"}
+    assert set(diagnostics.monotonic_fracture_decision) == {
+        "NOT_PROMOTED_DIAGNOSTIC_ONLY"
+    }
+    assert not registry.production_material_row_changed.astype(bool).any()
+
+
 def test_curated_bank_and_shortlist_span_all_classes_and_responses():
     bank = load_csv(BANK)
     shortlist = load_csv(OUT / "oneD_v2_future_joint_search_shortlist.csv")

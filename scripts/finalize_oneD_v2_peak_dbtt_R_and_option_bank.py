@@ -624,8 +624,21 @@ def main() -> int:
     shortlist = pd.concat(shortlist_rows, ignore_index=True)
     shortlist.to_csv(OUT / "oneD_v2_future_joint_search_shortlist.csv", index=False)
 
-    final_registry = bank[bank.candidate_id.isin((CONTROLS["Peak"], CONTROLS["DBTT"]))].copy()
-    final_registry["monotonic_fracture_decision"] = "RETAIN_CONTROL"
+    diagnostic_ids = {
+        item for material in ("Peak", "DBTT") for item in FOCUSED[material]
+    }
+    final_registry = bank[bank.candidate_id.isin({
+        CONTROLS["Peak"], CONTROLS["DBTT"], *diagnostic_ids,
+    })].copy()
+    final_registry["focused_registry_role"] = np.where(
+        final_registry.candidate_id.isin((CONTROLS["Peak"], CONTROLS["DBTT"])),
+        "CONTROL", "DIAGNOSTIC_OPTION",
+    )
+    final_registry["monotonic_fracture_decision"] = np.where(
+        final_registry.focused_registry_role == "CONTROL",
+        "RETAIN_CONTROL", "NOT_PROMOTED_DIAGNOSTIC_ONLY",
+    )
+    final_registry["production_material_row_changed"] = False
     final_registry.to_csv(OUT / "oneD_v2_peak_dbtt_rcurve_registry.csv", index=False)
     decision = {
         "schema": "oneD_v2_peak_dbtt_R_final_decision_v1",
@@ -643,6 +656,8 @@ def main() -> int:
         },
         "FEMCZM_decision": "No FEM/CZM material row is changed; no new FEM/CZM simulation was run.",
         "focused_variants_preserved_in_option_bank": FOCUSED,
+        "focused_registry_policy": "CONTROLS_PLUS_EXPLICIT_SCREENED_VARIANTS_AS_DIAGNOSTIC_OPTIONS",
+        "additional_local_retuning_recommendation": "NOT_WARRANTED_WITHIN_PRESENT_29_COORDINATE_MODEL",
         "fatigue_evaluated": False,
         "fatigue_validation_status": "NOT_EVALUATED",
     }
@@ -808,7 +823,7 @@ The Peak-R finalist reached the 100 µm right-censor target at 600, 900, and 120
 
 {table(direct[(direct.material_class == 'Peak') & (direct.candidate_role == 'R_FINALIST')], direct_columns)}
 
-The archived control comparisons are temperature-matched but use their authoritative temperature-specific seeds rather than paired finalist seeds. They are qualified contextual controls, not a paired stochastic estimate. Transfer status: **failed for R enrichment**.
+The archived control comparisons are temperature-matched but use their authoritative temperature-specific seeds rather than paired finalist seeds. They are qualified contextual controls, not a paired stochastic estimate. Transfer conclusion: **decisive rejection of Peak R enrichment**.
 """,
         "PF_2D_DBTT_R_TRANSFER_VALIDATION.md": f"""# Direct PF DBTT-R transfer
 
@@ -816,7 +831,7 @@ The DBTT-R finalist reached the 100 µm right-censor target at 600, 1100, and 12
 
 {table(direct[(direct.material_class == 'DBTT') & (direct.candidate_role == 'R_FINALIST')], direct_columns)}
 
-The in-avalanche native-drive history is not relabeled as an R-curve. Transfer status: **failed for positive reload-separated resistance development**.
+The in-avalanche native-drive history is not relabeled as an R-curve. Transfer conclusion: **decisive identification of reload-separated softening, not rising resistance**.
 """,
         "ONE_D_V2_PEAK_DBTT_R_FINAL_DECISION.md": f"""# Final Peak/DBTT R decision
 
@@ -827,6 +842,12 @@ The in-avalanche native-drive history is not relabeled as an R-curve. Transfer s
 The reduced Peak signal is FEMCZM-only, while direct PF turns the DBTT finalist's apparent upper-temperature toughening into a negative reload-separated onset increment. Consequently neither finalist is a shared-provider replacement or qualified optional R-curve row. The tested variants remain fracture-side diagnostic options in the separately versioned bank:
 
 {table(focused_options, ['target_response_class', 'candidate_id', 'parameter_sha256', 'direct_PF_validation_status'])}
+
+This is a decisive screening outcome, not a failed search. The retained DBTT control already contains modest precursor topology—two PF physical avalanches and three FEM/CZM physical avalanches at 1000 K—whereas Peak has one avalanche in each provider. The result is specifically that no material-vector change produced a more positive, provider-robust, direct-PF-validated reinitiation envelope.
+
+The 1-D model performed its intended role: it identified apparent R-propensity, separated reload-separated onset states from within-avalanche drive, rejected one-provider signals, and selected bounded direct-PF transfers. Direct PF then showed that the apparent positive reduced signal did not survive the sharp-wake geometry. Within the explored 29-coordinate space and current architecture, further local Peak/DBTT retuning is not warranted; a future rising-resistance study would require a new physically motivated persistent wake, path-memory, shielding, hardening, or renewal mechanism.
+
+The focused R-curve registry contains the two retained controls plus the nine explicitly screened variants, labeled `DIAGNOSTIC_OPTION` and `NOT_PROMOTED_DIAGNOSTIC_ONLY`. None changes a production material row.
 
 No FEM/CZM material row is changed; no new FEM/CZM simulation was run. Weak-T and ceramic-like selected rows remain unchanged. Fatigue was not evaluated.
 """,
