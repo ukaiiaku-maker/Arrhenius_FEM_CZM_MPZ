@@ -8,4 +8,4 @@ The Peak-R finalist reached the 100 µm right-censor target at 600, 900, and 120
 | R_FINALIST | 900 | 8666 | 1 | 0 | 81.268099 | NA | True |
 | R_FINALIST | 1200 | 8666 | 1 | 0 | 63.587789 | NA | True |
 
-The archived control comparisons are temperature-matched but use their authoritative temperature-specific seeds rather than paired finalist seeds. They are qualified contextual controls, not a paired stochastic estimate. Transfer status: **failed for R enrichment**.
+The archived control comparisons are temperature-matched but use their authoritative temperature-specific seeds rather than paired finalist seeds. They are qualified contextual controls, not a paired stochastic estimate. Transfer conclusion: **decisive rejection of Peak R enrichment**.

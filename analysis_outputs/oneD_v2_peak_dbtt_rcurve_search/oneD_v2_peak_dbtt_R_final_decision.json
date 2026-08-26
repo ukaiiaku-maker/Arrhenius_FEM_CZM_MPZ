@@ -12,8 +12,10 @@
     "reason": "all reduced Peak-R signals were FEMCZM-only and direct PF remained one avalanche",
     "variant_status": "NO_CREDIBLE_R_ENRICHED_ROW"
   },
+  "additional_local_retuning_recommendation": "NOT_WARRANTED_WITHIN_PRESENT_29_COORDINATE_MODEL",
   "fatigue_evaluated": false,
   "fatigue_validation_status": "NOT_EVALUATED",
+  "focused_registry_policy": "CONTROLS_PLUS_EXPLICIT_SCREENED_VARIANTS_AS_DIAGNOSTIC_OPTIONS",
   "focused_variants_preserved_in_option_bank": {
     "DBTT": [
       "oneD_v2_dbtt_R_9f5160f509e713e2",

@@ -18,4 +18,10 @@ The reduced Peak signal is FEMCZM-only, while direct PF turns the DBTT finalist'
 | Peak | oneD_v2_peak_R_7834115ae79cd559 | 7834115ae79cd5599062495367866062658f85c02160a079d50b6ce39104d6f6 | NOT_RUN |
 | Peak | oneD_v2_peak_R_a2e923a7587543db | a2e923a7587543dbcc24cd621145bbf3a6f2ba2c749a6bbd9c454558726210d2 | NOT_RUN |
 
+This is a decisive screening outcome, not a failed search. The retained DBTT control already contains modest precursor topology—two PF physical avalanches and three FEM/CZM physical avalanches at 1000 K—whereas Peak has one avalanche in each provider. The result is specifically that no material-vector change produced a more positive, provider-robust, direct-PF-validated reinitiation envelope.
+
+The 1-D model performed its intended role: it identified apparent R-propensity, separated reload-separated onset states from within-avalanche drive, rejected one-provider signals, and selected bounded direct-PF transfers. Direct PF then showed that the apparent positive reduced signal did not survive the sharp-wake geometry. Within the explored 29-coordinate space and current architecture, further local Peak/DBTT retuning is not warranted; a future rising-resistance study would require a new physically motivated persistent wake, path-memory, shielding, hardening, or renewal mechanism.
+
+The focused R-curve registry contains the two retained controls plus the nine explicitly screened variants, labeled `DIAGNOSTIC_OPTION` and `NOT_PROMOTED_DIAGNOSTIC_ONLY`. None changes a production material row.
+
 No FEM/CZM material row is changed; no new FEM/CZM simulation was run. Weak-T and ceramic-like selected rows remain unchanged. Fatigue was not evaluated.

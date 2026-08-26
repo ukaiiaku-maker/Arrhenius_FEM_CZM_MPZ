@@ -1,5 +1,5 @@
 {
-  "analysis_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "analysis_commit": "4ef69f66c993f8fa80e48f753501441b3f05e4f3",
   "bank_membership_fingerprint": "c9b85f76c689a3bee5dcf1de73ab3b81642f86450a591dc4758b86b9419b6c38",
   "direct_pf_manifest_sha256": "cab6ce08e65ab444c44afdac9707e2e52fe6bda7c8ae0cf645e203b00255254e",
   "focused_branch": "codex/oneD-v2-peak-dbtt-rcurve-search",
@@ -13,11 +13,11 @@
   "new_PF_runs": 6,
   "pf_branch": "codex/oneD-v2-peak-dbtt-R-pf-transfer",
   "pf_runner_commit": "130b305",
-  "producer_code_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "producer_code_commit": "4ef69f66c993f8fa80e48f753501441b3f05e4f3",
   "qualified_domain_path": "analysis_outputs/oneD_v2_terminal_predictive_program/oneD_v2_domain_of_usefulness.json",
   "qualified_domain_sha256": "119e8906d3c8166ad7b64e741d4cb09fc56f7bf46a98d6164fddc7d65e23270b",
-  "registry_commit": "04e21d940c5920f48d0f8dbc722900dfd4f6578b",
+  "registry_commit": "4ef69f66c993f8fa80e48f753501441b3f05e4f3",
   "schema": "oneD_v2_peak_dbtt_R_provenance_manifest_v1",
-  "scientific_fingerprint": "01bf6ea5c214467407a9395156ef76c00796d17bf6ac74cc7b227f7f46f6aa19",
+  "scientific_fingerprint": "850a9bbc11e800420a2cec9c9a8b9f42f4a64860ff7e5a6c6039e3d370bab56b",
   "source_commit": "5045feed8c87440676c580fe7f74989be4c4a995"
 }

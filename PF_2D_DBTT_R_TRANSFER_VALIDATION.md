@@ -8,4 +8,4 @@ The DBTT-R finalist reached the 100 µm right-censor target at 600, 1100, and 12
 | R_FINALIST | 1100 | 1008666 | 2 | 1 | 78.925053 | -9.3491314 | True |
 | R_FINALIST | 1200 | 1008666 | 2 | 1 | 78.851881 | -9.3630892 | True |
 
-The in-avalanche native-drive history is not relabeled as an R-curve. Transfer status: **failed for positive reload-separated resistance development**.
+The in-avalanche native-drive history is not relabeled as an R-curve. Transfer conclusion: **decisive identification of reload-separated softening, not rising resistance**.
