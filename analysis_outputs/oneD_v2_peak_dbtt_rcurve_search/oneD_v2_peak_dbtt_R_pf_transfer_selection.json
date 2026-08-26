@@ -1,0 +1,57 @@
+{
+  "analysis_only": true,
+  "canonical_PF_registry_modified": false,
+  "canonical_option_order": [
+    "oneD_v2_Peak_control",
+    "oneD_v2_Peak_R",
+    "oneD_v2_DBTT_control",
+    "oneD_v2_DBTT_R"
+  ],
+  "maximum_concurrent_heavy_workers": 2,
+  "new_FEMCZM_runs": 0,
+  "new_case_policy": "FINALIST_ROWS_ONLY_CONTROLS_REUSE_AUTHORITATIVE_RUNS",
+  "primary_candidates": [
+    {
+      "candidate_id": "v913_zeroD_sobol_0242980",
+      "material_class": "Peak",
+      "option_key": "oneD_v2_Peak_control",
+      "parameter_sha256": "d004ea60768cfb90435d8d10f9badd180e614c0fc23950b24554b5a0b4bbe3a2"
+    },
+    {
+      "candidate_id": "oneD_v2_peak_R_41f8789bcbc1f097",
+      "material_class": "Peak",
+      "option_key": "oneD_v2_Peak_R",
+      "parameter_sha256": "41f8789bcbc1f097eae880694e11ac6711dfbb6884b86b2b78981bfdb22943fb"
+    },
+    {
+      "candidate_id": "v913_zeroD_sobol_0202500",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_control",
+      "parameter_sha256": "54104a30a31aa19517810249cb3ea42a346b92670ce3bd4f007110ba3babb1c2"
+    },
+    {
+      "candidate_id": "oneD_v2_dbtt_R_9f5160f509e713e2",
+      "material_class": "DBTT",
+      "option_key": "oneD_v2_DBTT_R",
+      "parameter_sha256": "9f5160f509e713e256ea747e2549d05063d6a269258810b4348dcb4bc7fa9d59"
+    }
+  ],
+  "schema": "oneD_v2_peak_dbtt_R_pf_transfer_selection_v1",
+  "seeds": {
+    "DBTT": 1008666,
+    "Peak": 8666
+  },
+  "target_extension_um": 100.0,
+  "temperatures_K": {
+    "DBTT": [
+      600.0,
+      1100.0,
+      1200.0
+    ],
+    "Peak": [
+      600.0,
+      900.0,
+      1200.0
+    ]
+  }
+}

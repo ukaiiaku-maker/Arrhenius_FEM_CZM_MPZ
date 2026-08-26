@@ -1,0 +1,87 @@
+{
+  "canonical_seed_300um_temperatures_K": {
+    "DBTT": [
+      900.0,
+      1000.0,
+      1100.0
+    ],
+    "Peak": [
+      900.0,
+      1000.0
+    ]
+  },
+  "case_count": 510,
+  "material_fields": [
+    "Tref_K",
+    "cleave_G00_eV",
+    "cleave_gT_eV_per_K",
+    "cleave_sigc0_GPa",
+    "cleave_sT_GPa_per_K",
+    "cleave_exp_a",
+    "cleave_exp_n",
+    "cleave_floor_frac",
+    "emit_G00_eV",
+    "emit_gT_eV_per_K",
+    "emit_sigc0_GPa",
+    "emit_sT_GPa_per_K",
+    "emit_exp_a",
+    "emit_exp_n",
+    "emit_floor_frac",
+    "peierls_H0_eV",
+    "peierls_activation_entropy_kB",
+    "peierls_exp_a",
+    "peierls_exp_n",
+    "peierls_nu0_s",
+    "taylor_H0_eV",
+    "taylor_activation_entropy_kB",
+    "taylor_exp_a",
+    "taylor_exp_n",
+    "taylor_nu0_s",
+    "rho_source0_m2",
+    "taylor_corr_rho_c_m2",
+    "taylor_corr_scale",
+    "c_blunt"
+  ],
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "output_sha256": "10e3e3e3f33907edd06c981c906825b81a11934cce1bb92ccfd109fc49564205",
+  "schema": "oneD_v2_peak_dbtt_R_multiseed_validation_v1",
+  "seeds": {
+    "DBTT": [
+      1008666,
+      1008667,
+      1008668
+    ],
+    "Peak": [
+      8666,
+      8667,
+      8668
+    ]
+  },
+  "survivors": {
+    "DBTT": [
+      "v913_zeroD_sobol_0202500",
+      "oneD_v2_dbtt_R_9f5160f509e713e2",
+      "oneD_v2_dbtt_R_c4859a34963f15af",
+      "oneD_v2_dbtt_R_7b3b5b45354e64ef",
+      "oneD_v2_dbtt_R_3e168d9381eafa7b",
+      "oneD_v2_dbtt_R_41a3f2096b3c4c54",
+      "oneD_v2_dbtt_R_c2dabb42101cf812"
+    ],
+    "Peak": [
+      "v913_zeroD_sobol_0242980",
+      "oneD_v2_peak_R_41f8789bcbc1f097",
+      "oneD_v2_peak_R_a2e923a7587543db",
+      "oneD_v2_peak_R_7834115ae79cd559"
+    ]
+  },
+  "temperatures_K": [
+    300.0,
+    600.0,
+    800.0,
+    900.0,
+    1000.0,
+    1100.0,
+    1200.0
+  ]
+}

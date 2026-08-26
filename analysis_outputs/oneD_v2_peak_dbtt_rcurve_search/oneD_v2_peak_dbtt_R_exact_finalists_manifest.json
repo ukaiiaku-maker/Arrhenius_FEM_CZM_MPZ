@@ -1,0 +1,17 @@
+{
+  "fem_mechanics_map_sha256": "21b13ca048482b560e2427dfd6beb359fcc406c421cafa488567c5fc27b4ffbd",
+  "fem_policy": "PRECOMPUTED_QUALIFIED_EXACT_MAP_ONLY_MISSION_PROHIBITS_NEW_FEMCZM",
+  "fem_qualified_G_map_sha256": "1e8a77a642d6c086582963f9eb576227ebb658b6a392910ce81f3c94186e0607",
+  "fem_source_map_sha256": "c39c16c51d4d045c8f206faa859af3d3577fea5448d026491a7ccc10ad4f1f8f",
+  "finalists": {
+    "DBTT": "oneD_v2_dbtt_R_9f5160f509e713e2",
+    "Peak": "oneD_v2_peak_R_41f8789bcbc1f097"
+  },
+  "new_FEMCZM_solve_count": 0,
+  "output_sha256": "b85a0d7155e9c4c6532f828cd8812f9d9f9cef895e18454062b60cf4741a06a5",
+  "pf_exact_field_solve_count": 2,
+  "pf_exact_probe_query_count": 3,
+  "pf_mechanics_map_sha256": "b508d5ba6a7562e53f5280ffecf015d3c6f8c801d0e03abe8bc9d7ddef8f0fc1",
+  "pf_source_map_sha256": "48bacefcc7d800bac97d41e45686fc82ce2cf4b7b868474c2b741024b254549e",
+  "schema": "oneD_v2_peak_dbtt_R_exact_finalists_v1"
+}

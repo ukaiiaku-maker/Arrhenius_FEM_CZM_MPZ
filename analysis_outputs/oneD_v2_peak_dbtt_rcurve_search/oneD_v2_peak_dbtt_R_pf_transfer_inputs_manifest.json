@@ -1,0 +1,11 @@
+{
+  "canonical_PF_registry_modified": false,
+  "registry_sha256": "af3b0620f5899d91c0dbed45055e241a8eca5f9d3cd9be4ebaf11495b7ad373a",
+  "row_count": 4,
+  "schema": "oneD_v2_peak_dbtt_R_pf_transfer_inputs_v1",
+  "selection_sha256": "faaafe98d8d0e6dc649b909b15759143e4cc88d866c64f69d0a0e8b1f01c838d",
+  "source_candidate_files": {
+    "dbtt": "9b53c38ce929e5d9c6ae0899582b6f79157330117584b073766c4e3908e60b22",
+    "peak": "9e1a2111bc49fee9f6dd4acd4bb2511fc6592a055b23e36ae3aea5f9a5ce95ab"
+  }
+}

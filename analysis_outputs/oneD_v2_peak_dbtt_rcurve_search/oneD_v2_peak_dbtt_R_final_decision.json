@@ -1,0 +1,35 @@
+{
+  "DBTT": {
+    "candidate_id": "v913_zeroD_sobol_0202500",
+    "decision": "RETAIN_CONTROL",
+    "reason": "direct PF reinitiation onsets declined by about 9.35 MPa sqrt(m) at 1100-1200 K",
+    "variant_status": "NO_CREDIBLE_R_ENRICHED_ROW"
+  },
+  "FEMCZM_decision": "No FEM/CZM material row is changed; no new FEM/CZM simulation was run.",
+  "Peak": {
+    "candidate_id": "v913_zeroD_sobol_0242980",
+    "decision": "RETAIN_CONTROL",
+    "reason": "all reduced Peak-R signals were FEMCZM-only and direct PF remained one avalanche",
+    "variant_status": "NO_CREDIBLE_R_ENRICHED_ROW"
+  },
+  "additional_local_retuning_recommendation": "NOT_WARRANTED_WITHIN_PRESENT_29_COORDINATE_MODEL",
+  "fatigue_evaluated": false,
+  "fatigue_validation_status": "NOT_EVALUATED",
+  "focused_registry_policy": "CONTROLS_PLUS_EXPLICIT_SCREENED_VARIANTS_AS_DIAGNOSTIC_OPTIONS",
+  "focused_variants_preserved_in_option_bank": {
+    "DBTT": [
+      "oneD_v2_dbtt_R_9f5160f509e713e2",
+      "oneD_v2_dbtt_R_c4859a34963f15af",
+      "oneD_v2_dbtt_R_7b3b5b45354e64ef",
+      "oneD_v2_dbtt_R_3e168d9381eafa7b",
+      "oneD_v2_dbtt_R_41a3f2096b3c4c54",
+      "oneD_v2_dbtt_R_c2dabb42101cf812"
+    ],
+    "Peak": [
+      "oneD_v2_peak_R_41f8789bcbc1f097",
+      "oneD_v2_peak_R_a2e923a7587543db",
+      "oneD_v2_peak_R_7834115ae79cd559"
+    ]
+  },
+  "schema": "oneD_v2_peak_dbtt_R_final_decision_v1"
+}

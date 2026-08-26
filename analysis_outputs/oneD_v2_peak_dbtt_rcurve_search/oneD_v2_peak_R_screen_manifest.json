@@ -1,0 +1,35 @@
+{
+  "candidate_count": 204,
+  "control_id": "v913_zeroD_sobol_0242980",
+  "evaluated_case_count": 1632,
+  "material": "Peak",
+  "new_2D_FEMCZM_runs": 0,
+  "new_2D_PF_runs": 0,
+  "objective_policy": "SEPARATE_PARETO_DIMENSIONS_NO_OPAQUE_WEIGHTED_SCORE",
+  "objectives": [
+    "completion_domain_objective",
+    "temperature_class_objective",
+    "reinitiation_objective",
+    "precursor_topology_objective",
+    "final_avalanche_objective",
+    "control_onset_deviation_objective",
+    "provider_robustness_objective",
+    "process_zone_state_objective"
+  ],
+  "parameter_identity": "SHA256_CANONICAL_FULL_PRECISION_V913_ACTIVE_29",
+  "pareto_sha256": "3878f28461d8fa2ab3296f77e6141e152de4b6b4e92c5e5f1200391e50e642e2",
+  "population_sha256": "e64b76e959af432a803b9b1088594bc4013d932bb7e7df7ae9d0cb3b7d22edde",
+  "providers": [
+    "PF",
+    "FEMCZM"
+  ],
+  "schema": "oneD_v2_peak_dbtt_R_fast_screen_v1",
+  "seed": 8666,
+  "target_um": 100.0,
+  "temperatures_K": [
+    600.0,
+    900.0,
+    1000.0,
+    1200.0
+  ]
+}
