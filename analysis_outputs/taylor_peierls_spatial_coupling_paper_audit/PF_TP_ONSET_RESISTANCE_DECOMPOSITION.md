@@ -1,0 +1,9 @@
+# PF Taylor/Peierls onset resistance decomposition
+
+All values use V2 reload-separated pre-event onsets. Native PF KJ decreases by -6.34360 to -6.32963 MPa sqrt(m), with only 0.01397 MPa sqrt(m) candidate spread. In contrast, the explicitly labelled source-opening equivalent at a fixed 1-um reference radius rises by 1.31935 to 1.33105 MPa sqrt(m).
+
+The sign opposition is real but the quantities are not additive. The local measure maps unshielded opening stress to a reporting reference radius. Native KJ is a sharp-wake structural diagnostic. Radius, signed shielding, backstress, and multiplicity enter nonlinear source equations. The component table therefore reports one-at-a-time frozen diagnostics, paired/higher interactions in log hazard competition, and a non-additive residual rather than claiming an energy decomposition.
+
+The source audit reproduces archived active shielding and uses the source-evaluated backstress and persistent-site geometry saved at both onsets. The accepted population snapshot recomputes a slightly later backstress separately; the observer does not serialize the inner-microstep precommit state, so those phases are not conflated. The modest local hardening-like change is produced mainly by tip resharpening: radius falls from about 7.6346 to 5.2726 um, raising K/sqrt(2*pi*r) even though native KJ falls. Signed shielding is negative (anti-shielding in the production convention) and becomes less negative; this partly opposes the resharpening increase. Backstress and multiplicity are nearly candidate invariant at the physical onsets.
+
+The mean structural K-per-opening coefficient falls by 21.60% between initial and reload-separated geometries. That sharp-wake/global-to-local geometry change dominates the remote/native response, producing apparent softening despite the local stress increase.
