@@ -2,6 +2,7 @@
 """Compact no-retuning regression for the frozen weak-T and ceramic rows."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -28,7 +29,11 @@ TEMPERATURES = (300.0, 1000.0, 1200.0)
 
 
 def main() -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=Path, default=OUT)
+    args = parser.parse_args()
+    output_dir = args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
     registry = pd.read_csv(SOURCE / "oneD_v2_new_four_class_registry.csv")
     reference = pd.read_csv(SOURCE / "oneD_v2_final_four_class_results.csv")
     physics, _, providers = inputs()
@@ -88,7 +93,7 @@ def main() -> int:
             "physical_avalanche_count", "reference_physical_avalanche_count",
         ]].to_string(index=False))
         raise RuntimeError("weak-T/ceramic compact regression changed a frozen response")
-    output = OUT / "oneD_v2_weak_ceramic_compact_regression.csv"
+    output = output_dir / "oneD_v2_weak_ceramic_compact_regression.csv"
     frame.to_csv(output, index=False)
     manifest = {
         "schema": "oneD_v2_weak_ceramic_compact_regression_v1",
@@ -107,7 +112,7 @@ def main() -> int:
         "new_2D_PF_runs": 0,
         "new_2D_FEMCZM_runs": 0,
     }
-    (OUT / "oneD_v2_weak_ceramic_compact_regression_manifest.json").write_text(
+    (output_dir / "oneD_v2_weak_ceramic_compact_regression_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     )
     print(frame[["material_class", "provider", "temperature_K", "status",
