@@ -1,6 +1,6 @@
 {
   "schema": "Taylor_Peierls_Microstructure_Option_Bank_v1",
-  "producer_code_commit": "bc66667be9b8edb2ecaaf939d759cc48e0593b54",
+  "producer_code_commit": "01a1bbfec98f6c63a12579a053374f6839e6136e",
   "source_result_commit": "ff9e12f7c4c00e1171c1dead75f29920b089f935",
   "source_pf_commit": "f8f76435a3509553197e8d28a0e8b3cd2b9ca7ce",
   "complete_mechanism_set_candidate_ids": [
