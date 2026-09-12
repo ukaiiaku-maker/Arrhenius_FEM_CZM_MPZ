@@ -1545,7 +1545,7 @@
   },
   "selection_executed_before_paired_results": true,
   "source_function": "MaterialManifest.cleavage/emission.rate",
-  "source_head": "04730b1d516d4694d39fdbe3bcb7121774114a0c",
+  "source_head": "80c0183045a4a37e0f99aad1585f1decaa17d11e",
   "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",
   "temperature_grid_K": [
     300,

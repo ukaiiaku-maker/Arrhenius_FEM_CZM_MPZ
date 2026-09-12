@@ -126,7 +126,7 @@
   },
   "requested_refinement_levels": 3,
   "schema": "oneD.v3.aligned-oracle-readiness/2",
-  "source_head": "04730b1d516d4694d39fdbe3bcb7121774114a0c",
+  "source_head": "80c0183045a4a37e0f99aad1585f1decaa17d11e",
   "source_head_matches_pinned_unified_commit": true,
   "source_recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
   "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",

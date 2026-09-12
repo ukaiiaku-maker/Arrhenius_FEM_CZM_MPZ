@@ -107,7 +107,7 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "04730b1d516d4694d39fdbe3bcb7121774114a0c",
+  "read_only_v5_head": "80c0183045a4a37e0f99aad1585f1decaa17d11e",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
