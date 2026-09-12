@@ -108,7 +108,7 @@ def test_09_ceramic_like_is_complete_holdout_and_fatigue_remains_unstarted():
         "development_sentinels": ["Peak", "DBTT", "weak-T"],
     }
     assert decision["pilot_terminal"]["FATIGUE_IMPLEMENTATION"] == "NOT_STARTED_BY_CONTRACT"
-    assert decision["execution_counts"]["new_2d_mechanics_solves"] == 0
+    assert decision["execution_counts"]["new_2d_mechanics_solves"] == 1
 
 
 def test_10_preserved_geometric_and_no_inference_contracts():
@@ -119,11 +119,11 @@ def test_10_preserved_geometric_and_no_inference_contracts():
     assert decision["preserved"]["fracture_rows_changed"] is False
 
 
-def test_11_later_phases_remain_bounded_after_m2_and_anchor_gates():
+def test_11_later_phases_remain_bounded_after_oracle_readiness_block():
     decision = json.loads((OUT / "decision.json").read_text())
     contract = decision["prospective_execution_contract"]
     assert contract["oracle_matrix"]["planned_unique_states"] == 18
-    assert contract["oracle_matrix"]["status"] == "NOT_RUN_PENDING_BOUNDED_ALIGNED_ORACLE"
+    assert contract["oracle_matrix"]["status"] == "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED"
     assert contract["load_mapping"]["raw_2d_opening_used_as_1d_K"] is False
     assert contract["baseline_comparison"]["void_increment"] == (
         "Delta O_void = O_void - O_no_void"
@@ -173,3 +173,22 @@ def test_13_passed_m2_ledger_waits_only_for_aligned_oracle():
     ledger = paired_case_ledger(anchors, gate="PASS_EXACT_RUNTIME_BINDING")
     assert all(row["temperature_K"] is not None for row in ledger)
     assert all(row["void_2d_status"] == "NOT_RUN_PENDING_ALIGNED_ORACLE" for row in ledger)
+
+
+def test_14_oracle_readiness_fails_closed_on_expected_source_noncertification():
+    readiness = json.loads((OUT / "aligned_oracle_readiness.json").read_text())
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert readiness["source_head_matches_pinned_unified_commit"] is True
+    assert readiness["accepted_oracle_states"] == 0
+    assert readiness["oracle_matrix_status"] == "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED"
+    assert readiness["expected_scientific_noncertification_converted_to_unavailable"] is True
+    assert readiness["unexpected_programming_exceptions_caught"] is False
+    assert readiness["missing_fields_inferred_or_synthesized"] is False
+    assert readiness["final_failed_predicates"] == {
+        "fixed_arc_tensor_convergence": False,
+        "cavity_traction": False,
+    }
+    assert decision["pilot_terminal"]["ONE_D_V3_MECHANICS_MAP_FIT"] == (
+        "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED"
+    )
+    assert decision["execution_counts"]["paired_material_temperature_cells_run"] == 0

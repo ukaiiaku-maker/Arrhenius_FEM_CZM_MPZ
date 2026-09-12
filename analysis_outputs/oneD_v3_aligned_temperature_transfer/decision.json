@@ -1,12 +1,23 @@
 {
   "amendment": "FOUR_RESPONSE_FAMILIES_WITH_COMMON_REFERENCE_VOID_KINETICS",
-  "blocking_reason": null,
+  "blocking_reason": {
+    "artifact": "aligned_oracle_readiness.json",
+    "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
+    "failed_predicates": {
+      "cavity_traction": false,
+      "fixed_arc_tensor_convergence": false
+    },
+    "required_action": "improve fixed-arc source convergence under the frozen scientific criteria in a separate 2-D commit"
+  },
   "execution_counts": {
+    "bounded_2d_oracle_readiness_cases": 1,
     "new_1d_trajectories": 0,
-    "new_2d_mechanics_solves": 0,
+    "new_2d_mechanics_solves": 1,
+    "new_2d_oracle_states_accepted": 0,
     "new_2d_trajectories": 0,
     "paired_material_temperature_cells_run": 0,
-    "planned_material_temperature_cells": 12
+    "planned_material_temperature_cells": 12,
+    "source_refinement_levels_in_readiness_case": 5
   },
   "feature_temperature_gate": "PASS_FROZEN_PROSPECTIVE_ANCHORS",
   "held_out_policy": {
@@ -26,16 +37,16 @@
     "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING"
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
-  "next_bounded_step": "Generate the bounded 18-state aligned 2-D mechanics oracle without inferring absent fields.",
-  "one_d_checkpoint_sha": "591c84cee72a2b33c21f356fd798e770c9463445",
+  "next_bounded_step": "improve fixed-arc source convergence under the frozen scientific criteria in a separate 2-D commit",
+  "one_d_checkpoint_sha": "cbffa81ec930445f04e96448b8c00c335fee1165",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
-    "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED",
-    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_PENDING_ORACLE",
-    "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
-    "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
-    "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_PENDING_ORACLE",
-    "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE"
+    "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED_2D_ORACLE_INCOMPLETE",
+    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "BLOCKED_INCOMPLETE_2D_ORACLE",
+    "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
+    "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
+    "ONE_D_V3_MECHANICS_MAP_FIT": "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED",
+    "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED"
   },
   "preserved": {
     "fatigue_started": false,
@@ -76,7 +87,7 @@
       ],
       "load_levels_per_geometry": 2,
       "planned_unique_states": 18,
-      "status": "NOT_RUN_PENDING_BOUNDED_ALIGNED_ORACLE",
+      "status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
       "topology_regimes": [
         "PRECONNECTION",
         "CONNECTED_CAVITY",
@@ -95,7 +106,7 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "8ffd5512b738963d5f0985809285ee258c4a3dbe",
+  "read_only_v5_head": "45b702b008574ffbaf8955b1254333459e7e1a7c",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
@@ -126,10 +137,10 @@
   },
   "temperature_scout": "PASS_COMMON_VOID_RATE_SCOUT_300_TO_1200K",
   "temperature_transfer": {
-    "ONE_D_V3_CERAMIC_LIKE_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_DBTT_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_PEAK_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_WEAK_T_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED"
+    "ONE_D_V3_CERAMIC_LIKE_TEMPERATURE_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
+    "ONE_D_V3_DBTT_TEMPERATURE_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
+    "ONE_D_V3_PEAK_TEMPERATURE_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
+    "ONE_D_V3_WEAK_T_TEMPERATURE_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED"
   },
   "unified_2d_material_bindings": {
     "families": {
