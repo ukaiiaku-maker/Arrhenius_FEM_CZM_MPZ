@@ -1,0 +1,61 @@
+{
+  "schema": "oneD.v3.stateful-voiding-decision/1",
+  "mission": "ONE-D V3 STATEFUL-VOIDING REDUCTION — CONTRACT AND ALIGNED MONOTONIC PROTOTYPE",
+  "source_branch": "codex/oneD-v2-terminal-predictive-program",
+  "source_sha": "5045feed8c87440676c580fe7f74989be4c4a995",
+  "working_branch": "codex/oneD-v3-stateful-voiding-reduction",
+  "read_only_v5_oracle": {
+    "repository": "ukaiiaku-maker/PF-fracture-fatigue",
+    "runtime_hardening_sha": "b58997bdb18cf4e9a32c251c073115d8b405bb27",
+    "bounded_attestation_sha": "c7583ecd0a259f28ce92780833d21a358a920f45",
+    "new_2d_solves": 0
+  },
+  "retained_oracle_export": {
+    "path": "analysis_outputs/oneD_v3_stateful_voiding/v5_retained_oracle_export.json",
+    "sha256": "2a4db99924da80581ca4a6f5a34ca8bf72bd401acb03a533c24d7c0fd0061ca3",
+    "records": 39,
+    "static_records": 29,
+    "accepted_checkpoint_records": 10,
+    "map_ready_records": 0,
+    "classification": "BLOCKED_ORACLE_COORDINATES_INCOMPLETE"
+  },
+  "bounded_software_qualification": {
+    "test_file": "tests/test_oneD_v3_stateful_voiding_reduction.py",
+    "tests": 16,
+    "status": "PASS",
+    "retained_v2_checks": 7,
+    "retained_v2_status": "PASS",
+    "wheel_build": "PASS",
+    "scope": [
+      "V5 phase and ownership crosswalk",
+      "bitwise-transparent no-void V2 state wrapping",
+      "JSON checkpoint and fingerprint replay",
+      "immutable rollback",
+      "promotion invariants",
+      "aligned monotonic event chain",
+      "fractured/free-span/front ledgers",
+      "topology-specific response maps",
+      "fail-closed map bounds",
+      "complete-family holdout",
+      "read-only oracle normalization",
+      "r_tip distinct from R_void"
+    ]
+  },
+  "terminal_classifications": {
+    "ONE_D_V3_VOIDING_STATE_AND_EVENTS": "PASS_BOUNDED_ALIGNED_MONOTONIC_PROTOTYPE",
+    "ONE_D_V3_VOID_MECHANICS_MAP": "CONTRACT_PASS_FIT_BLOCKED_ORACLE_COORDINATES_INCOMPLETE",
+    "ONE_D_V3_MONOTONIC_2D_TRANSFER": "BLOCKED_UNTIL_ALIGNED_MAP_FAMILIES_EXIST",
+    "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
+    "R_TIP_EQUALS_R_VOID": "FORBIDDEN",
+    "SCALAR_VOID_DAMAGE_VARIABLE": "ABSENT"
+  },
+  "scope_exclusions_observed": [
+    "no fatigue implementation",
+    "no lateral offset reduction",
+    "no branching extension",
+    "no multiple voids",
+    "no experimental calibration",
+    "no broad parameter campaign",
+    "no new 2-D campaign"
+  ]
+}

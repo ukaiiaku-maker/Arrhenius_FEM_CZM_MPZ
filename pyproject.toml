@@ -24,4 +24,4 @@ ml = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["arrhenius_fracture*"]
+include = ["arrhenius_fracture*", "reduced_fracture_v2*", "reduced_fracture_v3*"]
