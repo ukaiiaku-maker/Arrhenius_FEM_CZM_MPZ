@@ -182,15 +182,25 @@ def test_14_oracle_readiness_fails_closed_on_expected_source_noncertification():
     assert readiness["schema"] == "oneD.v3.aligned-oracle-readiness/2"
     assert readiness["source_recovery_operator"] == "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2"
     assert readiness["requested_refinement_levels"] == 3
-    assert readiness["failure_classification"] == "TANGENTIAL_STRESS_CONVERGENCE"
+    assert readiness["failure_classification"] == [
+        "TANGENTIAL_STRESS_CONVERGENCE",
+        "NORMAL_DIRECTION_RESOLUTION",
+    ]
+    assert readiness["readiness_gate_taxonomy"] == {
+        "decision": "B_STILL_MANDATORY_V2_GATES",
+        "eta_n": "MANDATORY_V2_GATE",
+        "eta_t": "MANDATORY_V2_GATE",
+    }
     assert readiness["accepted_oracle_states"] == 0
     assert readiness["oracle_matrix_status"] == "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED"
     assert readiness["expected_scientific_noncertification_converted_to_unavailable"] is True
     assert readiness["unexpected_programming_exceptions_caught"] is False
     assert readiness["missing_fields_inferred_or_synthesized"] is False
-    assert readiness["final_failed_predicates"] == {
+    assert readiness["final_governing_predicates"] == {
         "fixed_arc_tensor_convergence": False,
         "cavity_traction": True,
+        "normal_direction_resolution": False,
+        "tangential_direction_resolution": True,
     }
     assert decision["pilot_terminal"]["ONE_D_V3_MECHANICS_MAP_FIT"] == (
         "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED"

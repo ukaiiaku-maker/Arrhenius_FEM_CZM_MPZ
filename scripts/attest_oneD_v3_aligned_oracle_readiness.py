@@ -141,8 +141,16 @@ def main() -> int:
         "unexpected_programming_exceptions_caught": False,
         "missing_fields_inferred_or_synthesized": False,
         "downstream_child_created": False,
-        "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
-        "final_failed_predicates": {
+        "failure_classification": [
+            "TANGENTIAL_STRESS_CONVERGENCE",
+            "NORMAL_DIRECTION_RESOLUTION",
+        ],
+        "readiness_gate_taxonomy": {
+            "decision": "B_STILL_MANDATORY_V2_GATES",
+            "eta_n": "MANDATORY_V2_GATE",
+            "eta_t": "MANDATORY_V2_GATE",
+        },
+        "final_governing_predicates": {
             "fixed_arc_tensor_convergence": (
                 final_attempt["fixed_arc_tensor_relative_change"]
                 <= result["frozen_limits"]["fixed_arc_tensor_relative_change_max"]
@@ -150,6 +158,12 @@ def main() -> int:
             "cavity_traction": (
                 final_attempt["normalized_cavity_traction"]
                 <= result["frozen_limits"]["normalized_cavity_traction_max"]
+            ),
+            "normal_direction_resolution": (
+                final_attempt["eta_n_max"] <= result["frozen_limits"]["eta_n_max"]
+            ),
+            "tangential_direction_resolution": (
+                final_attempt["eta_t_max"] <= result["frozen_limits"]["eta_t_max"]
             ),
         },
         "probe": result,
@@ -180,8 +194,8 @@ def main() -> int:
     decision["blocking_reason"] = {
         "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
         "artifact": "aligned_oracle_readiness.json",
-        "failed_predicates": payload["final_failed_predicates"],
-        "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
+        "governing_predicates": payload["final_governing_predicates"],
+        "failure_classification": payload["failure_classification"],
         "required_action": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit",
     }
     decision["next_bounded_step"] = decision["blocking_reason"]["required_action"]

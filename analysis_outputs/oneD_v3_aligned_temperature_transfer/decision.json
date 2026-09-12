@@ -3,11 +3,16 @@
   "blocking_reason": {
     "artifact": "aligned_oracle_readiness.json",
     "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
-    "failed_predicates": {
+    "failure_classification": [
+      "TANGENTIAL_STRESS_CONVERGENCE",
+      "NORMAL_DIRECTION_RESOLUTION"
+    ],
+    "governing_predicates": {
       "cavity_traction": true,
-      "fixed_arc_tensor_convergence": false
+      "fixed_arc_tensor_convergence": false,
+      "normal_direction_resolution": false,
+      "tangential_direction_resolution": true
     },
-    "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
     "required_action": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit"
   },
   "execution_counts": {

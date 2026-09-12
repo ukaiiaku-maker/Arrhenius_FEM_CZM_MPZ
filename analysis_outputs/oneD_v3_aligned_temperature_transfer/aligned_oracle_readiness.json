@@ -3,10 +3,15 @@
   "bounded_readiness_cases_run": 1,
   "downstream_child_created": false,
   "expected_scientific_noncertification_converted_to_unavailable": true,
-  "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
-  "final_failed_predicates": {
+  "failure_classification": [
+    "TANGENTIAL_STRESS_CONVERGENCE",
+    "NORMAL_DIRECTION_RESOLUTION"
+  ],
+  "final_governing_predicates": {
     "cavity_traction": true,
-    "fixed_arc_tensor_convergence": false
+    "fixed_arc_tensor_convergence": false,
+    "normal_direction_resolution": false,
+    "tangential_direction_resolution": true
   },
   "historical_source_recovery": {
     "CAVITY_SOURCE_RECOVERY_V1_INCIDENT_CST_MAX_PRINCIPAL": "FAIL_NONCONVERGENT"
@@ -123,6 +128,11 @@
     },
     "returned_original_state_on_noncertification": true,
     "source_qualification_status": "SOURCE_TENSOR_UNQUALIFIED"
+  },
+  "readiness_gate_taxonomy": {
+    "decision": "B_STILL_MANDATORY_V2_GATES",
+    "eta_n": "MANDATORY_V2_GATE",
+    "eta_t": "MANDATORY_V2_GATE"
   },
   "requested_refinement_levels": 3,
   "schema": "oneD.v3.aligned-oracle-readiness/2",
