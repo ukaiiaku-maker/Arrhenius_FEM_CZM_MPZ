@@ -179,6 +179,10 @@ def test_14_oracle_readiness_fails_closed_on_expected_source_noncertification():
     readiness = json.loads((OUT / "aligned_oracle_readiness.json").read_text())
     decision = json.loads((OUT / "decision.json").read_text())
     assert readiness["source_head_matches_pinned_unified_commit"] is True
+    assert readiness["schema"] == "oneD.v3.aligned-oracle-readiness/2"
+    assert readiness["source_recovery_operator"] == "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2"
+    assert readiness["requested_refinement_levels"] == 3
+    assert readiness["failure_classification"] == "TANGENTIAL_STRESS_CONVERGENCE"
     assert readiness["accepted_oracle_states"] == 0
     assert readiness["oracle_matrix_status"] == "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED"
     assert readiness["expected_scientific_noncertification_converted_to_unavailable"] is True
@@ -186,7 +190,7 @@ def test_14_oracle_readiness_fails_closed_on_expected_source_noncertification():
     assert readiness["missing_fields_inferred_or_synthesized"] is False
     assert readiness["final_failed_predicates"] == {
         "fixed_arc_tensor_convergence": False,
-        "cavity_traction": False,
+        "cavity_traction": True,
     }
     assert decision["pilot_terminal"]["ONE_D_V3_MECHANICS_MAP_FIT"] == (
         "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED"

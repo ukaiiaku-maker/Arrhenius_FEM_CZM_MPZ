@@ -3,9 +3,13 @@
   "bounded_readiness_cases_run": 1,
   "downstream_child_created": false,
   "expected_scientific_noncertification_converted_to_unavailable": true,
+  "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
   "final_failed_predicates": {
-    "cavity_traction": false,
+    "cavity_traction": true,
     "fixed_arc_tensor_convergence": false
+  },
+  "historical_source_recovery": {
+    "CAVITY_SOURCE_RECOVERY_V1_INCIDENT_CST_MAX_PRINCIPAL": "FAIL_NONCONVERGENT"
   },
   "missing_fields_inferred_or_synthesized": false,
   "oracle_matrix_status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
@@ -14,105 +18,63 @@
       {
         "eta_n_max": 0.2125103829911522,
         "eta_t_max": 0.09849140335716547,
-        "fixed_arc_tensor_relative_change": 0.0829957585639404,
+        "fixed_arc_tensor_relative_change": 0.10636255970669334,
         "minimum_mesh_quality": 0.19108365548715264,
-        "normalized_cavity_traction": 0.5895727407090966,
+        "normalized_cavity_traction": 0.039290171156949674,
         "qualified": false,
-        "recovery_operator": "maximum-principal-incident-CST-at-fixed-owned-boundary-node",
+        "recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
         "refinement_level": 1,
         "state_binding": "732349ea489fcab48a717a04739896772394849ab98a5f12558289e277e32cf1",
         "tensor_Pa": [
           [
-            52498633.86454706,
-            -64469322.68176089
+            0.0,
+            -0.0
           ],
           [
-            -64469322.68176089,
-            772099732.5089824
+            -0.0,
+            748567743.0182768
           ]
         ]
       },
       {
         "eta_n_max": 0.10625519149557615,
         "eta_t_max": 0.04924570167858326,
-        "fixed_arc_tensor_relative_change": 0.05938004365022182,
+        "fixed_arc_tensor_relative_change": 0.026791817313149703,
         "minimum_mesh_quality": 0.19108365548715264,
-        "normalized_cavity_traction": 0.4201739917710877,
+        "normalized_cavity_traction": 0.024058321815199565,
         "qualified": false,
-        "recovery_operator": "maximum-principal-incident-CST-at-fixed-owned-boundary-node",
+        "recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
         "refinement_level": 2,
         "state_binding": "26f2539f263d09f598fe5807316e3904fca680b35e48c980c6a7af7585eb2023",
         "tensor_Pa": [
           [
-            34532347.12001664,
-            -47099199.206852846
+            0.0,
+            -0.0
           ],
           [
-            -47099199.206852846,
-            809577853.3601815
+            -0.0,
+            769175348.4353346
           ]
         ]
       },
       {
         "eta_n_max": 0.05312759574778982,
         "eta_t_max": 0.02462285083929259,
-        "fixed_arc_tensor_relative_change": 0.06618072061081383,
+        "fixed_arc_tensor_relative_change": 0.055653380815576595,
         "minimum_mesh_quality": 0.14426449443452138,
-        "normalized_cavity_traction": 0.31422298030396945,
+        "normalized_cavity_traction": 0.020367426159639445,
         "qualified": false,
-        "recovery_operator": "maximum-principal-incident-CST-at-fixed-owned-boundary-node",
+        "recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
         "refinement_level": 3,
         "state_binding": "258be304822f14e78dc734dcefd44aa8cf0ee7f5087633913d486abf348da94f",
         "tensor_Pa": [
           [
-            35195533.08711672,
-            -46148641.188067764
+            0.0,
+            -0.0
           ],
           [
-            -46148641.188067764,
-            867156832.9206488
-          ]
-        ]
-      },
-      {
-        "eta_n_max": 0.02656379787389509,
-        "eta_t_max": 0.012311425419647238,
-        "fixed_arc_tensor_relative_change": 0.0731966191518808,
-        "minimum_mesh_quality": 0.14426449443452138,
-        "normalized_cavity_traction": 0.24159528995951438,
-        "qualified": false,
-        "recovery_operator": "maximum-principal-incident-CST-at-fixed-owned-boundary-node",
-        "refinement_level": 4,
-        "state_binding": "8f16e53a78e5f94083997deffaeb1257686282ede09155990305c3499f0b14ee",
-        "tensor_Pa": [
-          [
-            39489585.47039526,
-            -49763870.822916426
-          ],
-          [
-            -49763870.822916426,
-            935566360.0168188
-          ]
-        ]
-      },
-      {
-        "eta_n_max": 0.013281898936947745,
-        "eta_t_max": 0.006155712709824395,
-        "fixed_arc_tensor_relative_change": 0.07397179233341994,
-        "minimum_mesh_quality": 0.09568554756207147,
-        "normalized_cavity_traction": 0.18541029242642723,
-        "qualified": false,
-        "recovery_operator": "maximum-principal-incident-CST-at-fixed-owned-boundary-node",
-        "refinement_level": 5,
-        "state_binding": "b87a7808d11778ab12e7d97f7b0f153c8f49b4e1bb41fb7dbe36db77f9156bc6",
-        "tensor_Pa": [
-          [
-            43367496.1727756,
-            -53934988.975010134
-          ],
-          [
-            -53934988.975010134,
-            1010244350.4349171
+            -0.0,
+            814505323.3733457
           ]
         ]
       }
@@ -162,10 +124,11 @@
     "returned_original_state_on_noncertification": true,
     "source_qualification_status": "SOURCE_TENSOR_UNQUALIFIED"
   },
-  "requested_refinement_levels": 5,
-  "schema": "oneD.v3.aligned-oracle-readiness/1",
-  "source_head": "45b702b008574ffbaf8955b1254333459e7e1a7c",
+  "requested_refinement_levels": 3,
+  "schema": "oneD.v3.aligned-oracle-readiness/2",
+  "source_head": "12b0674cce628ac3dcf69c7e9ee26c9992d3e777",
   "source_head_matches_pinned_unified_commit": true,
+  "source_recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
   "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",
   "unexpected_programming_exceptions_caught": false
 }

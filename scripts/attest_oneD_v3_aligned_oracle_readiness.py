@@ -43,7 +43,7 @@ loaded = equilibrate_fixed_load_with_production_fem(
 connected, ligament = ligament_transaction(loaded)
 qualified, audit = refine_downstream_source(
     connected,
-    max_refinement_levels=5,
+    max_refinement_levels=3,
     refinement_region="complete_cavity_ring",
     quality_improvement="constrained_v1",
 )
@@ -65,6 +65,7 @@ for item in audit.get("attempts", []):
         "minimum_mesh_quality": float(current["minimum_quality"]),
         "tensor_Pa": current["tensor_Pa"],
         "recovery_operator": current["recovery_operator"],
+        "recovery_record": current["recovery_record"],
         "state_binding": item["proof"]["current_binding"],
     })
 payload = {
@@ -100,8 +101,10 @@ print(json.dumps(payload, sort_keys=True))
     completed = subprocess.run(
         (sys.executable, "-c", code), cwd=v5_repo,
         env={"PYTHONPATH": str(v5_repo), "MPLCONFIGDIR": "/private/tmp/matplotlib-v5-oracle"},
-        text=True, capture_output=True, check=True,
+        text=True, capture_output=True,
     )
+    if completed.returncode:
+        raise RuntimeError("bounded V5 readiness worker failed:\n" + completed.stderr)
     return json.loads(completed.stdout)
 
 
@@ -116,22 +119,29 @@ def main() -> int:
     v5_repo = args.v5_repo.resolve()
     head = _verify_v5(v5_repo)
     result = _probe(v5_repo)
-    if result["source_qualification_status"] != "SOURCE_TENSOR_UNQUALIFIED":
-        raise RuntimeError("readiness probe did not return the expected scientific status")
+    if result["source_qualification_status"] not in (
+        "SOURCE_TENSOR_QUALIFIED", "SOURCE_TENSOR_UNQUALIFIED"
+    ):
+        raise RuntimeError("readiness probe returned an unregistered scientific status")
     final_attempt = result["attempts"][-1]
     payload = {
-        "schema": "oneD.v3.aligned-oracle-readiness/1",
+        "schema": "oneD.v3.aligned-oracle-readiness/2",
         "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",
         "source_head": head,
         "source_head_matches_pinned_unified_commit": head == UNIFIED_V5_SHA,
         "bounded_readiness_cases_run": 1,
-        "requested_refinement_levels": 5,
+        "requested_refinement_levels": 3,
         "accepted_oracle_states": 0,
         "oracle_matrix_status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
+        "source_recovery_operator": "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2",
+        "historical_source_recovery": {
+            "CAVITY_SOURCE_RECOVERY_V1_INCIDENT_CST_MAX_PRINCIPAL": "FAIL_NONCONVERGENT"
+        },
         "expected_scientific_noncertification_converted_to_unavailable": True,
         "unexpected_programming_exceptions_caught": False,
         "missing_fields_inferred_or_synthesized": False,
         "downstream_child_created": False,
+        "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
         "final_failed_predicates": {
             "fixed_arc_tensor_convergence": (
                 final_attempt["fixed_arc_tensor_relative_change"]
@@ -152,7 +162,7 @@ def main() -> int:
         "new_2d_mechanics_solves": 1,
         "bounded_2d_oracle_readiness_cases": 1,
         "new_2d_oracle_states_accepted": 0,
-        "source_refinement_levels_in_readiness_case": 5,
+        "source_refinement_levels_in_readiness_case": 3,
     })
     decision["prospective_execution_contract"]["oracle_matrix"]["status"] = payload["oracle_matrix_status"]
     decision["pilot_terminal"].update({
@@ -171,7 +181,8 @@ def main() -> int:
         "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
         "artifact": "aligned_oracle_readiness.json",
         "failed_predicates": payload["final_failed_predicates"],
-        "required_action": "improve fixed-arc source convergence under the frozen scientific criteria in a separate 2-D commit",
+        "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
+        "required_action": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit",
     }
     decision["next_bounded_step"] = decision["blocking_reason"]["required_action"]
     _write_json(decision_path, decision)

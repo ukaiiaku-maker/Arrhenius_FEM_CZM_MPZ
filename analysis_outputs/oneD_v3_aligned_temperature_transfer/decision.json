@@ -4,10 +4,11 @@
     "artifact": "aligned_oracle_readiness.json",
     "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
     "failed_predicates": {
-      "cavity_traction": false,
+      "cavity_traction": true,
       "fixed_arc_tensor_convergence": false
     },
-    "required_action": "improve fixed-arc source convergence under the frozen scientific criteria in a separate 2-D commit"
+    "failure_classification": "TANGENTIAL_STRESS_CONVERGENCE",
+    "required_action": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit"
   },
   "execution_counts": {
     "bounded_2d_oracle_readiness_cases": 1,
@@ -17,7 +18,7 @@
     "new_2d_trajectories": 0,
     "paired_material_temperature_cells_run": 0,
     "planned_material_temperature_cells": 12,
-    "source_refinement_levels_in_readiness_case": 5
+    "source_refinement_levels_in_readiness_case": 3
   },
   "feature_temperature_gate": "PASS_FROZEN_PROSPECTIVE_ANCHORS",
   "held_out_policy": {
@@ -37,8 +38,8 @@
     "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING"
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
-  "next_bounded_step": "improve fixed-arc source convergence under the frozen scientific criteria in a separate 2-D commit",
-  "one_d_checkpoint_sha": "cbffa81ec930445f04e96448b8c00c335fee1165",
+  "next_bounded_step": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit",
+  "one_d_checkpoint_sha": "910f4239a45506e06d3976d216c6430b4e199a9d",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
     "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED_2D_ORACLE_INCOMPLETE",
@@ -106,7 +107,7 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "45b702b008574ffbaf8955b1254333459e7e1a7c",
+  "read_only_v5_head": "12b0674cce628ac3dcf69c7e9ee26c9992d3e777",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
