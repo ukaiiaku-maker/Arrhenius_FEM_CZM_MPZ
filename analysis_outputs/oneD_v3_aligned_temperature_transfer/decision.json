@@ -1,29 +1,24 @@
 {
   "amendment": "FOUR_RESPONSE_FAMILIES_WITH_COMMON_REFERENCE_VOID_KINETICS",
   "blocking_reason": {
-    "artifact": "aligned_oracle_readiness.json",
-    "code": "DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
-    "failure_classification": [
-      "TANGENTIAL_STRESS_CONVERGENCE",
-      "NORMAL_DIRECTION_RESOLUTION"
+    "artifact": "v3_source_readiness.json",
+    "code": "CENTRAL_DBTT_V3_SOURCE_GEOMETRY_IDENTITY",
+    "exact_v3_failure_class": [
+      "SOURCE_GEOMETRY_IDENTITY"
     ],
-    "governing_predicates": {
-      "cavity_traction": true,
-      "fixed_arc_tensor_convergence": false,
-      "normal_direction_resolution": false,
-      "tangential_direction_resolution": true
-    },
-    "required_action": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit"
+    "required_action": "derive and qualify a finite activation-zone work observable in a separate 2-D mission"
   },
   "execution_counts": {
-    "bounded_2d_oracle_readiness_cases": 1,
+    "bounded_2d_oracle_readiness_cases": 2,
     "new_1d_trajectories": 0,
     "new_2d_mechanics_solves": 1,
     "new_2d_oracle_states_accepted": 0,
     "new_2d_trajectories": 0,
     "paired_material_temperature_cells_run": 0,
     "planned_material_temperature_cells": 12,
-    "source_refinement_levels_in_readiness_case": 3
+    "source_refinement_levels_in_readiness_case": 3,
+    "v3_bounded_2d_oracle_readiness_cases": 1,
+    "v3_source_refinement_levels_run": 0
   },
   "feature_temperature_gate": "PASS_FROZEN_PROSPECTIVE_ANCHORS",
   "held_out_policy": {
@@ -35,6 +30,15 @@
       "weak-T"
     ]
   },
+  "historical_v2_readiness": {
+    "artifact": "aligned_oracle_readiness.json",
+    "failure_classification": [
+      "TANGENTIAL_STRESS_CONVERGENCE",
+      "NORMAL_DIRECTION_RESOLUTION"
+    ],
+    "status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
+    "taxonomy": "B_STILL_MANDATORY_V2_GATES"
+  },
   "material_mapping_gate": "PASS_EXACT_RUNTIME_BINDING",
   "material_transfer": {
     "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "PASS_EXACT_RUNTIME_BINDING",
@@ -43,15 +47,15 @@
     "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING"
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
-  "next_bounded_step": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit",
+  "next_bounded_step": "DERIVE_FINITE_ACTIVATION_ZONE_WORK_OBSERVABLE",
   "one_d_checkpoint_sha": "795e4d64077bfff4dce64ff85310033faff798bd",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
-    "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED_2D_ORACLE_INCOMPLETE",
-    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "BLOCKED_INCOMPLETE_2D_ORACLE",
+    "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED_ZERO_OF_18_ORACLE_STATES",
+    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "BLOCKED_ZERO_OF_18_ORACLE_STATES",
     "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
     "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
-    "ONE_D_V3_MECHANICS_MAP_FIT": "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED",
+    "ONE_D_V3_MECHANICS_MAP_FIT": "BLOCKED_CENTRAL_DBTT_V3_SOURCE_GEOMETRY_IDENTITY",
     "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED"
   },
   "preserved": {
@@ -85,7 +89,7 @@
       "raw_2d_opening_used_as_1d_K": false
     },
     "oracle_matrix": {
-      "fixed_arc_source": "actual V5 fixed-arc recovery operator",
+      "fixed_arc_source": "CAVITY_FIXED_PHYSICAL_ARC_PATCH_RECOVERY_V3",
       "geometry_levels": [
         "low",
         "central",
@@ -93,7 +97,7 @@
       ],
       "load_levels_per_geometry": 2,
       "planned_unique_states": 18,
-      "status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
+      "status": "BLOCKED_CENTRAL_DBTT_V3_SOURCE_GEOMETRY_IDENTITY",
       "topology_regimes": [
         "PRECONNECTION",
         "CONNECTED_CAVITY",
@@ -112,7 +116,7 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "80c0183045a4a37e0f99aad1585f1decaa17d11e",
+  "read_only_v5_head": "67528be7e38deb7047ad630ac3497bf9926543e1",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
@@ -393,5 +397,14 @@
       "ceramic-like": "oneD_v2_focused_ceramic_like_0018",
       "weak-T": "oneD_v2_focused_weak_T_0016"
     }
+  },
+  "v3_source_readiness": {
+    "DBTT_SOURCE_READINESS": "BLOCKED_WITH_EXACT_V3_FAILURE_CLASS",
+    "artifact": "v3_source_readiness.json",
+    "exact_v3_failure_class": [
+      "SOURCE_GEOMETRY_IDENTITY"
+    ],
+    "operator": "CAVITY_FIXED_PHYSICAL_ARC_PATCH_RECOVERY_V3",
+    "oracle_states_accepted": 0
   }
 }

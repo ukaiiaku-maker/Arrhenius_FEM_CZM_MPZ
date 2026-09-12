@@ -202,7 +202,40 @@ def test_14_oracle_readiness_fails_closed_on_expected_source_noncertification():
         "normal_direction_resolution": False,
         "tangential_direction_resolution": True,
     }
-    assert decision["pilot_terminal"]["ONE_D_V3_MECHANICS_MAP_FIT"] == (
-        "BLOCKED_2D_DOWNSTREAM_SOURCE_UNQUALIFIED"
-    )
+    assert decision["historical_v2_readiness"] == {
+        "artifact": "aligned_oracle_readiness.json",
+        "status": "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED",
+        "taxonomy": "B_STILL_MANDATORY_V2_GATES",
+        "failure_classification": [
+            "TANGENTIAL_STRESS_CONVERGENCE",
+            "NORMAL_DIRECTION_RESOLUTION",
+        ],
+    }
     assert decision["execution_counts"]["paired_material_temperature_cells_run"] == 0
+
+
+def test_15_v3_source_readiness_stops_at_exact_geometry_failure_without_oracle():
+    readiness = json.loads((OUT / "v3_source_readiness.json").read_text())
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert readiness["source_head"] == "67528be7e38deb7047ad630ac3497bf9926543e1"
+    assert readiness["source_recovery_operator"] == (
+        "CAVITY_FIXED_PHYSICAL_ARC_PATCH_RECOVERY_V3"
+    )
+    central = readiness["central_dbtt_v3"]
+    assert central["DBTT_SOURCE_READINESS"] == "BLOCKED_WITH_EXACT_V3_FAILURE_CLASS"
+    assert central["exact_v3_failure_class"] == ["SOURCE_GEOMETRY_IDENTITY"]
+    assert central["refinement_levels_run"] == 0
+    assert central["accepted_pre_source_state_unchanged_on_noncertification"] is True
+    assert central["thresholds_and_rng_unchanged_on_noncertification"] is True
+    assert central["unexpected_programming_exceptions_caught"] is False
+    assert readiness["oracle_states_accepted"] == 0
+    assert readiness["paired_trajectories_run"] == 0
+    assert readiness["fatigue_started"] is False
+    assert readiness["missing_fields_inferred_or_synthesized"] is False
+    assert readiness["next_bounded_step"] == "DERIVE_FINITE_ACTIVATION_ZONE_WORK_OBSERVABLE"
+    assert readiness["bounded_worker"]["run_id"] == 34719718024
+    assert readiness["bounded_worker"]["tests_passed"] == 22
+    assert decision["blocking_reason"]["code"] == (
+        "CENTRAL_DBTT_V3_SOURCE_GEOMETRY_IDENTITY"
+    )
+    assert decision["execution_counts"]["v3_source_refinement_levels_run"] == 0
