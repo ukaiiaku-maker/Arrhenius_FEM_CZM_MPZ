@@ -1,0 +1,133 @@
+{
+  "amendment": "FOUR_RESPONSE_FAMILIES_WITH_COMMON_REFERENCE_VOID_KINETICS",
+  "blocking_reason": "The pinned read-only V5 one-void runtime creates default FrontEngine and material state internally and exposes no exact fracture-material-row binding. Running the matrix would substitute defaults and violate M2.",
+  "execution_counts": {
+    "new_1d_trajectories": 0,
+    "new_2d_mechanics_solves": 0,
+    "new_2d_trajectories": 0,
+    "paired_material_temperature_cells_run": 0,
+    "planned_material_temperature_cells": 12
+  },
+  "held_out_policy": {
+    "ceramic_like_used_for_tuning": false,
+    "complete_held_out_material_family": "ceramic-like",
+    "development_sentinels": [
+      "Peak",
+      "DBTT",
+      "weak-T"
+    ]
+  },
+  "material_mapping_gate": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+  "material_transfer": {
+    "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+    "MATERIAL_ROW_TRANSFER_DBTT": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+    "MATERIAL_ROW_TRANSFER_PEAK": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+    "MATERIAL_ROW_TRANSFER_WEAK_T": "BLOCKED_UNMAPPED_ACTIVE_FIELD"
+  },
+  "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
+  "next_bounded_step": "Add and separately qualify an explicit material-bundle injection contract in the V5 runtime, then rerun this preflight before any oracle or trajectory solve.",
+  "one_d_checkpoint_sha": "401a527f9390f88da2029e3d5005997f4c4c191a",
+  "pilot_terminal": {
+    "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
+    "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED",
+    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED"
+  },
+  "preserved": {
+    "fatigue_started": false,
+    "fracture_rows_changed": false,
+    "fractured_length_equals_free_span_equals_front_coordinate": false,
+    "missing_mechanics_fields_inferred": false,
+    "r_tip_equals_R_void": false,
+    "separate_void_barriers_fit": false
+  },
+  "prospective_execution_contract": {
+    "baseline_comparison": {
+      "attribute_no_void_model_difference_to_void_reduction": false,
+      "raw_observables": true,
+      "void_increment": "Delta O_void = O_void - O_no_void"
+    },
+    "complete_pass_rule": "all four material families pass fixed-state and trajectory comparisons",
+    "fit_criteria": {
+      "compliance_relative_error_max": 0.02,
+      "correct_sign_and_event_eligibility": true,
+      "energy_relative_error_max": 0.02,
+      "exact_no_void_far_void_small_void_limits": true,
+      "fail_closed_out_of_domain": true,
+      "held_out_G_relative_error_max": 0.05,
+      "held_out_tensor_relative_error_max": 0.05,
+      "load_scaling_test_before_factorization": true
+    },
+    "load_mapping": {
+      "G0_2D": "candidate kinetic drive of matched no-void 2-D companion",
+      "K0_1D": "sqrt(Eprime * max(G0_2D, 0))",
+      "raw_2d_opening_used_as_1d_K": false
+    },
+    "oracle_matrix": {
+      "fixed_arc_source": "actual V5 fixed-arc recovery operator",
+      "geometry_levels": [
+        "low",
+        "central",
+        "high"
+      ],
+      "load_levels_per_geometry": 2,
+      "planned_unique_states": 18,
+      "status": "NOT_RUN_M2_GATE_BLOCKED",
+      "topology_regimes": [
+        "PRECONNECTION",
+        "CONNECTED_CAVITY",
+        "DOWNSTREAM_CHILD"
+      ]
+    },
+    "paired_state_exact_equality": [
+      "thresholds",
+      "RNG state",
+      "site state",
+      "initial void state",
+      "fracture state",
+      "r_tip/emission/shielding state",
+      "load history",
+      "temperature history",
+      "stop condition"
+    ]
+  },
+  "read_only_v5_head": "619b66b0f538742482e7385ddd3d0171cb3edd8b",
+  "read_only_v5_source_tree_matches_attestation": true,
+  "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
+  "temperature_anchors": {
+    "DBTT": {
+      "T_feature_K": null,
+      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_high_K": 1200.0,
+      "T_low_K": 300.0
+    },
+    "Peak": {
+      "T_feature_K": null,
+      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_high_K": 1200.0,
+      "T_low_K": 300.0
+    },
+    "ceramic-like": {
+      "T_feature_K": null,
+      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_high_K": 1200.0,
+      "T_low_K": 300.0
+    },
+    "weak-T": {
+      "T_feature_K": null,
+      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_high_K": 1200.0,
+      "T_low_K": 300.0
+    }
+  },
+  "temperature_scout": "PASS_COMMON_VOID_RATE_SCOUT_300_TO_1200K",
+  "temperature_transfer": {
+    "ONE_D_V3_CERAMIC_LIKE_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_DBTT_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_PEAK_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+    "ONE_D_V3_WEAK_T_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED"
+  }
+}

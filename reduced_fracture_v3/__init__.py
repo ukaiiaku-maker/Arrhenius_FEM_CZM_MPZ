@@ -9,6 +9,19 @@ from .mechanics import (
     TopologyRegime,
     held_out_geometry_family,
 )
+from .materials import (
+    COMMON_ELASTIC_ROW_ID,
+    COMMON_SITE_POPULATION_ROW_ID,
+    COMMON_SPECIMEN_LOADING_ROW_ID,
+    COMMON_VOID_KINETICS_ROW_ID,
+    FRACTURE_ROWS,
+    MaterialBundle,
+    load_exact_fracture_rows,
+    material_field_mapping_audit,
+    paired_case_ledger,
+    pilot_material_bundles,
+    require_complete_material_mapping,
+)
 from .oracle import export_v5_oracle, readiness
 from .state import (
     HazardClock,
@@ -37,11 +50,17 @@ from .transitions import (
 
 __all__ = [
     "AlignedVoidMechanicsBackend",
+    "COMMON_ELASTIC_ROW_ID",
+    "COMMON_SITE_POPULATION_ROW_ID",
+    "COMMON_SPECIMEN_LOADING_ROW_ID",
+    "COMMON_VOID_KINETICS_ROW_ID",
+    "FRACTURE_ROWS",
     "HazardClock",
     "LengthLedgers",
     "MechanicsMapDomainError",
     "MechanicsRepresentation",
     "MechanicsResponse",
+    "MaterialBundle",
     "MonotonicPrototypePlan",
     "OneDStateV3",
     "OneDVoidState",
@@ -58,12 +77,17 @@ __all__ = [
     "fingerprint",
     "grow_cavity",
     "held_out_geometry_family",
+    "load_exact_fracture_rows",
+    "material_field_mapping_audit",
     "no_void_downgrade",
     "no_void_upgrade",
     "nucleate_downstream_child",
+    "paired_case_ledger",
+    "pilot_material_bundles",
     "promote_cavity",
     "readiness",
     "run_monotonic_prototype",
+    "require_complete_material_mapping",
     "seed_cavity",
     "serialize",
 ]

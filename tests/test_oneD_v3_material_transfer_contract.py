@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from reduced_fracture_v3 import (
+    COMMON_VOID_KINETICS_ROW_ID,
+    FRACTURE_ROWS,
+    MaterialBundle,
+    load_exact_fracture_rows,
+    material_field_mapping_audit,
+    paired_case_ledger,
+    pilot_material_bundles,
+    require_complete_material_mapping,
+)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+REGISTRY = ROOT / "analysis_outputs/oneD_v2_terminal_predictive_program/oneD_v2_new_four_class_registry.csv"
+OUT = ROOT / "analysis_outputs/oneD_v3_aligned_temperature_transfer"
+
+
+def test_01_exact_four_family_rows_are_frozen():
+    rows = load_exact_fracture_rows(REGISTRY)
+    assert {family: row["candidate_id"] for family, row in rows.items()} == FRACTURE_ROWS
+
+
+def test_02_material_bundle_has_five_separate_versioned_owners():
+    bundles = pilot_material_bundles()
+    assert set(bundles) == {"Peak", "DBTT", "weak-T", "ceramic-like"}
+    assert {bundle.void_kinetics_row_id for bundle in bundles.values()} == {
+        COMMON_VOID_KINETICS_ROW_ID
+    }
+    for bundle in bundles.values():
+        assert bundle.fracture_material_row_id != bundle.void_kinetics_row_id
+        assert bundle.schema == "oneD.v3.material-bundle/1"
+
+
+def test_03_bundle_rejects_conflated_fracture_and_void_ownership():
+    with pytest.raises(ValueError, match="ownership"):
+        MaterialBundle("same", "same", "elastic/1", "sites/1", "loading/1")
+
+
+def test_04_mapping_audits_every_field_of_every_row_at_full_precision():
+    rows = load_exact_fracture_rows(REGISTRY)
+    audit = material_field_mapping_audit(
+        rows, source_registry="registry.csv", v5_driver_identity="sha:driver"
+    )
+    expected = sum(len(row) for row in rows.values())
+    assert len(audit["records"]) == expected
+    peak = next(
+        row for row in audit["records"]
+        if row["material_class"] == "Peak" and row["source_field"] == "cleave_G00_eV"
+    )
+    assert peak["full_precision_value"] == "4.011803912930191"
+    assert peak["units"] == "eV"
+    assert peak["conversion"] == "identity"
+
+
+def test_05_unmapped_active_v5_fields_fail_closed_before_execution():
+    rows = load_exact_fracture_rows(REGISTRY)
+    audit = material_field_mapping_audit(
+        rows, source_registry="registry.csv", v5_driver_identity="sha:driver"
+    )
+    assert audit["summary"]["gate"] == "BLOCKED_UNMAPPED_ACTIVE_FIELD"
+    assert not audit["summary"]["all_active_fields_mapped"]
+    with pytest.raises(RuntimeError, match="BLOCKED_UNMAPPED_ACTIVE_FIELD"):
+        require_complete_material_mapping(audit)
+
+
+def test_06_structural_target_does_not_masquerade_as_runtime_binding():
+    audit = json.loads((OUT / "material_field_mapping_audit.json").read_text())
+    record = next(
+        row for row in audit["records"]
+        if row["material_class"] == "DBTT" and row["source_field"] == "c_blunt"
+    )
+    assert record["two_d_target"] == "FrontEngine.f.c_blunt"
+    assert record["classification"] == "unsupported"
+    assert "no fracture-material-row binding" in record["reason"]
+
+
+def test_07_common_void_scout_is_exact_v5_code_and_material_independent():
+    scout = json.loads((OUT / "common_void_rate_scout.json").read_text())
+    assert scout["source_function"] == "arrhenius_fracture.voiding_v5.arrhenius_rates"
+    assert scout["temperature_grid_K"] == list(range(300, 1201, 25))
+    assert scout["material_dependence"] == "NONE_COMMON_REFERENCE_VOID_KINETICS_ROW"
+    assert len(scout["rows"]) == 37
+
+
+def test_08_twelve_case_ledger_is_present_and_none_were_run():
+    ledger = paired_case_ledger(
+        {family: (300.0, None, 1200.0) for family in FRACTURE_ROWS},
+        gate="BLOCKED_UNMAPPED_ACTIVE_FIELD",
+    )
+    assert len(ledger) == 12
+    assert {row["material_class"] for row in ledger} == set(FRACTURE_ROWS)
+    assert all(row["void_2d_status"] == "NOT_RUN_M2_GATE_BLOCKED" for row in ledger)
+
+
+def test_09_ceramic_like_is_complete_holdout_and_fatigue_remains_unstarted():
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert decision["held_out_policy"] == {
+        "ceramic_like_used_for_tuning": False,
+        "complete_held_out_material_family": "ceramic-like",
+        "development_sentinels": ["Peak", "DBTT", "weak-T"],
+    }
+    assert decision["pilot_terminal"]["FATIGUE_IMPLEMENTATION"] == "NOT_STARTED_BY_CONTRACT"
+    assert decision["execution_counts"]["new_2d_mechanics_solves"] == 0
+
+
+def test_10_preserved_geometric_and_no_inference_contracts():
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert decision["preserved"]["r_tip_equals_R_void"] is False
+    assert decision["preserved"]["fractured_length_equals_free_span_equals_front_coordinate"] is False
+    assert decision["preserved"]["missing_mechanics_fields_inferred"] is False
+    assert decision["preserved"]["fracture_rows_changed"] is False
+
+
+def test_11_later_phases_remain_frozen_and_exact_despite_m2_block():
+    decision = json.loads((OUT / "decision.json").read_text())
+    contract = decision["prospective_execution_contract"]
+    assert contract["oracle_matrix"]["planned_unique_states"] == 18
+    assert contract["oracle_matrix"]["status"] == "NOT_RUN_M2_GATE_BLOCKED"
+    assert contract["load_mapping"]["raw_2d_opening_used_as_1d_K"] is False
+    assert contract["baseline_comparison"]["void_increment"] == (
+        "Delta O_void = O_void - O_no_void"
+    )
+    assert contract["paired_state_exact_equality"] == [
+        "thresholds",
+        "RNG state",
+        "site state",
+        "initial void state",
+        "fracture state",
+        "r_tip/emission/shielding state",
+        "load history",
+        "temperature history",
+        "stop condition",
+    ]
+    assert contract["complete_pass_rule"].startswith("all four material families")

@@ -1,0 +1,40 @@
+{
+  "bundles": {
+    "DBTT": {
+      "elastic_row_id": "v5.tungsten-plane-strain-E210GPa-nu0p3/1",
+      "fracture_material_row_id": "v913_zeroD_sobol_0202500",
+      "schema": "oneD.v3.material-bundle/1",
+      "site_population_row_id": "v5.single-centerline-site-seed3621/1",
+      "specimen_loading_row_id": "v5.square-1mm-fixed-opening-G0-companion/1",
+      "void_kinetics_row_id": "v5.voiding-config.reference-one-void/1"
+    },
+    "Peak": {
+      "elastic_row_id": "v5.tungsten-plane-strain-E210GPa-nu0p3/1",
+      "fracture_material_row_id": "v913_zeroD_sobol_0242980",
+      "schema": "oneD.v3.material-bundle/1",
+      "site_population_row_id": "v5.single-centerline-site-seed3621/1",
+      "specimen_loading_row_id": "v5.square-1mm-fixed-opening-G0-companion/1",
+      "void_kinetics_row_id": "v5.voiding-config.reference-one-void/1"
+    },
+    "ceramic-like": {
+      "elastic_row_id": "v5.tungsten-plane-strain-E210GPa-nu0p3/1",
+      "fracture_material_row_id": "oneD_v2_focused_ceramic_like_0018",
+      "schema": "oneD.v3.material-bundle/1",
+      "site_population_row_id": "v5.single-centerline-site-seed3621/1",
+      "specimen_loading_row_id": "v5.square-1mm-fixed-opening-G0-companion/1",
+      "void_kinetics_row_id": "v5.voiding-config.reference-one-void/1"
+    },
+    "weak-T": {
+      "elastic_row_id": "v5.tungsten-plane-strain-E210GPa-nu0p3/1",
+      "fracture_material_row_id": "oneD_v2_focused_weak_T_0016",
+      "schema": "oneD.v3.material-bundle/1",
+      "site_population_row_id": "v5.single-centerline-site-seed3621/1",
+      "specimen_loading_row_id": "v5.square-1mm-fixed-opening-G0-companion/1",
+      "void_kinetics_row_id": "v5.voiding-config.reference-one-void/1"
+    }
+  },
+  "common_reference_void_row_for_all_families": true,
+  "fracture_rows_source_sha256": "f920ec66384baa60b468842955dc1166df82be8d2457e4bbf807e1c150de926f",
+  "schema": "oneD.v3.material-bundle-registry/1",
+  "separate_void_barrier_fit_per_family": false
+}
