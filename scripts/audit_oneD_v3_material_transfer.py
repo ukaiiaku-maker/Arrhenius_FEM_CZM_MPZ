@@ -24,7 +24,7 @@ from reduced_fracture_v3.materials import (  # noqa: E402
 
 PINNED_V5_RUNTIME_SHA = "b58997bdb18cf4e9a32c251c073115d8b405bb27"
 PINNED_V5_ATTESTATION_SHA = "c7583ecd0a259f28ce92780833d21a358a920f45"
-UNIFIED_V5_SHA = "12b0674cce628ac3dcf69c7e9ee26c9992d3e777"
+UNIFIED_V5_SHA = "04730b1d516d4694d39fdbe3bcb7121774114a0c"
 UNIFIED_V5_BRANCH = "codex/v5-unified-fracture-multitip-voiding"
 FROZEN_TENSOR_PA = ((3.0e9, 0.0), (0.0, 3.0e9))
 TEMPERATURES_K = tuple(range(300, 1201, 25))

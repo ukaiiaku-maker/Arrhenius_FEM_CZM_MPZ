@@ -39,7 +39,7 @@
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
   "next_bounded_step": "retain the blocked oracle gate; any further source-recovery design requires a separate 2-D commit",
-  "one_d_checkpoint_sha": "910f4239a45506e06d3976d216c6430b4e199a9d",
+  "one_d_checkpoint_sha": "795e4d64077bfff4dce64ff85310033faff798bd",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
     "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED_2D_ORACLE_INCOMPLETE",
@@ -107,7 +107,7 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "12b0674cce628ac3dcf69c7e9ee26c9992d3e777",
+  "read_only_v5_head": "04730b1d516d4694d39fdbe3bcb7121774114a0c",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
