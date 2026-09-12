@@ -123,7 +123,7 @@ def test_11_later_phases_remain_bounded_after_oracle_readiness_block():
     decision = json.loads((OUT / "decision.json").read_text())
     contract = decision["prospective_execution_contract"]
     assert contract["oracle_matrix"]["planned_unique_states"] == 18
-    assert contract["oracle_matrix"]["status"] == "BLOCKED_DOWNSTREAM_SOURCE_TENSOR_UNQUALIFIED"
+    assert contract["oracle_matrix"]["status"] == "BLOCKED_CENTRAL_DBTT_V4_RESOLUTION_AND_QUALITY"
     assert contract["load_mapping"]["raw_2d_opening_used_as_1d_K"] is False
     assert contract["baseline_comparison"]["void_increment"] == (
         "Delta O_void = O_void - O_no_void"
@@ -235,7 +235,49 @@ def test_15_v3_source_readiness_stops_at_exact_geometry_failure_without_oracle()
     assert readiness["next_bounded_step"] == "DERIVE_FINITE_ACTIVATION_ZONE_WORK_OBSERVABLE"
     assert readiness["bounded_worker"]["run_id"] == 34719718024
     assert readiness["bounded_worker"]["tests_passed"] == 22
-    assert decision["blocking_reason"]["code"] == (
-        "CENTRAL_DBTT_V3_SOURCE_GEOMETRY_IDENTITY"
+    assert decision["v3_source_readiness"]["DBTT_SOURCE_READINESS"] == (
+        "BLOCKED_WITH_EXACT_V3_FAILURE_CLASS"
     )
+    assert decision["v3_source_readiness"]["exact_v3_failure_class"] == [
+        "SOURCE_GEOMETRY_IDENTITY"
+    ]
     assert decision["execution_counts"]["v3_source_refinement_levels_run"] == 0
+
+
+def test_16_v4_source_geometry_passes_but_resolution_and_quality_block_oracle():
+    readiness = json.loads((OUT / "v4_source_readiness.json").read_text())
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert readiness["source_head"] == "9d2cb7cb63fc74f02e5f0b54b5a2d1a394fe7d05"
+    assert readiness["source_geometry_contract"] == "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4"
+    central = readiness["central_dbtt_v4"]
+    assert central["DBTT_SOURCE_READINESS"] == "BLOCKED_WITH_EXACT_V4_FAILURE_CLASS"
+    assert central["exact_v4_failure_class"] == [
+        "NORMAL_DIRECTION_RESOLUTION", "TANGENTIAL_DIRECTION_RESOLUTION", "MESH_QUALITY"
+    ]
+    assert central["levels_run"] == 3
+    final = central["level_records"][-1]
+    assert final["predicates"]["source_geometry"] is True
+    assert final["predicates"]["tensor_convergence"] is True
+    assert final["predicates"]["cavity_traction"] is True
+    assert final["predicates"]["patch_conditioning"] is True
+    assert final["predicates"]["normal_direction_resolution"] is False
+    assert final["predicates"]["tangential_direction_resolution"] is False
+    assert final["predicates"]["minimum_mesh_quality"] is False
+    assert central["accepted_material_identity_exact_across_levels"] is True
+    assert central["physical_geometry_exact_across_levels"] is True
+    assert central["thresholds_and_rng_exact_across_levels"] is True
+    assert central["accepted_input_state_unchanged_on_noncertification"] is True
+    assert readiness["oracle_states_accepted"] == 0
+    assert readiness["paired_trajectories_run"] == 0
+    assert readiness["fatigue_started"] is False
+    assert readiness["mechanics_map_fitting_complete"] is False
+    assert readiness["monotonic_2d_transfer_complete"] is False
+    assert readiness["finite_activation_zone_observable_derived"] is False
+    assert readiness["bounded_worker"]["run_id"] == 34723836462
+    assert readiness["bounded_worker"]["artifact_id"] == 10307550298
+    assert readiness["bounded_worker"]["tests_passed"] == 36
+    assert decision["blocking_reason"]["code"] == "CENTRAL_DBTT_V4_RESOLUTION_AND_QUALITY"
+    assert decision["execution_counts"]["v4_angular_levels_run"] == 3
+    assert decision["prospective_execution_contract"]["oracle_matrix"]["status"] == (
+        "BLOCKED_CENTRAL_DBTT_V4_RESOLUTION_AND_QUALITY"
+    )

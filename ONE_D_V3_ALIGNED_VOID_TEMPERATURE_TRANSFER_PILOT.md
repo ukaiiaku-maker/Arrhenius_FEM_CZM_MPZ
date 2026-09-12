@@ -157,3 +157,30 @@ solve.
 - `analysis_outputs/oneD_v3_aligned_temperature_transfer/common_void_rate_scout.json`
 - `analysis_outputs/oneD_v3_aligned_temperature_transfer/paired_case_ledger.csv`
 - `analysis_outputs/oneD_v3_aligned_temperature_transfer/decision.json`
+
+## V4 source-readiness update
+
+The source-conforming V4 checkpoint is pinned to 2-D head
+`9d2cb7cb63fc74f02e5f0b54b5a2d1a394fe7d05`. The retained V3 operator and its
+manufactured/Kirsch PASS remain unchanged. V3 central tensor convergence is
+`NOT_RUN` because its owned polygon vertex failed nominal-circle registration.
+
+V4 centers a polygon facet on the source ray and adds exact degree-two near and
+far source nodes at the nominal radius. The central DBTT evaluation therefore
+passes geometry registration. Across 32, 64, and 128 angular segments it also
+passes the final tensor-change, traction, fixed-window, and patch-conditioning
+predicates. It fails the unchanged normal-resolution, tangential-resolution,
+and global mesh-quality predicates. The terminal source decision is:
+
+```text
+DBTT_SOURCE_READINESS = BLOCKED_WITH_EXACT_V4_FAILURE_CLASS
+V4_FAILURE_CLASS = NORMAL_DIRECTION_RESOLUTION + TANGENTIAL_DIRECTION_RESOLUTION + MESH_QUALITY
+ORACLE_STATES_ACCEPTED = 0_OF_18
+PAIRED_TRAJECTORIES_RUN = 0_OF_12
+ONE_D_V3_MECHANICS_MAP_FIT = BLOCKED_CENTRAL_DBTT_V4_RESOLUTION_AND_QUALITY
+ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER = BLOCKED_ZERO_OF_18_ORACLE_STATES
+FATIGUE_IMPLEMENTATION = NOT_STARTED_BY_CONTRACT
+```
+
+No mechanics field was inferred, no map was fit, and no paired trajectory was
+run. A finite activation-zone observable was not derived in this mission.

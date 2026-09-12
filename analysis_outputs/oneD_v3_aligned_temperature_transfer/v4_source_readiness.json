@@ -1,0 +1,357 @@
+{
+  "bounded_worker": {
+    "artifact_digest": "sha256:70666a9df0c0b43e2b358059cc8960fb88d01db28bf5165c929c5323456199f3",
+    "artifact_id": 10307550298,
+    "artifact_name": "v5-source-conforming-cavity-geometry-v4-b12e21b5c7485c490bf0cb5139feb2d736844a16",
+    "conclusion": "success",
+    "job_count": 1,
+    "job_id": 103634364801,
+    "name": "V5 source-conforming cavity geometry V4",
+    "run_id": 34723836462,
+    "run_url": "https://github.com/ukaiiaku-maker/PF-fracture-fatigue/actions/runs/34723836462",
+    "tests_collected": 36,
+    "tests_passed": 36,
+    "workflow_head": "b12e21b5c7485c490bf0cb5139feb2d736844a16"
+  },
+  "central_dbtt_v4": {
+    "DBTT_SOURCE_READINESS": "BLOCKED_WITH_EXACT_V4_FAILURE_CLASS",
+    "accepted_input_state_unchanged_on_noncertification": true,
+    "accepted_material_identity_exact_across_levels": true,
+    "exact_v4_failure_class": [
+      "NORMAL_DIRECTION_RESOLUTION",
+      "TANGENTIAL_DIRECTION_RESOLUTION",
+      "MESH_QUALITY"
+    ],
+    "geometry": {
+      "cavity_center_m": [
+        0.0007,
+        0.0
+      ],
+      "connection_entry_m": [
+        0.000645,
+        1.5602085896855586e-20
+      ],
+      "connection_exit_m": [
+        0.000755,
+        0.0
+      ],
+      "nominal_cavity_radius_m": 5.5e-05
+    },
+    "level_records": [
+      {
+        "N_theta": 32,
+        "accepted_input_state_fingerprint": "47fb47f27fcb3bd55871613e2556b991eb6d51ecfc18d89f55d084a50dd609eb",
+        "accepted_input_state_unchanged": true,
+        "angular_geometry_error_m": 2.661214806971249e-07,
+        "eta_n": 0.3989985538951308,
+        "eta_t": 0.19698280671433013,
+        "ligament_energy_gate": {
+          "accepted": true,
+          "energy_margin_J_per_m": 0.004533531903558824,
+          "energy_release_J_per_m": 0.006714805699739333,
+          "hazard_dissipation_J_per_m": 0.0021812737961805096
+        },
+        "material_identity_matches_reference": true,
+        "mechanical_binding": "35186a68995bb0f1c71858f6d34ad3a0eb5c86b27e501452d4f60c0de9060973",
+        "minimum_quality": 0.17103746754259488,
+        "normalized_cavity_traction": 0.0,
+        "patch_condition": {
+          "limit": 1000000.0,
+          "maximum": 30.585901208042465,
+          "sigma_nn": 7.139201076378897,
+          "sigma_nt": 7.139201076378897,
+          "sigma_tt": 30.585901208042465
+        },
+        "physical_geometry_matches_reference": true,
+        "physical_window_identity": "97f7965380c8c8d340b071c898f04d481d7c22c99911e795774b9ec0d0d47b0a",
+        "predicates": {
+          "cavity_traction": true,
+          "minimum_mesh_quality": true,
+          "normal_direction_resolution": false,
+          "patch_conditioning": true,
+          "physical_window_identity": true,
+          "source_geometry": true,
+          "tangential_direction_resolution": false,
+          "tensor_convergence": true
+        },
+        "radial_layers": 12,
+        "radial_mesh_error_eta_n": 0.3989985538951308,
+        "source_node_certificate": {
+          "boundary_node_id": 416,
+          "boundary_position_m": [
+            0.000755,
+            0.0
+          ],
+          "collinearity_residual": 0.0,
+          "degree": 2,
+          "geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+          "incident_boundary_edges": [
+            [
+              0,
+              416
+            ],
+            [
+              1,
+              416
+            ]
+          ],
+          "incident_solid_owner_counts": {
+            "0:416": 1,
+            "1:416": 1
+          },
+          "nominal_circle_radius_m": 5.5e-05,
+          "normal_xy": [
+            1.0,
+            0.0
+          ],
+          "radial_error_m": 3.3881317890172014e-20,
+          "schema": "v5.cavity-source-conforming-geometry/4",
+          "sha256": "d9763f3ae91daebe3e074da50924047c893e6010b4241010e2384dcd361c627a",
+          "tangent_xy": [
+            -0.0,
+            1.0
+          ],
+          "unique_tangent_and_outward_normal": true
+        },
+        "source_tensor_Pa": [
+          [
+            0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            816317860.984788
+          ]
+        ],
+        "tensor_relative_change_from_previous_level": null,
+        "thresholds_and_rng_match_reference": true
+      },
+      {
+        "N_theta": 64,
+        "accepted_input_state_fingerprint": "c078118224b278e6517db3508c9921f7c0ea99d4057cad7f45d01321650c13c1",
+        "accepted_input_state_unchanged": true,
+        "angular_geometry_error_m": 6.632980587159364e-08,
+        "eta_n": 0.19534012105008614,
+        "eta_t": 0.0982536995389361,
+        "ligament_energy_gate": {
+          "accepted": true,
+          "energy_margin_J_per_m": 0.007386936316666122,
+          "energy_release_J_per_m": 0.009568210112846632,
+          "hazard_dissipation_J_per_m": 0.0021812737961805096
+        },
+        "material_identity_matches_reference": true,
+        "mechanical_binding": "99fa5a1f92dc1212e7495a461de41711d3ed72cebb6809133275281a1ae3a213",
+        "minimum_quality": 0.13516891585970464,
+        "normalized_cavity_traction": 0.0,
+        "patch_condition": {
+          "limit": 1000000.0,
+          "maximum": 27.983159459326142,
+          "sigma_nn": 7.186821257106288,
+          "sigma_nt": 7.186821257106288,
+          "sigma_tt": 27.983159459326142
+        },
+        "physical_geometry_matches_reference": true,
+        "physical_window_identity": "97f7965380c8c8d340b071c898f04d481d7c22c99911e795774b9ec0d0d47b0a",
+        "predicates": {
+          "cavity_traction": true,
+          "minimum_mesh_quality": true,
+          "normal_direction_resolution": false,
+          "patch_conditioning": true,
+          "physical_window_identity": true,
+          "source_geometry": true,
+          "tangential_direction_resolution": false,
+          "tensor_convergence": true
+        },
+        "radial_layers": 24,
+        "radial_mesh_error_eta_n": 0.19534012105008614,
+        "source_node_certificate": {
+          "boundary_node_id": 1600,
+          "boundary_position_m": [
+            0.000755,
+            0.0
+          ],
+          "collinearity_residual": 0.0,
+          "degree": 2,
+          "geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+          "incident_boundary_edges": [
+            [
+              0,
+              1600
+            ],
+            [
+              1,
+              1600
+            ]
+          ],
+          "incident_solid_owner_counts": {
+            "0:1600": 1,
+            "1:1600": 1
+          },
+          "nominal_circle_radius_m": 5.5e-05,
+          "normal_xy": [
+            1.0,
+            0.0
+          ],
+          "radial_error_m": 3.3881317890172014e-20,
+          "schema": "v5.cavity-source-conforming-geometry/4",
+          "sha256": "b2fdad176e1a74be60e99be16dc1f5772fc7071a2f021a54352f1f3309144ed7",
+          "tangent_xy": [
+            -0.0,
+            1.0
+          ],
+          "unique_tangent_and_outward_normal": true
+        },
+        "source_tensor_Pa": [
+          [
+            0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            790460332.4455984
+          ]
+        ],
+        "tensor_relative_change_from_previous_level": 0.032711987531606035,
+        "thresholds_and_rng_match_reference": true
+      },
+      {
+        "N_theta": 128,
+        "accepted_input_state_fingerprint": "eb1777b046750a348e93a2ee533efdddaa17fd67043020c56e7a22779fadff20",
+        "accepted_input_state_unchanged": true,
+        "angular_geometry_error_m": 1.656996227160796e-08,
+        "eta_n": 0.09543819890514414,
+        "eta_t": 0.049097244217852845,
+        "ligament_energy_gate": {
+          "accepted": true,
+          "energy_margin_J_per_m": 0.008748620623191117,
+          "energy_release_J_per_m": 0.010929894419371627,
+          "hazard_dissipation_J_per_m": 0.0021812737961805096
+        },
+        "material_identity_matches_reference": true,
+        "mechanical_binding": "ee32734cd6900c2c968f730b9713e8edbd5c6131ba3cf31c3d968ed86710f220",
+        "minimum_quality": 0.01211501008373052,
+        "normalized_cavity_traction": 0.0,
+        "patch_condition": {
+          "limit": 1000000.0,
+          "maximum": 27.432313977297778,
+          "sigma_nn": 7.201050379093442,
+          "sigma_nt": 7.201050379093442,
+          "sigma_tt": 27.432313977297778
+        },
+        "physical_geometry_matches_reference": true,
+        "physical_window_identity": "97f7965380c8c8d340b071c898f04d481d7c22c99911e795774b9ec0d0d47b0a",
+        "predicates": {
+          "cavity_traction": true,
+          "minimum_mesh_quality": false,
+          "normal_direction_resolution": false,
+          "patch_conditioning": true,
+          "physical_window_identity": true,
+          "source_geometry": true,
+          "tangential_direction_resolution": false,
+          "tensor_convergence": true
+        },
+        "radial_layers": 48,
+        "radial_mesh_error_eta_n": 0.09543819890514414,
+        "source_node_certificate": {
+          "boundary_node_id": 6272,
+          "boundary_position_m": [
+            0.000755,
+            0.0
+          ],
+          "collinearity_residual": 0.0,
+          "degree": 2,
+          "geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+          "incident_boundary_edges": [
+            [
+              0,
+              6272
+            ],
+            [
+              1,
+              6272
+            ]
+          ],
+          "incident_solid_owner_counts": {
+            "0:6272": 1,
+            "1:6272": 1
+          },
+          "nominal_circle_radius_m": 5.5e-05,
+          "normal_xy": [
+            1.0,
+            0.0
+          ],
+          "radial_error_m": 3.3881317890172014e-20,
+          "schema": "v5.cavity-source-conforming-geometry/4",
+          "sha256": "5aec8551bda484a5e40b10a1809affce520789209edd0b13c4a86918d832394c",
+          "tangent_xy": [
+            -0.0,
+            1.0
+          ],
+          "unique_tangent_and_outward_normal": true
+        },
+        "source_tensor_Pa": [
+          [
+            0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            785107254.8176461
+          ]
+        ],
+        "tensor_relative_change_from_previous_level": 0.006818275586047867,
+        "thresholds_and_rng_match_reference": true
+      }
+    ],
+    "levels_requested": [
+      {
+        "N_theta": 32,
+        "radial_layers": 12
+      },
+      {
+        "N_theta": 64,
+        "radial_layers": 24
+      },
+      {
+        "N_theta": 128,
+        "radial_layers": 48
+      }
+    ],
+    "levels_run": 3,
+    "physical_geometry_exact_across_levels": true,
+    "thresholds_and_rng_exact_across_levels": true,
+    "unexpected_programming_exceptions_caught": false
+  },
+  "fatigue_started": false,
+  "finite_activation_zone_observable_derived": false,
+  "mechanics_map_fitting_complete": false,
+  "missing_fields_inferred_or_synthesized": false,
+  "monotonic_2d_transfer_complete": false,
+  "next_bounded_step": "SEPARATELY_FORMULATE_FINITE_ACTIVATION_ZONE_WORK_OBSERVABLE",
+  "oracle_matrix_status": "BLOCKED_CENTRAL_DBTT_V4_RESOLUTION_AND_QUALITY",
+  "oracle_states_accepted": 0,
+  "paired_trajectories_run": 0,
+  "preserved_v1_v2_v3": {
+    "CAVITY_FIXED_ARC_PATCH_RECOVERY_V2_MANUFACTURED_AND_KIRSCH": "PASS",
+    "CAVITY_SOURCE_RECOVERY_V1_INCIDENT_CST_MAX_PRINCIPAL": "FAIL_NONCONVERGENT",
+    "V3_CENTRAL_DBTT_GEOMETRY_REGISTRATION": "FAIL_POLYGON_VERTEX_VS_NOMINAL_CIRCLE",
+    "V3_CENTRAL_DBTT_TENSOR_CONVERGENCE": "NOT_RUN",
+    "V3_OPERATOR_MANUFACTURED_AND_KIRSCH": "PASS"
+  },
+  "schema": "oneD.v3.cavity-source-v4-readiness/1",
+  "scope": {
+    "broad_campaign_run": false,
+    "fatigue_started": false,
+    "finite_activation_zone_observable_derived": false,
+    "missing_fields_inferred_or_synthesized": false,
+    "paired_trajectories_run": false,
+    "r_tip_equals_R_void": false,
+    "r_tip_law_changed": false,
+    "scientific_tolerances_changed": false
+  },
+  "source_branch": "codex/v5-unified-fracture-multitip-voiding",
+  "source_geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+  "source_head": "9d2cb7cb63fc74f02e5f0b54b5a2d1a394fe7d05",
+  "source_recovery_operator": "CAVITY_FIXED_PHYSICAL_ARC_PATCH_RECOVERY_V3",
+  "source_repository": "ukaiiaku-maker/PF-fracture-fatigue"
+}
