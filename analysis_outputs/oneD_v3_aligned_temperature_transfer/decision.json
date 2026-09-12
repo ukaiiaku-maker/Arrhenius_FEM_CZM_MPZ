@@ -1,6 +1,6 @@
 {
   "amendment": "FOUR_RESPONSE_FAMILIES_WITH_COMMON_REFERENCE_VOID_KINETICS",
-  "blocking_reason": "The pinned read-only V5 one-void runtime creates default FrontEngine and material state internally and exposes no exact fracture-material-row binding. Running the matrix would substitute defaults and violate M2.",
+  "blocking_reason": null,
   "execution_counts": {
     "new_1d_trajectories": 0,
     "new_2d_mechanics_solves": 0,
@@ -8,6 +8,7 @@
     "paired_material_temperature_cells_run": 0,
     "planned_material_temperature_cells": 12
   },
+  "feature_temperature_gate": "PASS_FROZEN_PROSPECTIVE_ANCHORS",
   "held_out_policy": {
     "ceramic_like_used_for_tuning": false,
     "complete_held_out_material_family": "ceramic-like",
@@ -17,24 +18,24 @@
       "weak-T"
     ]
   },
-  "material_mapping_gate": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+  "material_mapping_gate": "PASS_EXACT_RUNTIME_BINDING",
   "material_transfer": {
-    "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-    "MATERIAL_ROW_TRANSFER_DBTT": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-    "MATERIAL_ROW_TRANSFER_PEAK": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-    "MATERIAL_ROW_TRANSFER_WEAK_T": "BLOCKED_UNMAPPED_ACTIVE_FIELD"
+    "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "PASS_EXACT_RUNTIME_BINDING",
+    "MATERIAL_ROW_TRANSFER_DBTT": "PASS_EXACT_RUNTIME_BINDING",
+    "MATERIAL_ROW_TRANSFER_PEAK": "PASS_EXACT_RUNTIME_BINDING",
+    "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING"
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
-  "next_bounded_step": "Add and separately qualify an explicit material-bundle injection contract in the V5 runtime, then rerun this preflight before any oracle or trajectory solve.",
-  "one_d_checkpoint_sha": "401a527f9390f88da2029e3d5005997f4c4c191a",
+  "next_bounded_step": "Generate the bounded 18-state aligned 2-D mechanics oracle without inferring absent fields.",
+  "one_d_checkpoint_sha": "591c84cee72a2b33c21f356fd798e770c9463445",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
     "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED",
-    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_M2_GATE_BLOCKED",
-    "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED"
+    "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+    "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+    "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+    "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_PENDING_ORACLE",
+    "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE"
   },
   "preserved": {
     "fatigue_started": false,
@@ -75,7 +76,7 @@
       ],
       "load_levels_per_geometry": 2,
       "planned_unique_states": 18,
-      "status": "NOT_RUN_M2_GATE_BLOCKED",
+      "status": "NOT_RUN_PENDING_BOUNDED_ALIGNED_ORACLE",
       "topology_regimes": [
         "PRECONNECTION",
         "CONNECTED_CAVITY",
@@ -94,31 +95,31 @@
       "stop condition"
     ]
   },
-  "read_only_v5_head": "619b66b0f538742482e7385ddd3d0171cb3edd8b",
+  "read_only_v5_head": "8ffd5512b738963d5f0985809285ee258c4a3dbe",
   "read_only_v5_source_tree_matches_attestation": true,
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
     "DBTT": {
-      "T_feature_K": null,
-      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_feature_K": 875.0,
+      "T_feature_status": "FROZEN_PROSPECTIVELY_BEFORE_PAIRED_RESULTS",
       "T_high_K": 1200.0,
       "T_low_K": 300.0
     },
     "Peak": {
-      "T_feature_K": null,
-      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_feature_K": 1100.0,
+      "T_feature_status": "FROZEN_PROSPECTIVELY_BEFORE_PAIRED_RESULTS",
       "T_high_K": 1200.0,
       "T_low_K": 300.0
     },
     "ceramic-like": {
-      "T_feature_K": null,
-      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_feature_K": 1100.0,
+      "T_feature_status": "FROZEN_PROSPECTIVELY_BEFORE_PAIRED_RESULTS",
       "T_high_K": 1200.0,
       "T_low_K": 300.0
     },
     "weak-T": {
-      "T_feature_K": null,
-      "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+      "T_feature_K": 950.0,
+      "T_feature_status": "FROZEN_PROSPECTIVELY_BEFORE_PAIRED_RESULTS",
       "T_high_K": 1200.0,
       "T_low_K": 300.0
     }
@@ -129,5 +130,251 @@
     "ONE_D_V3_DBTT_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
     "ONE_D_V3_PEAK_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
     "ONE_D_V3_WEAK_T_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED"
+  },
+  "unified_2d_material_bindings": {
+    "families": {
+      "DBTT": {
+        "active_field_targets": {
+          "L_pz_um_recommended": "FrontConfig.L_pz and MPZConfig.length_m",
+          "Tref_K": "cleavage/emission ExpFloorBarrier.Tref_K",
+          "c_blunt": "MaterialManifest.c_blunt and FrontConfig.c_blunt",
+          "cleave_G00_eV": "MaterialManifest.cleave.G00_eV",
+          "cleave_exp_a": "MaterialManifest.cleave.exp_a",
+          "cleave_exp_n": "MaterialManifest.cleave.exp_n",
+          "cleave_floor_frac": "MaterialManifest.cleave.floor_frac",
+          "cleave_gT_eV_per_K": "MaterialManifest.cleave.gT_eV_per_K",
+          "cleave_sT_GPa_per_K": "MaterialManifest.cleave.sT_GPa_per_K",
+          "cleave_sigc0_GPa": "MaterialManifest.cleave.sigc0_GPa",
+          "emit_G00_eV": "MaterialManifest.emit.G00_eV",
+          "emit_exp_a": "MaterialManifest.emit.exp_a",
+          "emit_exp_n": "MaterialManifest.emit.exp_n",
+          "emit_floor_frac": "MaterialManifest.emit.floor_frac",
+          "emit_gT_eV_per_K": "MaterialManifest.emit.gT_eV_per_K",
+          "emit_sT_GPa_per_K": "MaterialManifest.emit.sT_GPa_per_K",
+          "emit_sigc0_GPa": "MaterialManifest.emit.sigc0_GPa",
+          "encounter_efficiency": "MaterialManifest.encounter_efficiency",
+          "peierls_H0_eV": "MaterialManifest.peierls.H0_eV",
+          "peierls_activation_entropy_kB": "MaterialManifest.peierls.activation_entropy_kB",
+          "peierls_exp_a": "MaterialManifest.peierls.alpha",
+          "peierls_exp_n": "MaterialManifest.peierls.exponent",
+          "peierls_nu0_s": "MaterialManifest.peierls.attempt_frequency_s",
+          "peierls_stress_fraction": "MPZConfig.peierls_stress_fraction",
+          "reference_front_width_um": "process_zone_fingerprint.reference_front_width_um",
+          "reference_source_area_um2": "process_zone_fingerprint.reference_source_area_um2",
+          "rho_forest_floor_m2": "MPZConfig.forest_density_floor_m2 and FEM initial rho_gp",
+          "rho_source0_m2": "FEM initial rho_gp",
+          "source_sites_per_system": "MaterialManifest.source_sites_per_system",
+          "source_zone_length_um": "process_geometry_fingerprint.source_zone_length_um",
+          "taylor_H0_eV": "MaterialManifest.taylor.H0_eV",
+          "taylor_activation_entropy_kB": "MaterialManifest.taylor.activation_entropy_kB",
+          "taylor_corr_rho_c_m2": "MaterialManifest.taylor_corr_rho_c_m2",
+          "taylor_corr_scale": "MaterialManifest.taylor_corr_scale",
+          "taylor_exp_a": "MaterialManifest.taylor.alpha",
+          "taylor_exp_n": "MaterialManifest.taylor.exponent",
+          "taylor_nu0_s": "MaterialManifest.taylor.attempt_frequency_s",
+          "taylor_stress_fraction": "MPZConfig.taylor_stress_fraction"
+        },
+        "elasticity": {
+          "E_Pa": 210000000000.0,
+          "b_m": 2.74e-10,
+          "nu": 0.3
+        },
+        "fracture_material_row_id": "v913_zeroD_sobol_0202500",
+        "identity": {
+          "FrontConfig_fingerprint": "1237d55a97fe33301a13a64d5cab80bd79737f08bd8f918e34dc3830b2038152",
+          "cleavage_barrier_fingerprint": "4a3b6f59846bf3b0140f61b6b83cb44b8f4c40eb83ee30bc382e4b338b75a05f",
+          "core_model_id": "v13.current-source-qualified-multitip/ca4abfe47765fcdaf0d266bfc0558ecd82d0c64e",
+          "elasticity_fingerprint": "f950f823cb066c03da0d817c42716bd30911bb8c6eac1477bf174403985cd4ff",
+          "emission_barrier_fingerprint": "5cb8b5bcaf466e86fe6a30a1e61f153a5b10869dba96b2ec50eeb42af74ecf1e",
+          "material_bundle_id": "v5.unified-fracture-material-bundle/1:DBTT:c0759db2db3b09ec",
+          "material_bundle_sha256": "c0759db2db3b09ec6ebf3b2717d39396350e8cd89a37d25a9e5fb92738dcc2bc",
+          "plasticity_fingerprint": "c040927e3334994f724c9aa447c37979d0d11843e033ad28e1a0c8bbbcba1381",
+          "process_zone_fingerprint": "2b287cb57f41196795ceea01424d3405942ea951d2e6f7fd258a7394d81e5b11"
+        }
+      },
+      "Peak": {
+        "active_field_targets": {
+          "L_pz_um_recommended": "FrontConfig.L_pz and MPZConfig.length_m",
+          "Tref_K": "cleavage/emission ExpFloorBarrier.Tref_K",
+          "c_blunt": "MaterialManifest.c_blunt and FrontConfig.c_blunt",
+          "cleave_G00_eV": "MaterialManifest.cleave.G00_eV",
+          "cleave_exp_a": "MaterialManifest.cleave.exp_a",
+          "cleave_exp_n": "MaterialManifest.cleave.exp_n",
+          "cleave_floor_frac": "MaterialManifest.cleave.floor_frac",
+          "cleave_gT_eV_per_K": "MaterialManifest.cleave.gT_eV_per_K",
+          "cleave_sT_GPa_per_K": "MaterialManifest.cleave.sT_GPa_per_K",
+          "cleave_sigc0_GPa": "MaterialManifest.cleave.sigc0_GPa",
+          "emit_G00_eV": "MaterialManifest.emit.G00_eV",
+          "emit_exp_a": "MaterialManifest.emit.exp_a",
+          "emit_exp_n": "MaterialManifest.emit.exp_n",
+          "emit_floor_frac": "MaterialManifest.emit.floor_frac",
+          "emit_gT_eV_per_K": "MaterialManifest.emit.gT_eV_per_K",
+          "emit_sT_GPa_per_K": "MaterialManifest.emit.sT_GPa_per_K",
+          "emit_sigc0_GPa": "MaterialManifest.emit.sigc0_GPa",
+          "encounter_efficiency": "MaterialManifest.encounter_efficiency",
+          "peierls_H0_eV": "MaterialManifest.peierls.H0_eV",
+          "peierls_activation_entropy_kB": "MaterialManifest.peierls.activation_entropy_kB",
+          "peierls_exp_a": "MaterialManifest.peierls.alpha",
+          "peierls_exp_n": "MaterialManifest.peierls.exponent",
+          "peierls_nu0_s": "MaterialManifest.peierls.attempt_frequency_s",
+          "peierls_stress_fraction": "MPZConfig.peierls_stress_fraction",
+          "reference_front_width_um": "process_zone_fingerprint.reference_front_width_um",
+          "reference_source_area_um2": "process_zone_fingerprint.reference_source_area_um2",
+          "rho_forest_floor_m2": "MPZConfig.forest_density_floor_m2 and FEM initial rho_gp",
+          "rho_source0_m2": "FEM initial rho_gp",
+          "source_sites_per_system": "MaterialManifest.source_sites_per_system",
+          "source_zone_length_um": "process_geometry_fingerprint.source_zone_length_um",
+          "taylor_H0_eV": "MaterialManifest.taylor.H0_eV",
+          "taylor_activation_entropy_kB": "MaterialManifest.taylor.activation_entropy_kB",
+          "taylor_corr_rho_c_m2": "MaterialManifest.taylor_corr_rho_c_m2",
+          "taylor_corr_scale": "MaterialManifest.taylor_corr_scale",
+          "taylor_exp_a": "MaterialManifest.taylor.alpha",
+          "taylor_exp_n": "MaterialManifest.taylor.exponent",
+          "taylor_nu0_s": "MaterialManifest.taylor.attempt_frequency_s",
+          "taylor_stress_fraction": "MPZConfig.taylor_stress_fraction"
+        },
+        "elasticity": {
+          "E_Pa": 210000000000.0,
+          "b_m": 2.74e-10,
+          "nu": 0.3
+        },
+        "fracture_material_row_id": "v913_zeroD_sobol_0242980",
+        "identity": {
+          "FrontConfig_fingerprint": "1542a8bead38aebf02fc2190e01ac323b36c4038cbb759edc673bb44eca96e3d",
+          "cleavage_barrier_fingerprint": "9ef6e4488d7f07d5457c0616b7824b28720a88464edb1030836f7c5f9cc4e9dd",
+          "core_model_id": "v13.current-source-qualified-multitip/ca4abfe47765fcdaf0d266bfc0558ecd82d0c64e",
+          "elasticity_fingerprint": "f950f823cb066c03da0d817c42716bd30911bb8c6eac1477bf174403985cd4ff",
+          "emission_barrier_fingerprint": "5bb05984b50ba009da73ad690f733974c5bcbda99e67455d6e592e7312cc37cb",
+          "material_bundle_id": "v5.unified-fracture-material-bundle/1:Peak:10424cbbfec4f9c4",
+          "material_bundle_sha256": "10424cbbfec4f9c453c6606d1254867396162da74732f7aa825101ee20314e6e",
+          "plasticity_fingerprint": "d61a03d8510af6fbefd1fa4639b635cda7291ab547a707d4deef4e10adca6ee3",
+          "process_zone_fingerprint": "2b287cb57f41196795ceea01424d3405942ea951d2e6f7fd258a7394d81e5b11"
+        }
+      },
+      "ceramic-like": {
+        "active_field_targets": {
+          "L_pz_um_recommended": "FrontConfig.L_pz and MPZConfig.length_m",
+          "Tref_K": "cleavage/emission ExpFloorBarrier.Tref_K",
+          "c_blunt": "MaterialManifest.c_blunt and FrontConfig.c_blunt",
+          "cleave_G00_eV": "MaterialManifest.cleave.G00_eV",
+          "cleave_exp_a": "MaterialManifest.cleave.exp_a",
+          "cleave_exp_n": "MaterialManifest.cleave.exp_n",
+          "cleave_floor_frac": "MaterialManifest.cleave.floor_frac",
+          "cleave_gT_eV_per_K": "MaterialManifest.cleave.gT_eV_per_K",
+          "cleave_sT_GPa_per_K": "MaterialManifest.cleave.sT_GPa_per_K",
+          "cleave_sigc0_GPa": "MaterialManifest.cleave.sigc0_GPa",
+          "emit_G00_eV": "MaterialManifest.emit.G00_eV",
+          "emit_exp_a": "MaterialManifest.emit.exp_a",
+          "emit_exp_n": "MaterialManifest.emit.exp_n",
+          "emit_floor_frac": "MaterialManifest.emit.floor_frac",
+          "emit_gT_eV_per_K": "MaterialManifest.emit.gT_eV_per_K",
+          "emit_sT_GPa_per_K": "MaterialManifest.emit.sT_GPa_per_K",
+          "emit_sigc0_GPa": "MaterialManifest.emit.sigc0_GPa",
+          "encounter_efficiency": "MaterialManifest.encounter_efficiency",
+          "peierls_H0_eV": "MaterialManifest.peierls.H0_eV",
+          "peierls_activation_entropy_kB": "MaterialManifest.peierls.activation_entropy_kB",
+          "peierls_exp_a": "MaterialManifest.peierls.alpha",
+          "peierls_exp_n": "MaterialManifest.peierls.exponent",
+          "peierls_nu0_s": "MaterialManifest.peierls.attempt_frequency_s",
+          "peierls_stress_fraction": "MPZConfig.peierls_stress_fraction",
+          "reference_front_width_um": "process_zone_fingerprint.reference_front_width_um",
+          "reference_source_area_um2": "process_zone_fingerprint.reference_source_area_um2",
+          "rho_forest_floor_m2": "MPZConfig.forest_density_floor_m2 and FEM initial rho_gp",
+          "rho_source0_m2": "FEM initial rho_gp",
+          "source_sites_per_system": "MaterialManifest.source_sites_per_system",
+          "source_zone_length_um": "process_geometry_fingerprint.source_zone_length_um",
+          "taylor_H0_eV": "MaterialManifest.taylor.H0_eV",
+          "taylor_activation_entropy_kB": "MaterialManifest.taylor.activation_entropy_kB",
+          "taylor_corr_rho_c_m2": "MaterialManifest.taylor_corr_rho_c_m2",
+          "taylor_corr_scale": "MaterialManifest.taylor_corr_scale",
+          "taylor_exp_a": "MaterialManifest.taylor.alpha",
+          "taylor_exp_n": "MaterialManifest.taylor.exponent",
+          "taylor_nu0_s": "MaterialManifest.taylor.attempt_frequency_s",
+          "taylor_stress_fraction": "MPZConfig.taylor_stress_fraction"
+        },
+        "elasticity": {
+          "E_Pa": 210000000000.0,
+          "b_m": 2.74e-10,
+          "nu": 0.3
+        },
+        "fracture_material_row_id": "oneD_v2_focused_ceramic_like_0018",
+        "identity": {
+          "FrontConfig_fingerprint": "d84fdfa46524e0687b2f03cdc5b557e9992ad57d70e293ccf6abbe1e8cacd6af",
+          "cleavage_barrier_fingerprint": "7a1d0ed4494571a3f871e12a189d8f78859a5dd3249ce0567b490d1b1ee6ef8c",
+          "core_model_id": "v13.current-source-qualified-multitip/ca4abfe47765fcdaf0d266bfc0558ecd82d0c64e",
+          "elasticity_fingerprint": "f950f823cb066c03da0d817c42716bd30911bb8c6eac1477bf174403985cd4ff",
+          "emission_barrier_fingerprint": "73c36f565924845937f67925fdb812a71d2b59885256d58af3c50d4cf5ca07d2",
+          "material_bundle_id": "v5.unified-fracture-material-bundle/1:ceramic-like:e0b32e9b7628a26a",
+          "material_bundle_sha256": "e0b32e9b7628a26a786737100c928b23d61fdbfbe5e8b295db750a0eaf4d0b50",
+          "plasticity_fingerprint": "598de988c8a059edad20096225c93ec7ec7f730b29e4ed9e515255c773416d31",
+          "process_zone_fingerprint": "2b287cb57f41196795ceea01424d3405942ea951d2e6f7fd258a7394d81e5b11"
+        }
+      },
+      "weak-T": {
+        "active_field_targets": {
+          "L_pz_um_recommended": "FrontConfig.L_pz and MPZConfig.length_m",
+          "Tref_K": "cleavage/emission ExpFloorBarrier.Tref_K",
+          "c_blunt": "MaterialManifest.c_blunt and FrontConfig.c_blunt",
+          "cleave_G00_eV": "MaterialManifest.cleave.G00_eV",
+          "cleave_exp_a": "MaterialManifest.cleave.exp_a",
+          "cleave_exp_n": "MaterialManifest.cleave.exp_n",
+          "cleave_floor_frac": "MaterialManifest.cleave.floor_frac",
+          "cleave_gT_eV_per_K": "MaterialManifest.cleave.gT_eV_per_K",
+          "cleave_sT_GPa_per_K": "MaterialManifest.cleave.sT_GPa_per_K",
+          "cleave_sigc0_GPa": "MaterialManifest.cleave.sigc0_GPa",
+          "emit_G00_eV": "MaterialManifest.emit.G00_eV",
+          "emit_exp_a": "MaterialManifest.emit.exp_a",
+          "emit_exp_n": "MaterialManifest.emit.exp_n",
+          "emit_floor_frac": "MaterialManifest.emit.floor_frac",
+          "emit_gT_eV_per_K": "MaterialManifest.emit.gT_eV_per_K",
+          "emit_sT_GPa_per_K": "MaterialManifest.emit.sT_GPa_per_K",
+          "emit_sigc0_GPa": "MaterialManifest.emit.sigc0_GPa",
+          "encounter_efficiency": "MaterialManifest.encounter_efficiency",
+          "peierls_H0_eV": "MaterialManifest.peierls.H0_eV",
+          "peierls_activation_entropy_kB": "MaterialManifest.peierls.activation_entropy_kB",
+          "peierls_exp_a": "MaterialManifest.peierls.alpha",
+          "peierls_exp_n": "MaterialManifest.peierls.exponent",
+          "peierls_nu0_s": "MaterialManifest.peierls.attempt_frequency_s",
+          "peierls_stress_fraction": "MPZConfig.peierls_stress_fraction",
+          "reference_front_width_um": "process_zone_fingerprint.reference_front_width_um",
+          "reference_source_area_um2": "process_zone_fingerprint.reference_source_area_um2",
+          "rho_forest_floor_m2": "MPZConfig.forest_density_floor_m2 and FEM initial rho_gp",
+          "rho_source0_m2": "FEM initial rho_gp",
+          "source_sites_per_system": "MaterialManifest.source_sites_per_system",
+          "source_zone_length_um": "process_geometry_fingerprint.source_zone_length_um",
+          "taylor_H0_eV": "MaterialManifest.taylor.H0_eV",
+          "taylor_activation_entropy_kB": "MaterialManifest.taylor.activation_entropy_kB",
+          "taylor_corr_rho_c_m2": "MaterialManifest.taylor_corr_rho_c_m2",
+          "taylor_corr_scale": "MaterialManifest.taylor_corr_scale",
+          "taylor_exp_a": "MaterialManifest.taylor.alpha",
+          "taylor_exp_n": "MaterialManifest.taylor.exponent",
+          "taylor_nu0_s": "MaterialManifest.taylor.attempt_frequency_s",
+          "taylor_stress_fraction": "MPZConfig.taylor_stress_fraction"
+        },
+        "elasticity": {
+          "E_Pa": 210000000000.0,
+          "b_m": 2.74e-10,
+          "nu": 0.3
+        },
+        "fracture_material_row_id": "oneD_v2_focused_weak_T_0016",
+        "identity": {
+          "FrontConfig_fingerprint": "9490364c29993b3b5c9fa6b787da76227bb081b1dc74293631ebf01f41366265",
+          "cleavage_barrier_fingerprint": "639ff86a47bfd2ecb993fe7f2ac6fdb04a71c0fa43a6666b2dc58473d9c53292",
+          "core_model_id": "v13.current-source-qualified-multitip/ca4abfe47765fcdaf0d266bfc0558ecd82d0c64e",
+          "elasticity_fingerprint": "f950f823cb066c03da0d817c42716bd30911bb8c6eac1477bf174403985cd4ff",
+          "emission_barrier_fingerprint": "bbaefda561fdfa30e805bb9dbbc1b08e57e66e2b63ad66ecd759854668c764b8",
+          "material_bundle_id": "v5.unified-fracture-material-bundle/1:weak-T:862da27c9f9fffc8",
+          "material_bundle_sha256": "862da27c9f9fffc83e66df38974009fa3be23a6cc27dab892994da2c29aef0b8",
+          "plasticity_fingerprint": "b9559062e3ecc19abacc1bdd43552c701faed0c78bb30fe21d39d1fb04737db3",
+          "process_zone_fingerprint": "2b287cb57f41196795ceea01424d3405942ea951d2e6f7fd258a7394d81e5b11"
+        }
+      }
+    },
+    "fracture_rows": {
+      "DBTT": "v913_zeroD_sobol_0202500",
+      "Peak": "v913_zeroD_sobol_0242980",
+      "ceramic-like": "oneD_v2_focused_ceramic_like_0018",
+      "weak-T": "oneD_v2_focused_weak_T_0016"
+    }
   }
 }

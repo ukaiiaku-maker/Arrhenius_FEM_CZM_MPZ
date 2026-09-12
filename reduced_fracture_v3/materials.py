@@ -201,14 +201,11 @@ def material_field_mapping_audit(
     *,
     source_registry: str,
     v5_driver_identity: str,
+    two_d_active_targets: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Audit every source column and reject active unbound V5 fields.
+    """Audit every source column and reject active unbound 2-D fields."""
 
-    The pinned V5 driver creates default ``FrontEngine`` objects internally and
-    has no fracture-row argument. Structural destinations elsewhere in the 2-D
-    repository therefore do not constitute a runtime binding.
-    """
-
+    runtime_targets = dict(two_d_active_targets or {})
     records: list[dict[str, Any]] = []
     unsupported_active: list[dict[str, str]] = []
     for family in FRACTURE_ROWS:
@@ -223,14 +220,15 @@ def material_field_mapping_audit(
                 classification = "inactive"
                 reason = "identity/provenance field" if field in _METADATA_FIELDS else "zero disables this pathway in every selected row"
             else:
-                # Registry storage and a structural class member are insufficient:
-                # both trajectories need an exact runtime consumer.
-                classification = "unsupported"
-                reason = (
-                    "pinned V5 one-void runtime exposes no fracture-material-row binding; "
-                    "default FrontEngine/material state would be substituted"
-                )
-                unsupported_active.append({"material_class": family, "source_field": field})
+                bound_target = runtime_targets.get(field)
+                if bound_target:
+                    classification = "active"
+                    two_d_target = bound_target
+                    reason = "exact unified 2-D material-bundle runtime binding"
+                else:
+                    classification = "unsupported"
+                    reason = "unified 2-D runtime has no exact active-field binding"
+                    unsupported_active.append({"material_class": family, "source_field": field})
             records.append({
                 "material_class": family,
                 "fracture_material_row_id": row["candidate_id"],
@@ -277,20 +275,27 @@ def paired_case_ledger(
     gate: str,
 ) -> list[dict[str, Any]]:
     rows = []
+    mapping_passed = gate == "PASS_EXACT_RUNTIME_BINDING"
     for family in FRACTURE_ROWS:
         anchors = tuple(anchors_by_family[family])
         if len(anchors) != 3:
             raise ValueError("each material family requires exactly three anchor slots")
         for label, temperature in zip(("low", "feature", "high"), anchors):
+            if not mapping_passed:
+                run_status = "NOT_RUN_M2_GATE_BLOCKED"
+            elif temperature is None:
+                run_status = "NOT_RUN_FEATURE_ANCHOR_PENDING"
+            else:
+                run_status = "NOT_RUN_PENDING_ALIGNED_ORACLE"
             rows.append({
                 "material_class": family,
                 "fracture_material_row_id": FRACTURE_ROWS[family],
                 "temperature_anchor": label,
                 "temperature_K": temperature,
-                "no_void_1d_status": "NOT_RUN_M2_GATE_BLOCKED",
-                "no_void_2d_status": "NOT_RUN_M2_GATE_BLOCKED",
-                "void_1d_status": "NOT_RUN_M2_GATE_BLOCKED",
-                "void_2d_status": "NOT_RUN_M2_GATE_BLOCKED",
+                "no_void_1d_status": run_status,
+                "no_void_2d_status": run_status,
+                "void_1d_status": run_status,
+                "void_2d_status": run_status,
                 "delta_observable_status": "UNAVAILABLE_NO_PAIRED_RUN",
                 "material_mapping_gate": gate,
             })

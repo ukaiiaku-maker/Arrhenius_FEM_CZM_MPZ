@@ -70,15 +70,16 @@ def test_05_unmapped_active_v5_fields_fail_closed_before_execution():
         require_complete_material_mapping(audit)
 
 
-def test_06_structural_target_does_not_masquerade_as_runtime_binding():
+def test_06_unified_runtime_binding_is_exact_and_active():
     audit = json.loads((OUT / "material_field_mapping_audit.json").read_text())
     record = next(
         row for row in audit["records"]
         if row["material_class"] == "DBTT" and row["source_field"] == "c_blunt"
     )
-    assert record["two_d_target"] == "FrontEngine.f.c_blunt"
-    assert record["classification"] == "unsupported"
-    assert "no fracture-material-row binding" in record["reason"]
+    assert record["two_d_target"] == "MaterialManifest.c_blunt and FrontConfig.c_blunt"
+    assert record["classification"] == "active"
+    assert record["reason"] == "exact unified 2-D material-bundle runtime binding"
+    assert audit["summary"]["gate"] == "PASS_EXACT_RUNTIME_BINDING"
 
 
 def test_07_common_void_scout_is_exact_v5_code_and_material_independent():
@@ -118,11 +119,11 @@ def test_10_preserved_geometric_and_no_inference_contracts():
     assert decision["preserved"]["fracture_rows_changed"] is False
 
 
-def test_11_later_phases_remain_frozen_and_exact_despite_m2_block():
+def test_11_later_phases_remain_bounded_after_m2_and_anchor_gates():
     decision = json.loads((OUT / "decision.json").read_text())
     contract = decision["prospective_execution_contract"]
     assert contract["oracle_matrix"]["planned_unique_states"] == 18
-    assert contract["oracle_matrix"]["status"] == "NOT_RUN_M2_GATE_BLOCKED"
+    assert contract["oracle_matrix"]["status"] == "NOT_RUN_PENDING_BOUNDED_ALIGNED_ORACLE"
     assert contract["load_mapping"]["raw_2d_opening_used_as_1d_K"] is False
     assert contract["baseline_comparison"]["void_increment"] == (
         "Delta O_void = O_void - O_no_void"
@@ -139,3 +140,36 @@ def test_11_later_phases_remain_frozen_and_exact_despite_m2_block():
         "stop condition",
     ]
     assert contract["complete_pass_rule"].startswith("all four material families")
+
+
+def test_12_feature_temperatures_were_frozen_before_paired_results():
+    scout = json.loads((OUT / "fracture_rate_feature_scout.json").read_text())
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert scout["selected_feature_temperatures_K"] == {
+        "Peak": 1100,
+        "DBTT": 875,
+        "weak-T": 950,
+        "ceramic-like": 1100,
+    }
+    assert scout["selection_executed_before_paired_results"] is True
+    assert scout["paired_material_temperature_cells_present_at_selection"] == 0
+    assert scout["held_out_results_used_for_temperature_selection"] is False
+    assert decision["feature_temperature_gate"] == "PASS_FROZEN_PROSPECTIVE_ANCHORS"
+    assert all(
+        value["T_feature_status"] == "FROZEN_PROSPECTIVELY_BEFORE_PAIRED_RESULTS"
+        for value in decision["temperature_anchors"].values()
+    )
+
+
+def test_13_passed_m2_ledger_waits_only_for_aligned_oracle():
+    anchors = {
+        family: (
+            300.0,
+            json.loads((OUT / "decision.json").read_text())["temperature_anchors"][family]["T_feature_K"],
+            1200.0,
+        )
+        for family in FRACTURE_ROWS
+    }
+    ledger = paired_case_ledger(anchors, gate="PASS_EXACT_RUNTIME_BINDING")
+    assert all(row["temperature_K"] is not None for row in ledger)
+    assert all(row["void_2d_status"] == "NOT_RUN_PENDING_ALIGNED_ORACLE" for row in ledger)

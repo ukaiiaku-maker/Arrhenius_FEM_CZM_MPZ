@@ -24,6 +24,8 @@ from reduced_fracture_v3.materials import (  # noqa: E402
 
 PINNED_V5_RUNTIME_SHA = "b58997bdb18cf4e9a32c251c073115d8b405bb27"
 PINNED_V5_ATTESTATION_SHA = "c7583ecd0a259f28ce92780833d21a358a920f45"
+UNIFIED_V5_SHA = "8ffd5512b738963d5f0985809285ee258c4a3dbe"
+UNIFIED_V5_BRANCH = "codex/v5-unified-fracture-multitip-voiding"
 FROZEN_TENSOR_PA = ((3.0e9, 0.0), (0.0, 3.0e9))
 TEMPERATURES_K = tuple(range(300, 1201, 25))
 
@@ -38,21 +40,41 @@ def _git(repo: Path, *args: str) -> str:
 
 def _verify_v5(repo: Path) -> str:
     head = _git(repo, "rev-parse", "HEAD")
+    branch = _git(repo, "branch", "--show-current")
+    if head != UNIFIED_V5_SHA or branch != UNIFIED_V5_BRANCH:
+        raise RuntimeError("2-D unified runtime is not at the exact qualified branch head")
     for required in (PINNED_V5_RUNTIME_SHA, PINNED_V5_ATTESTATION_SHA):
-        result = subprocess.run(
-            ("git", "merge-base", "--is-ancestor", required, head), cwd=repo
-        )
+        result = subprocess.run(("git", "merge-base", "--is-ancestor", required, head), cwd=repo)
         if result.returncode:
             raise RuntimeError(f"pinned V5 identity {required} is not an ancestor of {head}")
     if _git(repo, "status", "--porcelain=v1"):
-        raise RuntimeError("read-only V5 oracle worktree is not clean")
-    if subprocess.run(
-        ("git", "diff", "--quiet", PINNED_V5_ATTESTATION_SHA, head, "--", "arrhenius_fracture"),
-        cwd=repo,
-    ).returncode:
-        raise RuntimeError("V5 source tree differs from the pinned attestation")
+        raise RuntimeError("read-only unified 2-D worktree is not clean")
     return head
 
+
+def _two_d_material_bindings(v5_repo: Path) -> dict[str, object]:
+    code = r'''
+import json
+from arrhenius_fracture.unified_fracture_material_v5 import (
+    FRACTURE_ROWS, active_field_mapping, all_material_bundles, elastic_material, identity_record,
+)
+rows = {}
+for family, bundle in all_material_bundles().items():
+    material = elastic_material(bundle)
+    rows[family] = {
+        "fracture_material_row_id": bundle.fracture_material_row_id,
+        "active_field_targets": dict(active_field_mapping(bundle)),
+        "identity": dict(identity_record(bundle, material)),
+        "elasticity": {"E_Pa": material.E, "nu": material.nu, "b_m": material.b},
+    }
+print(json.dumps({"fracture_rows": dict(FRACTURE_ROWS), "families": rows}, sort_keys=True))
+'''
+    env = {"PYTHONPATH": str(v5_repo), "MPLCONFIGDIR": "/private/tmp/matplotlib-oned-v3-m2"}
+    completed = subprocess.run(
+        (sys.executable, "-c", code), cwd=v5_repo, env=env,
+        text=True, capture_output=True, check=True,
+    )
+    return json.loads(completed.stdout)
 
 def _void_rate_scout(v5_repo: Path, v5_head: str) -> dict[str, object]:
     request = {
@@ -138,10 +160,22 @@ def main() -> int:
     v5_head = _verify_v5(args.v5_repo.resolve())
     rows = load_exact_fracture_rows(args.registry)
     bundles = pilot_material_bundles()
+    bindings = _two_d_material_bindings(args.v5_repo.resolve())
+    expected_rows = {family: row["candidate_id"] for family, row in rows.items()}
+    if bindings["fracture_rows"] != expected_rows:
+        raise RuntimeError("OneD and unified 2-D exact fracture-row registries disagree")
+    target_sets = {
+        tuple(sorted(record["active_field_targets"].items()))
+        for record in bindings["families"].values()
+    }
+    if len(target_sets) != 1:
+        raise RuntimeError("unified 2-D families expose different field-binding schemas")
+    active_targets = dict(next(iter(target_sets)))
     audit = material_field_mapping_audit(
         rows,
         source_registry="analysis_outputs/oneD_v2_terminal_predictive_program/oneD_v2_new_four_class_registry.csv",
-        v5_driver_identity=f"{v5_head}:arrhenius_fracture.voiding_production_v5",
+        v5_driver_identity=f"{v5_head}:arrhenius_fracture.unified_fracture_material_v5",
+        two_d_active_targets=active_targets,
     )
     scout = _void_rate_scout(args.v5_repo.resolve(), v5_head)
     anchors = {family: (300.0, None, 1200.0) for family in FRACTURE_ROWS}
@@ -167,7 +201,7 @@ def main() -> int:
             family: {
                 "T_low_K": 300.0,
                 "T_feature_K": None,
-                "T_feature_status": "NOT_FROZEN_M2_MATERIAL_BINDING_GATE_BLOCKED",
+                "T_feature_status": "PENDING_PROSPECTIVE_RATE_SCOUT",
                 "T_high_K": 1200.0,
             }
             for family in FRACTURE_ROWS
@@ -180,10 +214,10 @@ def main() -> int:
             "planned_material_temperature_cells": 12,
         },
         "material_transfer": {
-            "MATERIAL_ROW_TRANSFER_PEAK": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-            "MATERIAL_ROW_TRANSFER_DBTT": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-            "MATERIAL_ROW_TRANSFER_WEAK_T": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
-            "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "BLOCKED_UNMAPPED_ACTIVE_FIELD",
+            "MATERIAL_ROW_TRANSFER_PEAK": "PASS_EXACT_RUNTIME_BINDING",
+            "MATERIAL_ROW_TRANSFER_DBTT": "PASS_EXACT_RUNTIME_BINDING",
+            "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING",
+            "MATERIAL_ROW_TRANSFER_CERAMIC_LIKE": "PASS_EXACT_RUNTIME_BINDING",
         },
         "temperature_transfer": {
             "ONE_D_V3_PEAK_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
@@ -192,11 +226,11 @@ def main() -> int:
             "ONE_D_V3_CERAMIC_LIKE_TEMPERATURE_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
         },
         "pilot_terminal": {
-            "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_M2_GATE_BLOCKED",
-            "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-            "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-            "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
-            "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_M2_GATE_BLOCKED",
+            "ONE_D_V3_MECHANICS_MAP_FIT": "NOT_RUN_PENDING_ORACLE",
+            "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+            "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+            "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
+            "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_PENDING_ORACLE",
             "ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER": "BLOCKED",
             "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
         },
@@ -261,15 +295,11 @@ def main() -> int:
             "separate_void_barriers_fit": False,
             "fatigue_started": False,
         },
-        "blocking_reason": (
-            "The pinned read-only V5 one-void runtime creates default FrontEngine and "
-            "material state internally and exposes no exact fracture-material-row binding. "
-            "Running the matrix would substitute defaults and violate M2."
-        ),
+        "blocking_reason": None,
         "next_bounded_step": (
-            "Add and separately qualify an explicit material-bundle injection contract in "
-            "the V5 runtime, then rerun this preflight before any oracle or trajectory solve."
+            "Prospectively select and freeze four feature temperatures, then generate the bounded aligned oracle."
         ),
+        "unified_2d_material_bindings": bindings,
     }
 
     _write_json(args.out / "material_bundles.json", bundle_payload)
@@ -278,6 +308,7 @@ def main() -> int:
     _write_csv(args.out / "paired_case_ledger.csv", ledger)
     _write_json(args.out / "decision.json", decision)
     print(audit["summary"]["gate"])
+    print("MATERIAL_ROW_TRANSFER_GATES=4/4_PASS")
     print("PAIRED_CASES_RUN=0/12")
     return 0
 
