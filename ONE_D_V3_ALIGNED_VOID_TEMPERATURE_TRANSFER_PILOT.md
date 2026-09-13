@@ -184,3 +184,41 @@ FATIGUE_IMPLEMENTATION = NOT_STARTED_BY_CONTRACT
 
 No mechanics field was inferred, no map was fit, and no paired trajectory was
 run. A finite activation-zone observable was not derived in this mission.
+
+## V5 shape-regular source-readiness update
+
+The final V5 checkpoint is pinned read-only to 2-D head
+`b6224cbdc41b76048d7ad4b459046fd8461f53e5`; its source implementation is
+`c0011abb0dd48ee259f4838a354947cf34e4cd46`. The one-job bounded worker
+`34772119070` passed exactly 46 tests. Artifact `10322053051` has digest
+`sha256:64d2ef9e85379905df9bd021167fce3d2643f971def31bfeafa7a19c261376d4`.
+
+The geometry-only V4 audit attributes its mesh collapse to the
+crack-support/cavity interaction. V5 replaces that construction with a fixed
+shape-regular local patch while reusing the unchanged V3 physical-window WLS
+operator. The required N64/N128 angular comparison and the fixed N128 A/B/C
+local family pass tensor, reaction, compliance, energy, resolution, quality,
+conditioning, source-window identity, and accepted-state checks. Independent
+raw adjacent-element traction remains `0.06715193304848284` at N128/C, above
+the frozen `0.05` limit. The constrained boundary-limit traction is zero by
+construction and is not used as that independent diagnostic. The assembled
+weak residual is recorded separately.
+
+The conditional N256 diagnostic reduces raw traction below 5%, but its minimum
+quality is `0.00814983630892272`, below the frozen `0.05` requirement. It does
+not qualify or replace the prospectively fixed local family.
+
+```text
+DBTT_SOURCE_READINESS = BLOCKED_WITH_EXACT_V5_FAILURE_CLASS
+V5_FAILURE_CLASS = RAW_ADJACENT_ELEMENT_TRACTION
+ORACLE_STATES_ACCEPTED = 0_OF_18
+PAIRED_TRAJECTORIES_RUN = 0_OF_12
+ONE_D_V3_MECHANICS_MAP_FIT = BLOCKED_CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION
+ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER = BLOCKED_ZERO_OF_18_ORACLE_STATES
+FATIGUE_IMPLEMENTATION = NOT_STARTED_BY_CONTRACT
+```
+
+No oracle state or paired trajectory was generated, no mechanics field was
+inferred, and no finite activation-zone observable was derived. The retained
+`r_tip` law remains unchanged, `r_tip != R_void`, and further point-source mesh
+development stops at this decision.
