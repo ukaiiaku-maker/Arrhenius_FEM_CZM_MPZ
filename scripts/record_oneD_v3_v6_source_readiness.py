@@ -9,7 +9,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-V6_HEAD = "864d73d2566050b38fd798693ef96ed7c973b942"
+V6_HEAD = "c6c8fd500cf506258d70e56a8f391d52908f03d4"
 V6_BRANCH = "codex/v5-unified-fracture-multitip-voiding"
 SOURCE = Path("artifacts/v6_cavity_source_raw_traction_closure/central_dbtt_v6_readiness.json")
 ATTESTATION = Path("artifacts/v6_cavity_source_raw_traction_closure/attestation.json")

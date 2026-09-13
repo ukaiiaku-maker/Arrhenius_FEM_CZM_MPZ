@@ -130,7 +130,7 @@
   },
   "read_only_v5_head": "b6224cbdc41b76048d7ad4b459046fd8461f53e5",
   "read_only_v5_source_tree_matches_attestation": true,
-  "read_only_v6_head": "864d73d2566050b38fd798693ef96ed7c973b942",
+  "read_only_v6_head": "c6c8fd500cf506258d70e56a8f391d52908f03d4",
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
     "DBTT": {

@@ -341,7 +341,7 @@ def test_17_v5_shape_regular_source_fails_only_raw_traction_and_blocks_oracle():
 def test_18_v6_final_closure_pins_physical_observables_and_exact_blockers():
     readiness = json.loads((OUT / "v6_source_readiness.json").read_text())
     decision = json.loads((OUT / "decision.json").read_text())
-    assert readiness["source_head"] == "864d73d2566050b38fd798693ef96ed7c973b942"
+    assert readiness["source_head"] == "c6c8fd500cf506258d70e56a8f391d52908f03d4"
     assert readiness["source_implementation_head"] == (
         "612b1221b625235d1e502d36d9428d9321199ab3"
     )
@@ -349,6 +349,18 @@ def test_18_v6_final_closure_pins_physical_observables_and_exact_blockers():
         "774db759df503b2eef4580041f51586376b0125b"
     )
     assert readiness["source_contract"] == "CAVITY_SOURCE_RAW_TRACTION_CLOSURE_V6"
+    assert readiness["preserved_v5"] == {
+        "V5_SOURCE_CONFORMING_GEOMETRY": "PASS",
+        "V5_SHAPE_REGULAR_LOCAL_PATCH": "PASS",
+        "V5_SOURCE_TENSOR_CONVERGENCE": "PASS",
+        "V5_WEAK_TRACTION_FREE_BOUNDARY": "PASS",
+        "V5_RAW_ADJACENT_ELEMENT_TRACTION": "FAIL_0.0671519_GT_0.05",
+        "V5_REACTION_COMPLIANCE_OBSERVATION": "INVALID_DEFAULT_OR_STALE_LEDGER",
+        "DBTT_SOURCE_READINESS": "BLOCKED",
+        "FINITE_ACTIVATION_ZONE_REQUIRED": "NOT_ESTABLISHED",
+        "conditional_N256_raw_traction": 0.038672813574278736,
+        "conditional_N256_role": "LOW_QUALITY_DIAGNOSTIC_ONLY_NOT_QUALIFICATION",
+    }
     central = readiness["central_dbtt_v6"]
     assert central["DBTT_SOURCE_READINESS"] == "BLOCKED_WITH_EXACT_V6_FAILURE_CLASS"
     assert central["exact_v6_failure_class"] == [

@@ -226,7 +226,7 @@ development stops at this decision.
 ## V6 equilibrium-observable and raw-traction closure update
 
 The final V6 checkpoint is pinned read-only to 2-D head
-`864d73d2566050b38fd798693ef96ed7c973b942`; its evaluator implementation is
+`c6c8fd500cf506258d70e56a8f391d52908f03d4`; its evaluator implementation is
 `612b1221b625235d1e502d36d9428d9321199ab3`. The dedicated one-job worker at
 `774db759df503b2eef4580041f51586376b0125b` passed exactly 34/34 bounded tests
 in run `34777671961`. Artifact `10323943431` has digest
