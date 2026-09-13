@@ -222,3 +222,38 @@ No oracle state or paired trajectory was generated, no mechanics field was
 inferred, and no finite activation-zone observable was derived. The retained
 `r_tip` law remains unchanged, `r_tip != R_void`, and further point-source mesh
 development stops at this decision.
+
+## V6 equilibrium-observable and raw-traction closure update
+
+The final V6 checkpoint is pinned read-only to 2-D head
+`864d73d2566050b38fd798693ef96ed7c973b942`; its evaluator implementation is
+`612b1221b625235d1e502d36d9428d9321199ab3`. The dedicated one-job worker at
+`774db759df503b2eef4580041f51586376b0125b` passed exactly 34/34 bounded tests
+in run `34777671961`. Artifact `10323943431` has digest
+`sha256:034be555d5d4f3f65cf16202d23a1612520612392bc6ab34dcd7086d5c84f748`.
+
+The 2-D accepted-state observer now records direct top and bottom reactions,
+applied opening, finite compliance, residuals, external work, recoverable
+energy, and the plastic-strain-aware energy identity. Missing reaction ledgers
+fail closed. The retained A/B/C raw-traction sequence is followed by
+D=`0.05795457514046478` and E=`0.055309963627059575`. The sequence decreases,
+and the tensor, weak residual, reaction, compliance, energy, and ligament
+release converge. V6 remains blocked because E exceeds the 5% raw-traction
+limit, E minimum quality is `0.047548651614431246`, and the complete
+post-connection cavity-boundary identity changes at E.
+
+```text
+DBTT_SOURCE_READINESS = BLOCKED_WITH_EXACT_V6_FAILURE_CLASS
+V6_FAILURE_CLASS = RAW_ADJACENT_ELEMENT_TRACTION_E + MESH_QUALITY + FIXED_GEOMETRY_IDENTITY
+ORACLE_STATES_ACCEPTED = 0_OF_18
+PAIRED_TRAJECTORIES_RUN = 0_OF_12
+ONE_D_V3_MECHANICS_MAP_FIT = BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY
+ONE_D_V3_COMPLETE_ALIGNED_MONOTONIC_TRANSFER = BLOCKED_ZERO_OF_18_ORACLE_STATES
+FATIGUE_IMPLEMENTATION = NOT_STARTED_BY_CONTRACT
+NEXT_BOUNDED_STEP = EQUILIBRATED_BOUNDARY_STRESS_RECONSTRUCTION
+```
+
+V5 remains a frozen failure under its own prospective gate. V6 generated no
+oracle row, fit, paired trajectory, finite activation-zone observable, or
+fatigue implementation. The retained `r_tip` law remains unchanged and
+`r_tip != R_void`.

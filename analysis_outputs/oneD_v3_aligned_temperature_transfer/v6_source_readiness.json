@@ -1,0 +1,482 @@
+{
+  "bounded_worker": {
+    "artifact_digest": "sha256:034be555d5d4f3f65cf16202d23a1612520612392bc6ab34dcd7086d5c84f748",
+    "artifact_id": 10323943431,
+    "artifact_name": "v6-equilibrium-observable-raw-traction-closure-774db759df503b2eef4580041f51586376b0125b",
+    "artifact_size_bytes": 11672,
+    "conclusion": "success",
+    "job_count": 1,
+    "job_id": 103778647069,
+    "run_id": 34777671961,
+    "tests_collected": 34,
+    "tests_passed": 34,
+    "workflow_head": "774db759df503b2eef4580041f51586376b0125b",
+    "workflow_name": "V6 equilibrium observable and raw traction closure"
+  },
+  "cancelled_scope_control_runs": [
+    {
+      "classification": "CANCELLED_SCOPE_CONTROL_NOT_A_TEST_FAILURE",
+      "run_id": 34777449388,
+      "workflow": "v10 sharp-front MPZ CI"
+    },
+    {
+      "classification": "CANCELLED_SCOPE_CONTROL_NOT_A_TEST_FAILURE",
+      "run_id": 34777449405,
+      "workflow": "V5 shape-regular cavity source mesh V5"
+    },
+    {
+      "classification": "CANCELLED_SCOPE_CONTROL_NOT_A_TEST_FAILURE",
+      "run_id": 34777671903,
+      "workflow": "v10 sharp-front MPZ CI"
+    },
+    {
+      "classification": "CANCELLED_SCOPE_CONTROL_NOT_A_TEST_FAILURE",
+      "run_id": 34777672014,
+      "workflow": "V5 shape-regular cavity source mesh V5"
+    }
+  ],
+  "central_dbtt_v6": {
+    "DBTT_SOURCE_READINESS": "BLOCKED_WITH_EXACT_V6_FAILURE_CLASS",
+    "D_to_E_comparisons": {
+      "compliance_relative_D_to_E": 1.2987070246516087e-06,
+      "ligament_energy_release_relative_D_to_E": 3.304961830260976e-06,
+      "potential_energy_relative_D_to_E": 1.2978505313886733e-06,
+      "reaction_relative_D_to_E": 1.298705338068078e-06,
+      "source_tensor_relative_D_to_E": 9.827063694585136e-06
+    },
+    "exact_v6_failure_class": [
+      "RAW_ADJACENT_ELEMENT_TRACTION_E",
+      "MESH_QUALITY",
+      "FIXED_GEOMETRY_IDENTITY"
+    ],
+    "new_D_E_rows": [
+      {
+        "N_theta": 128,
+        "accepted_input_state_fingerprint": "b3bf0b05b81dafdb41d38e96ff7fbf2e696d9d41b02a02810182a527127b2d0d",
+        "accepted_input_state_unchanged": true,
+        "assembled_weak_cavity_boundary_residual_normalized": 4.1916755175125534e-14,
+        "candidate_kinetic_drive": null,
+        "candidate_kinetic_drive_status": "NOT_DEFINED_BEFORE_SOURCE_QUALIFICATION",
+        "constrained_boundary_limit_tensor_global_xy_Pa": [
+          [
+            0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            786579282.0597589
+          ]
+        ],
+        "constrained_boundary_limit_tensor_local_nt_Pa": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            786579282.0597589
+          ]
+        ],
+        "constrained_boundary_limit_traction_residual": 0.0,
+        "constrained_fit_residual": 0.03826349823113556,
+        "discrete_cavity_boundary_fingerprints": {
+          "complete_boundary": "1c2bf81ff6d668daf76d43fb646af28e2c9ff09a10908f42480e67bdb64094cf",
+          "fixed_v3_source_window": "72133584451c0f1e38725be4e9ecedf5487ede75520bc5cb90da0089c5f7df0d",
+          "fixed_v3_source_window_edge_count": 74,
+          "fixed_v3_source_window_half_width_m": 2.5e-05
+        },
+        "eta_n": 0.0018866746785418077,
+        "eta_t": 0.012274311054463086,
+        "global_minimum_quality": 0.12451519968640087,
+        "ligament_energy_gate": {
+          "accepted": true,
+          "energy_margin_J_per_m": 0.009078443142221107,
+          "energy_release_J_per_m": 0.011259716938401616,
+          "hazard_dissipation_J_per_m": 0.0021812737961805096
+        },
+        "load_history_matches_reference": true,
+        "local_level": "D",
+        "local_minimum_quality": 0.2514621610176983,
+        "material_identity_matches_reference": true,
+        "nominal_cavity_geometry_matches_reference": true,
+        "observables": {
+          "active_crack_branch_ids": [],
+          "applied_opening_m": 7.999999999999998e-07,
+          "available_defect_inventory_area_m2": 4.966822228908758e-10,
+          "bottom_reaction_N_per_m": -58108.72952948271,
+          "cavity_area_m2": 9.503317777109124e-09,
+          "cavity_radius_m": 5.5e-05,
+          "compliance_m2_per_N": 1.3725474412073949e-11,
+          "constrained_reaction_l2_N_per_m": 16398.212963534676,
+          "consumed_defect_inventory_area_m2": 9.503317777109124e-09,
+          "energy_J_per_m": 0.02345535206118212,
+          "energy_identity_reference_J_per_m": 0.023455352061184306,
+          "energy_reaction_identity": 9.318775407972358e-14,
+          "event_counters": {
+            "accepted_steps": 0,
+            "mesh_generation": 3,
+            "refinement_operation_index": 3,
+            "topology_actions": 1
+          },
+          "external_work_J_per_m": 0.023314312525219233,
+          "fingerprint": "b3bf0b05b81dafdb41d38e96ff7fbf2e696d9d41b02a02810182a527127b2d0d",
+          "free_dof_residual_l2_N_per_m": 8.715853147717726e-09,
+          "full_residual_including_reactions_N_per_m": 16398.212963534672,
+          "graph_length_m": 0.000645,
+          "inventory_area_m2": 9.503317777109124e-09,
+          "length_ledgers": {
+            "active_front_coordinate_advance_m": 7.240069959533113e-05,
+            "connected_free_surface_extent_m": 0.00017282229964683506,
+            "connected_void_free_span_m": 0.00011000000000000007,
+            "fractured_ligament_length_m": 7.240069959533113e-05,
+            "ordinary_crack_fractured_length_m": 0.0,
+            "physical_active_front_travel_m": 7.240069959533113e-05,
+            "preexisting_void_free_span_m": 0.00011000000000000007,
+            "projected_connected_void_free_span_m": 0.00011000000000000007,
+            "projected_fractured_length_m": 7.240069959533113e-05,
+            "projected_free_span_m": 0.0,
+            "projected_front_advance_m": 7.240069959533113e-05,
+            "traversed_void_free_span_m": 0.0
+          },
+          "mesh_elements": 51558,
+          "mesh_maximum_aspect_ratio": 1581.745909550004,
+          "mesh_minimum_quality": 0.12451519968640087,
+          "mesh_nodes": 26170,
+          "operation": "V5_128_D_connected",
+          "plastic_eigenstrain_half_work_J_per_m": -0.000141039535965074,
+          "reaction_N_per_m": 58285.78131304956,
+          "site_phase": "STABLE_SUBGRID_VOID",
+          "stored_recoverable_energy_J_per_m": 0.02345535206118212,
+          "support_active_tip_ids": [],
+          "top_bottom_reaction_balance": 0.003042270331912479,
+          "top_reaction_N_per_m": 58285.78131304956,
+          "topology": {
+            "cavity_boundary_edge_count": 518,
+            "cavity_boundary_node_count": 518,
+            "closed_cavity_boundary_cycle_passed": true,
+            "connection_entry_m": null,
+            "connection_exit_m": null,
+            "crack_void_connection_passed": true
+          },
+          "void_phase": "CONNECTED_VOID"
+        },
+        "patch_condition": {
+          "limit": 1000000.0,
+          "maximum": 27.345979871173455,
+          "sigma_nn": 7.19746492966398,
+          "sigma_nt": 7.19746492966398,
+          "sigma_tt": 27.345979871173455
+        },
+        "patch_rank": {
+          "sigma_nn": 3,
+          "sigma_nt": 3,
+          "sigma_tt": 6
+        },
+        "physical_equilibrium_observable_predicates": {
+          "energy_identity": true,
+          "finite": true,
+          "finite_positive_compliance": true,
+          "finite_positive_energy": true,
+          "nonzero_bottom_reaction": true,
+          "nonzero_top_reaction": true,
+          "reaction_balance": true
+        },
+        "physical_window_identity": "97f7965380c8c8d340b071c898f04d481d7c22c99911e795774b9ec0d0d47b0a",
+        "raw_adjacent_element_traction_normalized": 0.05795457514046478,
+        "rng_state_matches_reference": true,
+        "scientific_unavailability": null,
+        "sigma_zz_and_mean_stress_audit": {
+          "classification": "DIAGNOSTIC_ONLY",
+          "interpretation": "elastic projection of the constrained in-plane boundary-limit tensor; not a constitutive plastic sigma_zz recovery and not consumed by source kinetics",
+          "mean_stress_consumed_by_cavity_source_kinetics": false,
+          "plastic_strain_active": true,
+          "reported_mean_stress_Pa": 340851022.2258955,
+          "reported_plane_strain_sigma_zz_Pa": 235973784.61792767
+        },
+        "source_coordinate_m": [
+          0.000755,
+          0.0
+        ],
+        "source_coordinate_matches_reference": true,
+        "source_node_certificate": {
+          "boundary_node_id": 2,
+          "boundary_position_m": [
+            0.000755,
+            0.0
+          ],
+          "collinearity_residual": 0.0,
+          "degree": 2,
+          "geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+          "incident_boundary_edges": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          "incident_solid_owner_counts": {
+            "1:2": 1,
+            "2:3": 1
+          },
+          "nominal_circle_radius_m": 5.5e-05,
+          "normal_xy": [
+            1.0,
+            0.0
+          ],
+          "radial_error_m": 3.3881317890172014e-20,
+          "schema": "v5.cavity-source-conforming-geometry/4",
+          "sha256": "9d9c37e7176fced9dc2d122ca6fb64d72de7d1c3c1786bc613e24f35d6eb6b08",
+          "tangent_xy": [
+            -0.0,
+            1.0
+          ],
+          "unique_tangent_and_outward_normal": true
+        },
+        "thresholds_match_reference": true
+      },
+      {
+        "N_theta": 128,
+        "accepted_input_state_fingerprint": "539bd9158c3a1755eefe6e7b545a19bfff3fa160a4e76e9cf8d5ab1d9c016c26",
+        "accepted_input_state_unchanged": true,
+        "assembled_weak_cavity_boundary_residual_normalized": 7.798140750828965e-14,
+        "candidate_kinetic_drive": null,
+        "candidate_kinetic_drive_status": "NOT_DEFINED_BEFORE_SOURCE_QUALIFICATION",
+        "constrained_boundary_limit_tensor_global_xy_Pa": [
+          [
+            0.0,
+            -0.0
+          ],
+          [
+            -0.0,
+            786571552.3710134
+          ]
+        ],
+        "constrained_boundary_limit_tensor_local_nt_Pa": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            786571552.3710134
+          ]
+        ],
+        "constrained_boundary_limit_traction_residual": 0.0,
+        "constrained_fit_residual": 0.038230744766747204,
+        "discrete_cavity_boundary_fingerprints": {
+          "complete_boundary": "0c4e3899bf8a821e03d5fe2a15212ccb95e4e9455fda980df6bf7e3f879933bb",
+          "fixed_v3_source_window": "72133584451c0f1e38725be4e9ecedf5487ede75520bc5cb90da0089c5f7df0d",
+          "fixed_v3_source_window_edge_count": 74,
+          "fixed_v3_source_window_half_width_m": 2.5e-05
+        },
+        "eta_n": 0.0009433373392699476,
+        "eta_t": 0.012274311054463086,
+        "global_minimum_quality": 0.047548651614431246,
+        "ligament_energy_gate": {
+          "accepted": true,
+          "energy_margin_J_per_m": 0.009078405929409393,
+          "energy_release_J_per_m": 0.011259679725589902,
+          "hazard_dissipation_J_per_m": 0.0021812737961805096
+        },
+        "load_history_matches_reference": true,
+        "local_level": "E",
+        "local_minimum_quality": 0.12791588148010158,
+        "material_identity_matches_reference": true,
+        "nominal_cavity_geometry_matches_reference": true,
+        "observables": {
+          "active_crack_branch_ids": [],
+          "applied_opening_m": 7.999999999999998e-07,
+          "available_defect_inventory_area_m2": 4.966822228908758e-10,
+          "bottom_reaction_N_per_m": -58108.80295910123,
+          "cavity_area_m2": 9.503317777109124e-09,
+          "cavity_radius_m": 5.5e-05,
+          "compliance_m2_per_N": 1.3725456586727063e-11,
+          "constrained_reaction_l2_N_per_m": 16398.22227283467,
+          "consumed_defect_inventory_area_m2": 9.503317777109124e-09,
+          "energy_J_per_m": 0.023455382502762766,
+          "energy_identity_reference_J_per_m": 0.023455382502767838,
+          "energy_reaction_identity": 2.1625447562659544e-13,
+          "event_counters": {
+            "accepted_steps": 0,
+            "mesh_generation": 3,
+            "refinement_operation_index": 3,
+            "topology_actions": 1
+          },
+          "external_work_J_per_m": 0.02331434280368415,
+          "fingerprint": "539bd9158c3a1755eefe6e7b545a19bfff3fa160a4e76e9cf8d5ab1d9c016c26",
+          "free_dof_residual_l2_N_per_m": 1.5827758683313023e-08,
+          "full_residual_including_reactions_N_per_m": 16398.222272834668,
+          "graph_length_m": 0.000645,
+          "inventory_area_m2": 9.503317777109124e-09,
+          "length_ledgers": {
+            "active_front_coordinate_advance_m": 7.240069959533113e-05,
+            "connected_free_surface_extent_m": 0.00017282229964683506,
+            "connected_void_free_span_m": 0.00011000000000000007,
+            "fractured_ligament_length_m": 7.240069959533113e-05,
+            "ordinary_crack_fractured_length_m": 0.0,
+            "physical_active_front_travel_m": 7.240069959533113e-05,
+            "preexisting_void_free_span_m": 0.00011000000000000007,
+            "projected_connected_void_free_span_m": 0.00011000000000000007,
+            "projected_fractured_length_m": 7.240069959533113e-05,
+            "projected_free_span_m": 0.0,
+            "projected_front_advance_m": 7.240069959533113e-05,
+            "traversed_void_free_span_m": 0.0
+          },
+          "mesh_elements": 68608,
+          "mesh_maximum_aspect_ratio": 3163.4918191103934,
+          "mesh_minimum_quality": 0.047548651614431246,
+          "mesh_nodes": 34692,
+          "operation": "V5_128_E_connected",
+          "plastic_eigenstrain_half_work_J_per_m": -0.0001410396990836878,
+          "reaction_N_per_m": 58285.857009203195,
+          "site_phase": "STABLE_SUBGRID_VOID",
+          "stored_recoverable_energy_J_per_m": 0.023455382502762766,
+          "support_active_tip_ids": [],
+          "top_bottom_reaction_balance": 0.0030423053798203097,
+          "top_reaction_N_per_m": 58285.857009203195,
+          "topology": {
+            "cavity_boundary_edge_count": 512,
+            "cavity_boundary_node_count": 512,
+            "closed_cavity_boundary_cycle_passed": true,
+            "connection_entry_m": null,
+            "connection_exit_m": null,
+            "crack_void_connection_passed": true
+          },
+          "void_phase": "CONNECTED_VOID"
+        },
+        "patch_condition": {
+          "limit": 1000000.0,
+          "maximum": 27.345705968924854,
+          "sigma_nn": 7.197454939171007,
+          "sigma_nt": 7.197454939171007,
+          "sigma_tt": 27.345705968924854
+        },
+        "patch_rank": {
+          "sigma_nn": 3,
+          "sigma_nt": 3,
+          "sigma_tt": 6
+        },
+        "physical_equilibrium_observable_predicates": {
+          "energy_identity": true,
+          "finite": true,
+          "finite_positive_compliance": true,
+          "finite_positive_energy": true,
+          "nonzero_bottom_reaction": true,
+          "nonzero_top_reaction": true,
+          "reaction_balance": true
+        },
+        "physical_window_identity": "97f7965380c8c8d340b071c898f04d481d7c22c99911e795774b9ec0d0d47b0a",
+        "raw_adjacent_element_traction_normalized": 0.055309963627059575,
+        "rng_state_matches_reference": true,
+        "scientific_unavailability": null,
+        "sigma_zz_and_mean_stress_audit": {
+          "classification": "DIAGNOSTIC_ONLY",
+          "interpretation": "elastic projection of the constrained in-plane boundary-limit tensor; not a constitutive plastic sigma_zz recovery and not consumed by source kinetics",
+          "mean_stress_consumed_by_cavity_source_kinetics": false,
+          "plastic_strain_active": true,
+          "reported_mean_stress_Pa": 340847672.6941058,
+          "reported_plane_strain_sigma_zz_Pa": 235971465.711304
+        },
+        "source_coordinate_m": [
+          0.000755,
+          0.0
+        ],
+        "source_coordinate_matches_reference": true,
+        "source_node_certificate": {
+          "boundary_node_id": 2,
+          "boundary_position_m": [
+            0.000755,
+            0.0
+          ],
+          "collinearity_residual": 0.0,
+          "degree": 2,
+          "geometry_contract": "CAVITY_SOURCE_CONFORMING_GEOMETRY_V4",
+          "incident_boundary_edges": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          "incident_solid_owner_counts": {
+            "1:2": 1,
+            "2:3": 1
+          },
+          "nominal_circle_radius_m": 5.5e-05,
+          "normal_xy": [
+            1.0,
+            0.0
+          ],
+          "radial_error_m": 3.3881317890172014e-20,
+          "schema": "v5.cavity-source-conforming-geometry/4",
+          "sha256": "9d9c37e7176fced9dc2d122ca6fb64d72de7d1c3c1786bc613e24f35d6eb6b08",
+          "tangent_xy": [
+            -0.0,
+            1.0
+          ],
+          "unique_tangent_and_outward_normal": true
+        },
+        "thresholds_match_reference": true
+      }
+    ],
+    "predicates": {
+      "accepted_input_state_unchanged": true,
+      "compliance_convergence": true,
+      "energy_convergence": true,
+      "exact_state_identity": true,
+      "fixed_geometry_identity": false,
+      "ligament_energy_release_convergence": true,
+      "ligament_event_accepted": true,
+      "minimum_mesh_quality": false,
+      "normal_direction_resolution": true,
+      "patch_rank_and_condition": true,
+      "physical_equilibrium_observables": true,
+      "raw_traction_E": false,
+      "reaction_convergence": true,
+      "source_tensor_D_to_E": true,
+      "strict_raw_traction_order_C_D_E": true,
+      "tangential_direction_resolution": true,
+      "weak_cavity_boundary_residual": true
+    },
+    "retained_A_B_C_raw_traction": [
+      0.14906976345973477,
+      0.09144336014017264,
+      0.06715193304848284
+    ]
+  },
+  "fatigue_started": false,
+  "finite_activation_zone_observable_derived": false,
+  "mechanics_map_fitting_complete": false,
+  "missing_fields_inferred_or_synthesized": false,
+  "monotonic_2d_transfer_complete": false,
+  "next_bounded_step": "EQUILIBRATED_BOUNDARY_STRESS_RECONSTRUCTION",
+  "oracle_matrix_status": "BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY",
+  "oracle_states_accepted": 0,
+  "paired_trajectories_run": 0,
+  "point_source_mesh_development": "CLOSED_AFTER_FINAL_V6_FAILURE",
+  "preserved_v5": {
+    "V5_DBTT_SOURCE_READINESS": "BLOCKED",
+    "V5_RAW_ADJACENT_ELEMENT_TRACTION": "FAIL_0.06715193304848284_GT_0.05",
+    "V5_REACTION_COMPLIANCE_OBSERVATION": "INVALID_DEFAULT_OR_STALE_LEDGER",
+    "V5_SHAPE_REGULAR_LOCAL_PATCH": "PASS",
+    "V5_SOURCE_CONFORMING_GEOMETRY": "PASS",
+    "V5_SOURCE_TENSOR_CONVERGENCE": "PASS",
+    "V5_WEAK_CAVITY_BOUNDARY_RESIDUAL": "PASS",
+    "conditional_N256_raw_traction": 0.038672813574278736,
+    "conditional_N256_role": "LOW_QUALITY_DIAGNOSTIC_ONLY_NOT_QUALIFICATION"
+  },
+  "schema": "oneD.v3.cavity-source-v6-readiness/1",
+  "source_branch": "codex/v5-unified-fracture-multitip-voiding",
+  "source_contract": "CAVITY_SOURCE_RAW_TRACTION_CLOSURE_V6",
+  "source_head": "864d73d2566050b38fd798693ef96ed7c973b942",
+  "source_implementation_head": "612b1221b625235d1e502d36d9428d9321199ab3",
+  "source_recovery_operator": "CAVITY_FIXED_PHYSICAL_ARC_PATCH_RECOVERY_V3",
+  "source_repository": "ukaiiaku-maker/PF-fracture-fatigue",
+  "source_workflow_head": "774db759df503b2eef4580041f51586376b0125b"
+}

@@ -124,7 +124,7 @@ def test_11_later_phases_remain_bounded_after_oracle_readiness_block():
     contract = decision["prospective_execution_contract"]
     assert contract["oracle_matrix"]["planned_unique_states"] == 18
     assert contract["oracle_matrix"]["status"] == (
-        "BLOCKED_CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION"
+        "BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY"
     )
     assert contract["load_mapping"]["raw_2d_opening_used_as_1d_K"] is False
     assert contract["baseline_comparison"]["void_increment"] == (
@@ -329,12 +329,58 @@ def test_17_v5_shape_regular_source_fails_only_raw_traction_and_blocks_oracle():
     assert readiness["bounded_worker"]["run_id"] == 34772119070
     assert readiness["bounded_worker"]["tests_passed"] == 46
     assert readiness["bounded_worker"]["artifact_id"] == 10322053051
-    assert decision["blocking_reason"]["code"] == (
-        "CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION"
-    )
+    assert decision["v5_source_readiness"]["exact_v5_failure_class"] == [
+        "RAW_ADJACENT_ELEMENT_TRACTION"
+    ]
     assert decision["execution_counts"]["v5_required_angular_levels_run"] == 2
     assert decision["execution_counts"]["v5_conditional_angular_levels_run"] == 1
     assert decision["execution_counts"]["v5_fixed_geometry_local_levels_run"] == 3
-    assert decision["prospective_execution_contract"]["oracle_matrix"]["status"] == (
-        "BLOCKED_CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION"
+    assert decision["v5_source_readiness"]["oracle_states_accepted"] == 0
+
+
+def test_18_v6_final_closure_pins_physical_observables_and_exact_blockers():
+    readiness = json.loads((OUT / "v6_source_readiness.json").read_text())
+    decision = json.loads((OUT / "decision.json").read_text())
+    assert readiness["source_head"] == "864d73d2566050b38fd798693ef96ed7c973b942"
+    assert readiness["source_implementation_head"] == (
+        "612b1221b625235d1e502d36d9428d9321199ab3"
     )
+    assert readiness["source_workflow_head"] == (
+        "774db759df503b2eef4580041f51586376b0125b"
+    )
+    assert readiness["source_contract"] == "CAVITY_SOURCE_RAW_TRACTION_CLOSURE_V6"
+    central = readiness["central_dbtt_v6"]
+    assert central["DBTT_SOURCE_READINESS"] == "BLOCKED_WITH_EXACT_V6_FAILURE_CLASS"
+    assert central["exact_v6_failure_class"] == [
+        "RAW_ADJACENT_ELEMENT_TRACTION_E", "MESH_QUALITY", "FIXED_GEOMETRY_IDENTITY",
+    ]
+    assert central["retained_A_B_C_raw_traction"] == [
+        0.14906976345973477, 0.09144336014017264, 0.06715193304848284,
+    ]
+    d, e = central["new_D_E_rows"]
+    assert d["raw_adjacent_element_traction_normalized"] == 0.05795457514046478
+    assert e["raw_adjacent_element_traction_normalized"] == 0.055309963627059575
+    assert all(all(row["physical_equilibrium_observable_predicates"].values()) for row in (d, e))
+    assert all(row["observables"]["reaction_N_per_m"] != 0.0 for row in (d, e))
+    assert all(row["observables"]["compliance_m2_per_N"] < 1.0e-9 for row in (d, e))
+    assert {key for key, passed in central["predicates"].items() if not passed} == {
+        "raw_traction_E", "minimum_mesh_quality", "fixed_geometry_identity",
+    }
+    assert readiness["oracle_states_accepted"] == 0
+    assert readiness["paired_trajectories_run"] == 0
+    assert readiness["fatigue_started"] is False
+    assert readiness["mechanics_map_fitting_complete"] is False
+    assert readiness["monotonic_2d_transfer_complete"] is False
+    assert readiness["finite_activation_zone_observable_derived"] is False
+    assert readiness["point_source_mesh_development"] == "CLOSED_AFTER_FINAL_V6_FAILURE"
+    assert readiness["next_bounded_step"] == "EQUILIBRATED_BOUNDARY_STRESS_RECONSTRUCTION"
+    assert readiness["bounded_worker"]["run_id"] == 34777671961
+    assert readiness["bounded_worker"]["tests_passed"] == 34
+    assert readiness["bounded_worker"]["artifact_id"] == 10323943431
+    assert decision["read_only_v6_head"] == readiness["source_head"]
+    assert decision["execution_counts"]["v6_fixed_geometry_local_levels_run"] == 2
+    assert decision["execution_counts"]["new_2d_oracle_states_accepted"] == 0
+    assert decision["prospective_execution_contract"]["oracle_matrix"]["status"] == (
+        "BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY"
+    )
+    assert decision["pilot_terminal"]["FATIGUE_IMPLEMENTATION"] == "NOT_STARTED_BY_CONTRACT"

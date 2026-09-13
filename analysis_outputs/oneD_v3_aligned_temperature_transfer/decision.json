@@ -1,15 +1,17 @@
 {
   "amendment": "FOUR_RESPONSE_FAMILIES_WITH_COMMON_REFERENCE_VOID_KINETICS",
   "blocking_reason": {
-    "artifact": "v5_source_readiness.json",
-    "code": "CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION",
-    "exact_v5_failure_class": [
-      "RAW_ADJACENT_ELEMENT_TRACTION"
+    "artifact": "v6_source_readiness.json",
+    "code": "CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY",
+    "exact_v6_failure_class": [
+      "RAW_ADJACENT_ELEMENT_TRACTION_E",
+      "MESH_QUALITY",
+      "FIXED_GEOMETRY_IDENTITY"
     ],
-    "required_action": "stop further point-source mesh development"
+    "required_action": "open equilibrated boundary-stress reconstruction as a separate numerical-method task"
   },
   "execution_counts": {
-    "bounded_2d_oracle_readiness_cases": 4,
+    "bounded_2d_oracle_readiness_cases": 5,
     "new_1d_trajectories": 0,
     "new_2d_mechanics_solves": 1,
     "new_2d_oracle_states_accepted": 0,
@@ -24,7 +26,9 @@
     "v5_bounded_2d_oracle_readiness_cases": 1,
     "v5_conditional_angular_levels_run": 1,
     "v5_fixed_geometry_local_levels_run": 3,
-    "v5_required_angular_levels_run": 2
+    "v5_required_angular_levels_run": 2,
+    "v6_bounded_2d_oracle_readiness_cases": 1,
+    "v6_fixed_geometry_local_levels_run": 2
   },
   "feature_temperature_gate": "PASS_FROZEN_PROSPECTIVE_ANCHORS",
   "held_out_policy": {
@@ -53,7 +57,7 @@
     "MATERIAL_ROW_TRANSFER_WEAK_T": "PASS_EXACT_RUNTIME_BINDING"
   },
   "mission": "PAIRED 2-D / 1-D ALIGNED-VOID TEMPERATURE TRANSFER PILOT",
-  "next_bounded_step": "STOP_POINT_SOURCE_MESH_DEVELOPMENT",
+  "next_bounded_step": "EQUILIBRATED_BOUNDARY_STRESS_RECONSTRUCTION",
   "one_d_checkpoint_sha": "795e4d64077bfff4dce64ff85310033faff798bd",
   "pilot_terminal": {
     "FATIGUE_IMPLEMENTATION": "NOT_STARTED_BY_CONTRACT",
@@ -61,7 +65,7 @@
     "ONE_D_V3_FIXED_STATE_2D_TRANSFER": "BLOCKED_ZERO_OF_18_ORACLE_STATES",
     "ONE_D_V3_HIGH_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
     "ONE_D_V3_LOW_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED",
-    "ONE_D_V3_MECHANICS_MAP_FIT": "BLOCKED_CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION",
+    "ONE_D_V3_MECHANICS_MAP_FIT": "BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY",
     "ONE_D_V3_TRANSITION_T_TRAJECTORY_TRANSFER": "NOT_RUN_ORACLE_GATE_BLOCKED"
   },
   "preserved": {
@@ -104,8 +108,8 @@
       ],
       "load_levels_per_geometry": 2,
       "planned_unique_states": 18,
-      "source_geometry_contract": "CAVITY_SOURCE_SHAPE_REGULAR_LOCAL_PATCH_V5",
-      "status": "BLOCKED_CENTRAL_DBTT_V5_RAW_ADJACENT_ELEMENT_TRACTION",
+      "source_geometry_contract": "CAVITY_SOURCE_RAW_TRACTION_CLOSURE_V6",
+      "status": "BLOCKED_CENTRAL_DBTT_V6_RAW_TRACTION_QUALITY_AND_GEOMETRY_IDENTITY",
       "topology_regimes": [
         "PRECONNECTION",
         "CONNECTED_CAVITY",
@@ -126,6 +130,7 @@
   },
   "read_only_v5_head": "b6224cbdc41b76048d7ad4b459046fd8461f53e5",
   "read_only_v5_source_tree_matches_attestation": true,
+  "read_only_v6_head": "864d73d2566050b38fd798693ef96ed7c973b942",
   "schema": "oneD.v3.aligned-temperature-transfer-decision/1",
   "temperature_anchors": {
     "DBTT": {
@@ -434,6 +439,19 @@
     "bounded_worker_run_id": 34772119070,
     "exact_v5_failure_class": [
       "RAW_ADJACENT_ELEMENT_TRACTION"
+    ],
+    "oracle_states_accepted": 0
+  },
+  "v6_source_readiness": {
+    "DBTT_SOURCE_READINESS": "BLOCKED_WITH_EXACT_V6_FAILURE_CLASS",
+    "artifact": "v6_source_readiness.json",
+    "bounded_worker_artifact_digest": "sha256:034be555d5d4f3f65cf16202d23a1612520612392bc6ab34dcd7086d5c84f748",
+    "bounded_worker_artifact_id": 10323943431,
+    "bounded_worker_run_id": 34777671961,
+    "exact_v6_failure_class": [
+      "RAW_ADJACENT_ELEMENT_TRACTION_E",
+      "MESH_QUALITY",
+      "FIXED_GEOMETRY_IDENTITY"
     ],
     "oracle_states_accepted": 0
   }
